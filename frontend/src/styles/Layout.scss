@@ -1,0 +1,20 @@
+@import "./variables";
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+// içerik
+.content {
+  flex: 1;
+  margin-left: 220px;   // sidebar genişliği
+  padding: 80px 20px 20px; // navbar + içerik boşluğu
+  transition: margin-left 0.3s ease;
+}
+
+// sidebar kapalıyken içerik sola yaklaşsın
+.sidebar.closed ~ .content {
+  margin-left: 60px;
+}

@@ -1,0 +1,16 @@
+# Ortak
+node_modules
+.env
+.DS_Store
+
+node_modules/
+
+
+# Build çıktıları
+/dist
+/build
+
+# Loglar
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

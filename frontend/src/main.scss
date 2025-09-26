@@ -1,0 +1,15 @@
+@import "./styles/variables";
+
+body, html {
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  margin-left: 220px; /* Sidebar'ın genişliği kadar boşluk bırakır */
+  transition: margin-left $transition;
+}
+
+main.sidebar-closed {
+  margin-left: 60px; /* Sidebar kapalıyken boşluğu küçültür */
+}
