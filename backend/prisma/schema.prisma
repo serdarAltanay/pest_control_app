@@ -50,3 +50,12 @@ model employees {
 
   @@index([assigned_to], map: "assigned_to")
 }
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  role      String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}

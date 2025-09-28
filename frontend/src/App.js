@@ -6,10 +6,14 @@ import CustomerManagementPage from "./pages/customerworks/CustomerManagementPage
 import PrivateRoute from "./components/PrivateRoute";
 import Profile from "./pages/profile/Profile.jsx";
 import AddUser from "./pages/admin/AddUser.jsx";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
 
 function App() {
   return (
+    <>
+    <ToastContainer position="top-right" autoClose={3000} />
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
@@ -51,6 +55,7 @@ function App() {
         />
       </Routes>
     </BrowserRouter>
+    </>
   );
 }
 

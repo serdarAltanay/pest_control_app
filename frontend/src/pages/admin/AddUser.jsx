@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../api/axios";
 import Layout from "../../components/Layout";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./AddUser.scss";
 
 export default function AddUser() {
@@ -19,10 +21,11 @@ export default function AddUser() {
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    // Admin ve Employee listelerini çek
     const fetchAdmins = async () => {
       try {
-        const res = await axios.get("/api/admin/list", { headers: { Authorization: `Bearer ${token}` } });
+        const res = await api.get("/admin/list", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setAdmins(res.data);
       } catch (err) {
         console.error(err);
@@ -31,7 +34,9 @@ export default function AddUser() {
 
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get("/api/employee/list", { headers: { Authorization: `Bearer ${token}` } });
+        const res = await api.get("/employee/list", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setEmployees(res.data);
       } catch (err) {
         console.error(err);
@@ -45,7 +50,7 @@ export default function AddUser() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(
+      await api.post(
         "/api/admin/add-user",
         {
           name,
@@ -59,12 +64,20 @@ export default function AddUser() {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert("Kullanıcı başarıyla eklendi!");
+
+      toast.success("Kullanıcı başarıyla eklendi!");
+
       // reset
-      setName(""); setEmail(""); setPassword(""); setRole("customer");
-      setAssignedTo(""); setParentCompany(""); setStore(""); setTitle("");
+      setName("");
+      setEmail("");
+      setPassword("");
+      setRole("customer");
+      setAssignedTo("");
+      setParentCompany("");
+      setStore("");
+      setTitle("");
     } catch (err) {
-      alert(err.response?.data?.message || "Hata oluştu");
+      toast.error(err.response?.data?.message || "Hata oluştu");
     }
   };
 
@@ -73,9 +86,25 @@ export default function AddUser() {
       <div className="add-user-form">
         <h2>Yeni Kullanıcı Ekle</h2>
         <form onSubmit={handleSubmit}>
-          <input type="text" placeholder="Ad Soyad" value={name} onChange={(e) => setName(e.target.value)} required />
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input type="password" placeholder="Şifre" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Ad Soyad"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Şifre"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="customer">Müşteri</option>
@@ -83,24 +112,53 @@ export default function AddUser() {
             <option value="admin">Admin</option>
           </select>
 
-          {/* Employee seçilmişse hangi admin’e bağlı */}
           {role === "employee" && (
-            <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} required>
+            <select
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+              required
+            >
               <option value="">Bağlı Admin Seç</option>
-              {admins.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              {admins.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
             </select>
           )}
 
-          {/* Customer seçilmişse hangi employee’ye bağlı */}
           {role === "customer" && (
             <>
-              <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} required>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                required
+              >
                 <option value="">Bağlı Çalışan Seç</option>
-                {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </option>
+                ))}
               </select>
-              <input type="text" placeholder="Ünvan" value={title} onChange={(e) => setTitle(e.target.value)} />
-              <input type="text" placeholder="Bağlı Grup Şirket ID" value={parentCompany} onChange={(e) => setParentCompany(e.target.value)} />
-              <input type="text" placeholder="Bağlı Mağaza ID" value={store} onChange={(e) => setStore(e.target.value)} />
+              <input
+                type="text"
+                placeholder="Ünvan"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Bağlı Grup Şirket ID"
+                value={parentCompany}
+                onChange={(e) => setParentCompany(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Bağlı Mağaza ID"
+                value={store}
+                onChange={(e) => setStore(e.target.value)}
+              />
             </>
           )}
 

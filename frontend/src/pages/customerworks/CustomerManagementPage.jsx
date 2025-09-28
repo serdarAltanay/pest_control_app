@@ -1,28 +1,31 @@
-import { useState, useEffect, useCallback  } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Layout from "../../components/Layout";
 import "./CustomerManagementPage.scss";
-
-import axios from "axios";
+import api from "../../api/axios";
+import { toast } from "react-toastify";
 
 export default function CustomerManagementPage() {
   const [customers, setCustomers] = useState([]);
   const [activeForm, setActiveForm] = useState(""); // "", "group", "store"
   const [loading, setLoading] = useState(true);
   const [parentCompanies, setParentCompanies] = useState([]);
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("accessToken");
 
   const fetchCustomers = useCallback(async () => {
-  setLoading(true);
-  try {
-    const res = await axios.get("/api/customers", { headers: { Authorization: `Bearer ${token}` } });
-    setCustomers(res.data);
-    setParentCompanies(res.data.filter(c => !c.parent_company_id));
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-}, [token]);
+    setLoading(true);
+    try {
+      const res = await api.get("/customers", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCustomers(res.data);
+      setParentCompanies(res.data.filter((c) => !c.parent_company_id));
+    } catch (err) {
+      toast.error("Müşteriler yüklenirken hata oluştu ❌");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
     fetchCustomers();
@@ -33,14 +36,14 @@ export default function CustomerManagementPage() {
     if (!password) return false;
     const email = localStorage.getItem("email");
     try {
-      const res = await axios.post(
-        "/api/customers/verify-admin",
+      const res = await api.post(
+        "/customers/verify-admin",
         { email, password },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return res.data.success;
     } catch (err) {
-      alert(err.response?.data?.message || "Şifre doğrulama hatası");
+      toast.error(err.response?.data?.message || "Şifre doğrulama hatası ❌");
       return false;
     }
   };
@@ -51,13 +54,15 @@ export default function CustomerManagementPage() {
 
     const formData = Object.fromEntries(new FormData(e.target));
     try {
-      await axios.post("/api/customers/add-group", formData, { headers: { Authorization: `Bearer ${token}` } });
-      alert("Grup eklendi!");
+      await api.post("/customers/add-group", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("Grup eklendi 🎉");
       fetchCustomers();
       setActiveForm("");
     } catch (err) {
       console.error(err);
-      alert("Grup eklenirken hata oluştu!");
+      toast.error("Grup eklenirken hata oluştu ❌");
     }
   };
 
@@ -67,13 +72,15 @@ export default function CustomerManagementPage() {
 
     const formData = Object.fromEntries(new FormData(e.target));
     try {
-      await axios.post("/api/customers/add-store", formData, { headers: { Authorization: `Bearer ${token}` } });
-      alert("Mağaza eklendi!");
+      await api.post("/customers/add-store", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("Mağaza eklendi 🎉");
       fetchCustomers();
       setActiveForm("");
     } catch (err) {
       console.error(err);
-      alert("Mağaza eklenirken hata oluştu!");
+      toast.error("Mağaza eklenirken hata oluştu ❌");
     }
   };
 
@@ -84,8 +91,16 @@ export default function CustomerManagementPage() {
 
         {/* Form Seçim Butonları */}
         <div className="form-buttons">
-          <button onClick={() => setActiveForm(activeForm === "group" ? "" : "group")}>Grup Şirket Ekle</button>
-          <button onClick={() => setActiveForm(activeForm === "store" ? "" : "store")}>Mağaza Ekle</button>
+          <button
+            onClick={() => setActiveForm(activeForm === "group" ? "" : "group")}
+          >
+            Grup Şirket Ekle
+          </button>
+          <button
+            onClick={() => setActiveForm(activeForm === "store" ? "" : "store")}
+          >
+            Mağaza Ekle
+          </button>
         </div>
 
         {/* Formlar */}
@@ -107,8 +122,10 @@ export default function CustomerManagementPage() {
             <input name="title" placeholder="Ünvan" />
             <select name="parent_company_id">
               <option value="">Grup Seç (Opsiyonel)</option>
-              {parentCompanies.map(pc => (
-                <option key={pc.id} value={pc.id}>{pc.name}</option>
+              {parentCompanies.map((pc) => (
+                <option key={pc.id} value={pc.id}>
+                  {pc.name}
+                </option>
               ))}
             </select>
             <button type="submit">Kaydet</button>
@@ -130,7 +147,7 @@ export default function CustomerManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {customers.map(c => (
+              {customers.map((c) => (
                 <tr key={c.id}>
                   <td>{c.name}</td>
                   <td>{c.email || "-"}</td>
