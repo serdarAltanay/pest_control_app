@@ -2,8 +2,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/login/Login.jsx"
 import CustomerDashboard from "./pages/customerDashboard/CustomerDashboard.jsx";
 import WorkDashboard from "./pages/workDashboard/WorkDashboard.jsx";
+import CustomerManagementPage from "./pages/customerworks/CustomerManagementPage.jsx";
 import PrivateRoute from "./components/PrivateRoute";
 import Profile from "./pages/profile/Profile.jsx";
+import AddUser from "./pages/admin/AddUser.jsx";
 import "./main.scss"
 
 function App() {
@@ -14,7 +16,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         {/* Customer için özel panel */}
         <Route
-          path="/customer"s
+          path="/customer"
           element={
             <PrivateRoute allowedRoles={['customer']}>
               <CustomerDashboard />
@@ -31,7 +33,22 @@ function App() {
             </PrivateRoute>
           }
         />
-
+        <Route
+          path="/customers"
+          element={
+            <PrivateRoute allowedRoles={["employee", "admin"]}>
+              <CustomerManagementPage/>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+          <PrivateRoute allowedRoles={['admin']}>
+            <AddUser />
+          </PrivateRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

@@ -17,20 +17,25 @@ model admins {
 }
 
 model customers {
-  id                Int         @id @default(autoincrement())
-  name              String      @db.VarChar(255)
-  email             String?     @db.VarChar(255)
-  title             String?     @db.VarChar(255)
-  assigned_to       Int?
-  job_start_date    DateTime?   @db.Date
-  registered_at     DateTime?   @default(now()) @db.Timestamp(0)
-  parent_company_id Int?
-  employees         employees?  @relation(fields: [assigned_to], references: [id], onUpdate: NoAction, map: "customers_ibfk_1")
-  customers         customers?  @relation("customersTocustomers", fields: [parent_company_id], references: [id], onUpdate: NoAction, map: "customers_ibfk_2")
-  other_customers   customers[] @relation("customersTocustomers")
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(255) // Ad Soyad
+  email             String?   @unique @db.VarChar(255) // Opsiyonel login için
+  password          String?   @db.VarChar(255) // Opsiyonel login şifresi
+  title             String?   @db.VarChar(255) // Ünvan
+  assigned_to       Int? // Hangi çalışan sorumlu
+  parent_company_id Int? // Bağlı olduğu grup şirket
+  store_id          Int? // Bağlı olduğu mağaza (opsiyonel)
+  job_start_date    DateTime? @db.Date
+  registered_at     DateTime? @default(now()) @db.Timestamp(0)
 
-  @@index([assigned_to], map: "assigned_to")
-  @@index([parent_company_id], map: "parent_company_id")
+  // Relations
+  employees     employees?  @relation(fields: [assigned_to], references: [id], onUpdate: NoAction)
+  parentCompany customers?  @relation("GroupToStore", fields: [parent_company_id], references: [id])
+  stores        customers[] @relation("GroupToStore")
+
+  @@index([assigned_to])
+  @@index([parent_company_id])
+  @@index([store_id])
 }
 
 model employees {

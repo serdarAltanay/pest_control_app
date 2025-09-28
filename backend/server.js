@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.js";
 import seedRoutes from "./routes/seed.js";
 import wipeRoutes from "./routes/wipe.js";
 import customerRoutes from "./routes/customers.js";
+import adminRoutes from "./routes/admin.js";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/seed", seedRoutes);
 app.use("/api/wipe", wipeRoutes);
 app.use("/api/customers", customerRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Örnek hash kontrol
 console.log(bcrypt.hashSync("123456", 10));

@@ -30,7 +30,7 @@ router.post("/", async (req, res) => {
     });
 
     // 3️⃣ Bireysel müşteri ekle
-    await prisma.customer.create({
+    await prisma.customers.create({
       data: {
         name: "Ahmet Yılmaz",
         email: "ahmet@gmail.com",
@@ -50,7 +50,7 @@ router.post("/", async (req, res) => {
     });
 
     // 5️⃣ Mağazalar ekle
-    await prisma.customer.createMany({
+    await prisma.customers.createMany({
       data: [
         {
           name: "ABC Mağaza 1",
