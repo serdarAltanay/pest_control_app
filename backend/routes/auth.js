@@ -20,17 +20,38 @@ router.post("/register", async (req, res) => {
 
     if (role === "admin") {
       user = await prisma.admins.create({
-        data: { name, email, password: hashedPassword },
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          // createdAt & updatedAt Prisma tarafından otomatik
+          lastLoginAt: null,
+          lastProfileAt: null,
+        },
       });
     } else if (role === "employee") {
       user = await prisma.employees.create({
-        data: { name, email, password: hashedPassword, assigned_to: assigned_to || null },
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          assigned_to: assigned_to || null,
+          lastLoginAt: null,
+          lastProfileAt: null,
+        },
       });
     } else {
       return res.status(400).json({ error: "Sadece admin veya employee eklenebilir" });
     }
 
-    res.json({ id: user.id, name: user.name, email: user.email, role });
+    res.status(201).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
   } catch (err) {
     console.error("Register hatası:", err);
     res.status(500).json({ error: "DB hatası" });
@@ -47,11 +68,13 @@ router.post("/login", async (req, res) => {
 
     // Admin ara
     user = await prisma.admins.findUnique({ where: { email } });
-    if (user) role = "admin";
-    else {
+    if (user) {
+      role = "admin";
+    } else {
       user = await prisma.employees.findUnique({ where: { email } });
-      if (user) role = "employee";
-      else {
+      if (user) {
+        role = "employee";
+      } else {
         user = await prisma.customers.findUnique({ where: { email } });
         if (user) role = "customer";
       }
@@ -62,13 +85,35 @@ router.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Şifre hatalı" });
 
+    // ✅ lastLoginAt güncelle
+    if (role === "admin") {
+      await prisma.admins.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+    } else if (role === "employee") {
+      await prisma.employees.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+    } else if (role === "customer") {
+      await prisma.customers.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+    }
+
     // Access token (kısa ömürlü)
-    const accessToken = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "15m" });
+    const accessToken = jwt.sign({ id: user.id, role }, JWT_SECRET, {
+      expiresIn: "15m",
+    });
 
     // Refresh token (uzun ömürlü)
-    const refreshToken = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "7d" });
+    const refreshToken = jwt.sign({ id: user.id, role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
-    // Refresh tokeni DB’de sakla
+    // Refresh token DB’de sakla
     await prisma.refreshToken.create({
       data: {
         token: refreshToken,
@@ -78,12 +123,19 @@ router.post("/login", async (req, res) => {
       },
     });
 
-    res.json({ accessToken, refreshToken, role, name: user.name, email: user.email });
+    res.json({
+      accessToken,
+      refreshToken,
+      role,
+      name: user.name,
+      email: user.email,
+    });
   } catch (err) {
     console.error("Login hatası:", err);
     res.status(500).json({ error: "DB hatası" });
   }
 });
+
 
 // REFRESH TOKEN
 router.post("/refresh", async (req, res) => {

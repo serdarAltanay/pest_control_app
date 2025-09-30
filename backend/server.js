@@ -10,6 +10,7 @@ import seedRoutes from "./routes/seed.js";
 import wipeRoutes from "./routes/wipe.js";
 import customerRoutes from "./routes/customers.js";
 import adminRoutes from "./routes/admin.js";
+import profileRouter from "./routes/profile.js";
 
 dotenv.config();
 
@@ -25,9 +26,8 @@ app.use("/api/seed", seedRoutes);
 app.use("/api/wipe", wipeRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/profile", profileRouter);
 
-// Örnek hash kontrol
-console.log(bcrypt.hashSync("123456", 10));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server ${PORT} portunda çalışıyor`));
