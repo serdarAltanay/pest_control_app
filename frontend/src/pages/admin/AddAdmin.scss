@@ -1,0 +1,72 @@
+@import "../../styles/variables";
+
+.add-user-page {
+  padding: 20px;
+  color: $color-dark;
+
+  h2 {
+    margin: 0 0 16px;
+    font-size: 22px;
+    font-weight: 700;
+    color: $color-primary; // admin vurgu
+  }
+
+  .panel {
+    background: #fff;
+    border-radius: $border-radius;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    padding: 20px;
+    border: 1px solid rgba(0,0,0,0.06);
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba($color-dark, 0.7);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    input {
+      width: 100%;
+      height: 40px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: $border-radius;
+      padding: 0 12px;
+      background: #fff;
+      transition: box-shadow $transition, border-color $transition;
+
+      &:focus {
+        outline: none;
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+      }
+    }
+
+    .primary {
+      margin-top: 14px;
+      height: 42px;
+      padding: 0 16px;
+      border: none;
+      border-radius: $border-radius;
+      background: $color-primary;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow $transition;
+
+      &:hover { box-shadow: 0 10px 20px rgba($color-primary, 0.18); }
+      &:active { transform: translateY(1px) scale(.99); }
+      &:disabled { opacity: .6; cursor: not-allowed; }
+    }
+  }
+}
+
+@media (max-width: 992px) {
+  .add-user-page { padding: 16px; }
+}

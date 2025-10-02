@@ -1,9 +1,10 @@
-// routes/auth.js
+﻿// routes/auth.js
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
+import { cookieOpts } from "../config/cookies.js"; 
 dotenv.config();
 
 const router = Router();
@@ -24,7 +25,6 @@ router.post("/register", async (req, res) => {
           name,
           email,
           password: hashedPassword,
-          // createdAt & updatedAt Prisma tarafından otomatik
           lastLoginAt: null,
           lastProfileAt: null,
         },
@@ -54,6 +54,7 @@ router.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.error("Register hatası:", err);
+    // Unique email hatası vs. için dilersen P2002 yakalayıp 409 dönebilirsin
     res.status(500).json({ error: "DB hatası" });
   }
 });
@@ -66,18 +67,16 @@ router.post("/login", async (req, res) => {
     let user = null;
     let role = null;
 
-    // Admin ara
+    // Admin -> Employee -> Customer sırayla bak
     user = await prisma.admins.findUnique({ where: { email } });
-    if (user) {
-      role = "admin";
-    } else {
+    if (user) role = "admin";
+    if (!user) {
       user = await prisma.employees.findUnique({ where: { email } });
-      if (user) {
-        role = "employee";
-      } else {
-        user = await prisma.customers.findUnique({ where: { email } });
-        if (user) role = "customer";
-      }
+      if (user) role = "employee";
+    }
+    if (!user) {
+      user = await prisma.customers.findUnique({ where: { email } });
+      if (user) role = "customer";
     }
 
     if (!user) return res.status(401).json({ message: "Kullanıcı bulunamadı" });
@@ -85,47 +84,38 @@ router.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Şifre hatalı" });
 
-    // ✅ lastLoginAt güncelle
+    const now = new Date();
     if (role === "admin") {
-      await prisma.admins.update({
-        where: { id: user.id },
-        data: { lastLoginAt: new Date() },
-      });
+      await prisma.admins.update({ where: { id: user.id }, data: { lastLoginAt: now } });
     } else if (role === "employee") {
-      await prisma.employees.update({
-        where: { id: user.id },
-        data: { lastLoginAt: new Date() },
-      });
+      await prisma.employees.update({ where: { id: user.id }, data: { lastLoginAt: now } });
     } else if (role === "customer") {
-      await prisma.customers.update({
-        where: { id: user.id },
-        data: { lastLoginAt: new Date() },
-      });
+      await prisma.customers.update({ where: { id: user.id }, data: { lastLoginAt: now } });
     }
 
-    // Access token (kısa ömürlü)
-    const accessToken = jwt.sign({ id: user.id, role }, JWT_SECRET, {
-      expiresIn: "15m",
-    });
+    const accessToken = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "15m" });
+    const refreshToken = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "7d" });
 
-    // Refresh token (uzun ömürlü)
-    const refreshToken = jwt.sign({ id: user.id, role }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-    // Refresh token DB’de sakla
-    await prisma.refreshToken.create({
-      data: {
+    // Bileşik unique: @@unique([userId, role], name: "userId_role_unique")
+    await prisma.refreshToken.upsert({
+      where: { userId_role_unique: { userId: user.id, role } },
+      update: {
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+      create: {
         token: refreshToken,
         userId: user.id,
         role,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 gün
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
+    // TEK cookie formatı (path: "/")
+    res.cookie("refreshToken", refreshToken, cookieOpts);
+
     res.json({
       accessToken,
-      refreshToken,
       role,
       name: user.name,
       email: user.email,
@@ -136,27 +126,31 @@ router.post("/login", async (req, res) => {
   }
 });
 
-
-// REFRESH TOKEN
+// REFRESH (korumasız olmalı)
 router.post("/refresh", async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) return res.status(401).json({ message: "Refresh token gerekli" });
 
-    // DB’de token var mı?
     const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
     if (!stored) return res.status(403).json({ message: "Geçersiz refresh token" });
 
-    // JWT doğrula
     jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
-      if (err) return res.status(403).json({ message: "Refresh token süresi dolmuş" });
+      if (err) return res.status(403).json({ message: "Token doğrulanamadı" });
 
-      const { id, role } = decoded;
+      // Yeni access
+      const newAccessToken = jwt.sign(
+        { id: decoded.id, role: decoded.role },
+        JWT_SECRET,
+        { expiresIn: "15m" }
+      );
 
-      // Yeni access token üret
-      const newAccessToken = jwt.sign({ id, role }, JWT_SECRET, { expiresIn: "15m" });
+      // İstersen burada ROTATION ekleyebilirsin
+      // const newRefreshToken = jwt.sign({ id: decoded.id, role: decoded.role }, JWT_SECRET, { expiresIn: "7d" });
+      // await prisma.refreshToken.update({ where: { token: refreshToken }, data: { token: newRefreshToken, expiresAt: new Date(Date.now() + 7*24*60*60*1000) } });
+      // res.cookie("refreshToken", newRefreshToken, cookieOpts);
 
-      res.json({ accessToken: newAccessToken });
+      return res.json({ accessToken: newAccessToken });
     });
   } catch (err) {
     console.error("Refresh hatası:", err);
@@ -166,14 +160,19 @@ router.post("/refresh", async (req, res) => {
 
 router.post("/logout", async (req, res) => {
   try {
-    const { refreshToken } = req.body;
-    if (refreshToken) {
-      await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+    const rt = req.cookies.refreshToken;
+
+    // Cookie'yi set ederken ne verdiysen AYNISINI clear'da da ver
+    res.clearCookie("refreshToken", cookieOpts);
+
+    if (rt) {
+      await prisma.refreshToken.deleteMany({ where: { token: rt } });
     }
-    res.json({ message: "Çıkış yapıldı" });
+
+    return res.json({ message: "Çıkış yapıldı" });
   } catch (err) {
     console.error("Logout hatası:", err);
-    res.status(500).json({ error: "Sunucu hatası" });
+    return res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 

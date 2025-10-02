@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import bcrypt from "bcryptjs";
 import { auth, roleCheck } from "../middleware/auth.js";
 import { PrismaClient } from "@prisma/client";
@@ -6,7 +6,6 @@ import { PrismaClient } from "@prisma/client";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Yeni kullanıcı ekleme
 router.post("/add-user", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const { name, email, password, role, assigned_to, parent_company_id, store_id, title } = req.body;
@@ -15,7 +14,6 @@ router.post("/add-user", auth, roleCheck(["admin"]), async (req, res) => {
       return res.status(400).json({ message: "Ad ve rol zorunludur" });
     }
 
-    // email kontrolü (varsa)
     if (email) {
       let existingUser;
       if (role === "admin") existingUser = await prisma.admins.findUnique({ where: { email } });

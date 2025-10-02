@@ -1,24 +1,30 @@
-// server.js
+﻿// server.js
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import bcrypt from "bcrypt";
 
-// Route'ları import et
+// Route'lar�� import et
 import authRoutes from "./routes/auth.js";
 import seedRoutes from "./routes/seed.js";
 import wipeRoutes from "./routes/wipe.js";
 import customerRoutes from "./routes/customers.js";
 import adminRoutes from "./routes/admin.js";
 import profileRouter from "./routes/profile.js";
+import uploadRoutes from "./routes/upload.js";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
 const app = express();
 
 // Middleware
-app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true,
+}));
+
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -28,6 +34,8 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRouter);
 
+app.use("/uploads", express.static("uploads"));
+app.use("/api/upload", uploadRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server ${PORT} portunda çalışıyor`));
+app.listen(PORT, () => console.log(`Server ${PORT} portunda açıldı`));

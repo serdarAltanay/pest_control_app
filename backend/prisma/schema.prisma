@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,40 +8,96 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Admins {
-  id       Int    @id @default(autoincrement())
-  name     String
-  email    String @unique
-  password String
-
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
+enum VisitPeriod {
+  HAFTALIK
+  IKIAylik
+  AYLIK
+  IKIAYLIK
+  UCAYLIK
+  BELIRTILMEDI
 }
 
-model Employees {
-  id       Int    @id @default(autoincrement())
-  name     String
-  email    String @unique
-  password String
-
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
+enum PestType {
+  KEMIRGEN
+  HACCADI
+  UCAN
+  BELIRTILMEDI
 }
 
-model Customers {
-  id       Int     @id @default(autoincrement())
-  name     String
-  email    String? @unique
-  password String?
+enum PlaceType {
+  OFIS
+  DEPO
+  MAGAZA
+  FABRIKA
+  BELIRTILMEDI
+}
 
+model Admin {
+  id            Int        @id @default(autoincrement())
+  fullName      String
+  email         String     @unique
+  password      String
+  profileImage  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  lastLoginAt   DateTime?
+  lastProfileAt DateTime?
+  // relations
+  employees     Employee[]
+}
+
+model Employee {
+  id            Int       @id @default(autoincrement())
+  fullName      String
+  email         String?   @unique
+  password      String?
+  username      String?   @unique
+  jobTitle      String? // Görevi
+  gsm           String? // 05xx ...
+  profileImage  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
   lastProfileAt DateTime?
+
+  // bağlı admin
+  adminId Int?
+  admin   Admin? @relation(fields: [adminId], references: [id])
+
+  // relations
+  customers Customer[] // Sorumlu olduğu müşteriler
+}
+
+model Customer {
+  id              Int     @id @default(autoincrement())
+  code            String  @unique // Müşteri Kodu
+  title           String // Ünvan & Müşteri Adı
+  accountingTitle String? // Muhasebe Ünvanı
+  email           String? @unique
+  password        String?
+  contactFullName String? // Yetkili kişi
+  phone           String? // Firma iletişim telefon
+  gsm             String? // Firma iletişim GSM
+  taxOffice       String? // Vergi Dairesi
+  taxNumber       String? // Vergi No & T.C.K.N
+  address         String?
+  city            String?
+
+  pestType    PestType    @default(BELIRTILMEDI) // Hedef Zararlı Türü
+  areaM2      Float? // Uygulama alanı m²
+  placeType   PlaceType   @default(BELIRTILMEDI) // Uygulama yeri
+  showBalance Boolean     @default(false) // Güncel bakiye görünsün mü?
+  visitPeriod VisitPeriod @default(BELIRTILMEDI) // Uygulama & ziyaret periyodu
+
+  profileImage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  lastProfileAt DateTime?
+
+  // Sorumlu personel
+  employeeId Int?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
 }
 
 model RefreshToken {
@@ -50,4 +107,6 @@ model RefreshToken {
   role      String
   createdAt DateTime @default(now())
   expiresAt DateTime
+
+  @@unique([userId, role], name: "userId_role_unique")
 }

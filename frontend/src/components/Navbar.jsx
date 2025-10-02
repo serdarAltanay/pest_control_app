@@ -1,48 +1,54 @@
 import "../styles/Navbar.scss";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axios.js"; // axios instance
+import { useContext } from "react";
+import { ProfileContext } from "../context/ProfileContext";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-
+import api from "../api/axios";
 export default function Navbar() {
   const navigate = useNavigate();
+  const { profile } = useContext(ProfileContext);
 
-  const handleProfileClick = () => {
-    navigate("/profile");
-  };
+  // Tek isim: profileImage
+  const imgSrc = profile?.profileImage || localStorage.getItem("profileImage") || "/noavatar.jpg";
+
+  const handleProfileClick = () => navigate("/profile");
 
   const handleLogoutClick = async () => {
     try {
-      const refreshToken = localStorage.getItem("refreshToken");
+      // Backend'e logout isteği at (cookie silinsin)
+      await api.post("/auth/logout");
 
-      if (refreshToken) {
-        await api.post("/auth/logout", { refreshToken });
-      }
+      // Local storage temizle
+      localStorage.clear();
 
-      // Kullanıcı bilgilerini temizle
-      localStorage.removeItem("role");
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("name");
-      localStorage.removeItem("email");
-
-      toast.success("Başarıyla çıkış yaptınız!");
+      toast.success("Başarıyla Çıkış yaptınız!");
       navigate("/");
     } catch (err) {
       console.error("Logout hatası:", err);
-      localStorage.clear();
-      toast.error("Çıkış sırasında bir hata oluştu, yönlendiriliyorsunuz...");
-      navigate("/");
+      toast.error("Çıkış yapılamadı ❌");
     }
   };
+
 
   return (
     <nav className="navbar">
       <div className="navbar-left">Pest Control</div>
+
       <div className="navbar-right">
         <button className="navbar-btn" onClick={handleProfileClick}>
+          <span className="avatar-wrap">
+            <img
+              src={imgSrc}
+              alt="Profil"
+              className="navbar-profile-img"
+              width={32}
+              height={32}
+              style={{ width: 32, height: 32, objectFit: "cover" }}
+            />
+          </span>
           Profil
         </button>
+
         <button className="navbar-btn" onClick={handleLogoutClick}>
           Çıkış
         </button>

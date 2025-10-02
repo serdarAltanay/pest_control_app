@@ -3,30 +3,50 @@ import api from "../../api/axios.js";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify"; // toast import
 import "./Login.scss";
+import { useEffect } from "react";
+import { parseJwt } from "../../utils/auth.js";
+import axios from "axios";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+  (async () => {
     try {
-      const res = await api.post("/auth/login", { email, password });
-      localStorage.setItem("accessToken", res.data.accessToken);
-      localStorage.setItem("refreshToken", res.data.refreshToken);
-      localStorage.setItem("role", res.data.role);
-      localStorage.setItem("name", res.data.name);
-      localStorage.setItem("email", res.data.email);
+      // DÜZ axios: interceptor tetiklenmez
+      const { data } = await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+      if (data?.accessToken) {
+        localStorage.setItem("accessToken", data.accessToken);
+        const payload = parseJwt(data.accessToken);
+        if (payload?.role) localStorage.setItem("role", payload.role);
+        navigate(payload?.role === "customer" ? "/customer" : "/work", { replace: true });
+      }
+    } catch {}
+  })();
+}, [navigate]);
 
-      toast.success("Giriş başarılı 🎉");
 
-      if (res.data.role === "customer") navigate("/customer");
-      else navigate("/work");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Giriş hatası ❌");
-    }
-  };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await api.post("/auth/login", { email, password });
+
+    localStorage.setItem("accessToken", res.data.accessToken);
+    localStorage.setItem("role", res.data.role);
+    localStorage.setItem("name", res.data.name);
+    localStorage.setItem("email", res.data.email);
+
+    toast.success("Giriş başarılı 🎉");
+
+    if (res.data.role === "customer") navigate("/customer");
+    else navigate("/work");
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Giriş hatası ❌");
+  }
+};
+
 
   return (
     <form className="login-form" onSubmit={handleSubmit}>

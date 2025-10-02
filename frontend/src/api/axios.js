@@ -1,15 +1,11 @@
-// src/api/axios.js
 import axios from "axios";
 
-// Axios instance oluştur
 const api = axios.create({
-  baseURL: "/api", // backend adresin
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: "/api",
+  withCredentials: true, 
 });
 
-// İstekten önce access token ekle
+// Access token ekle
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
@@ -21,34 +17,42 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Cevap interceptor (401 olursa refresh dene)
+// Refresh mekanizması
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Access token süresi bitmiş -> refresh dene
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
+        // Cookie'deki refresh token ile yeni access token iste
+      const res = await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+      const newAccessToken = res.data.accessToken;
+      if (!newAccessToken) {
+        throw new Error("Refresh döndü ama accessToken yok");
+      }
 
-        // Refresh token ile yeni access token al
-        const res = await axios.post("/api/auth/refresh", {
-          refreshToken,
-        });
+      // 1) localStorage
+      localStorage.setItem("accessToken", newAccessToken);
 
-        const newAccessToken = res.data.accessToken;
-        localStorage.setItem("accessToken", newAccessToken);
+      // 2) axios instance defaults (bundan SONRAKİ tüm istekler)
+      api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
 
-        // Yeni token ile eski isteği tekrar et
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return api(originalRequest);
+      // 3) orijinal isteğin header’ı (bu anlık retry için)
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+      // 4) retry
+      return api(originalRequest);
+
       } catch (err) {
         console.error("Refresh başarısız:", err);
         localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/"; // login sayfasına yönlendir
+        localStorage.removeItem("role");
+        localStorage.removeItem("name");
+        localStorage.removeItem("email");
+        window.location.href = "/"; // login sayfasına dön
       }
     }
 

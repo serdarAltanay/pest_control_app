@@ -5,8 +5,11 @@ import WorkDashboard from "./pages/workDashboard/WorkDashboard.jsx";
 import CustomerManagementPage from "./pages/customerworks/CustomerManagementPage.jsx";
 import PrivateRoute from "./components/PrivateRoute";
 import Profile from "./pages/profile/Profile.jsx";
-import AddUser from "./pages/admin/AddUser.jsx";
 import { ToastContainer } from "react-toastify";
+import { ProfileProvider } from "./context/ProfileContext";
+import AddAdmin from "./pages/admin/AddAdmin.jsx";
+import AddEmployee from "./pages/admin/AddEmployee.jsx";
+import AddCustomer from "./pages/admin/AddCustomer.jsx";
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
 
@@ -14,6 +17,7 @@ function App() {
   return (
     <>
     <ToastContainer position="top-right" autoClose={3000} />
+    <ProfileProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
@@ -24,6 +28,33 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['customer']}>
               <CustomerDashboard />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/admins/new"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AddAdmin />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/employees/new"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AddEmployee />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/customers/new"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AddCustomer />
             </PrivateRoute>
           }
         />
@@ -45,16 +76,9 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/admin"
-          element={
-          <PrivateRoute allowedRoles={['admin']}>
-            <AddUser />
-          </PrivateRoute>
-          }
-        />
       </Routes>
     </BrowserRouter>
+    </ProfileProvider>
     </>
   );
 }
