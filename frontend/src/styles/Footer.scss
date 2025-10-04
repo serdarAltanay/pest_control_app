@@ -1,11 +1,31 @@
 @import "../styles/variables";
 
 .footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0; /* tam alta sabit */
+  height: 56px; /* vh yerine px, daha stabil */
   background-color: $color-dark;
   color: white;
-  text-align: center;
-  padding: 0px;
-  position: relative;
-  height: 6vh;
   z-index: 20;
+
+  /* iOS safe area desteği (zararı yok, faydası var) */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.footer .inner {
+  height: 100%;
+  display: flex;
+  align-items: center;          /* dikey merkezle */
+  justify-content: center;      /* yatay merkezle */
+
+  /* yazıyı bir tık yukarı al (scrollbar altında kalmasın) */
+  padding-bottom: 6px;
+}
+
+.footer p {
+  margin: 0;
+  line-height: 1.2;
+  text-align: center;
 }

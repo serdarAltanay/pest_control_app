@@ -11,6 +11,8 @@ import AddAdmin from "./pages/admin/AddAdmin.jsx";
 import AddEmployee from "./pages/admin/AddEmployee.jsx";
 import AddCustomer from "./pages/admin/AddCustomer.jsx";
 import CustomerList from "./pages/admin/CustomerList.jsx";
+import CustomerDetail from "./pages/customers/CustomerDetail.jsx";
+
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
 
@@ -82,6 +84,14 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin','employee']}>
               <CustomerList />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/customers/:id"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <CustomerDetail />
             </PrivateRoute>
           }
         />
