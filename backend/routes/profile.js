@@ -19,32 +19,36 @@ profileRouter.get("/", async (req, res) => {
     } catch {
       return res.status(401).json({ error: "Geçersiz token" });
     }
+
     const { id, role } = decoded;
     const userId = Number(id);
 
-      let user;
-      if (role === "admin") {
-        user = await prisma.admins.findUnique({ where: { id: userId } });
-      } else if (role === "employee") {
-        user = await prisma.employees.findUnique({ where: { id: userId } });
-      } else if (role === "customer") {
-        user = await prisma.customers.findUnique({ where: { id: userId } });
-      }
+    let user;
+    if (role === "admin") {
+      user = await prisma.admin.findUnique({ where: { id: userId } });
+    } else if (role === "employee") {
+      user = await prisma.employee.findUnique({ where: { id: userId } });
+    } else if (role === "customer") {
+      user = await prisma.customer.findUnique({ where: { id: userId } });
+    }
 
     if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
 
+    // Tüm rollerde 'fullName' alanını doldur
+    const fullName =
+      role === "customer"
+        ? (user.contactFullName ?? user.title ?? "")
+        : (user.fullName ?? "");
+
     const profileData = {
       id: user.id,
-      name: user.name,
-      email: user.email,
       role,
+      email: user.email ?? null,
+      fullName, // <-- UI'nın güvenle kullanabileceği tek alan
+      contactFullName: role === "customer" ? (user.contactFullName ?? null) : null,
+      company: role === "customer" ? (user.title ?? null) : null, // müşteri için şirket adı
       profileImage: user.profileImage || "/noavatar.jpg",
     };
-
-    // Sadece customer için company ekle
-    if (role === "customer") {
-      profileData.company = user.company || null;
-    }
 
     res.json(profileData);
   } catch (err) {
@@ -54,34 +58,40 @@ profileRouter.get("/", async (req, res) => {
 });
 
 
+
 profileRouter.put("/update-info", auth, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { fullName } = req.body;
     const { id, role } = req.user;
 
-    if (!name) {
+    if (!fullName) {
       return res.status(400).json({ error: "İsim gerekli" });
     }
 
     let updatedUser;
     if (role === "admin") {
-      updatedUser = await prisma.admins.update({
+      updatedUser = await prisma.admin.update({
         where: { id },
-        data: { name },
+        data: { fullName },
       });
     } else if (role === "employee") {
-      updatedUser = await prisma.employees.update({
+      updatedUser = await prisma.employee.update({
         where: { id },
-        data: { name },
+        data: { fullName },
       });
     } else if (role === "customer") {
-      updatedUser = await prisma.customers.update({
+      updatedUser = await prisma.customer.update({
         where: { id },
-        data: { name },
+        data: { fullName },
       });
     }
 
-    res.json({ success: true, user: updatedUser });
+    res.json({ success: true, user: {
+      id: updatedUser.id,
+      fullName: updatedUser.fullName,
+      email: updatedUser.email,
+      profileImage: updatedUser.profileImage,
+    } });
   } catch (err) {
     console.error("Update profile info hatası:", err);
     res.status(500).json({ error: "Sunucu hatası" });

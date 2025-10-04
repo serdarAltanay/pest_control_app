@@ -10,7 +10,7 @@ datasource db {
 
 enum VisitPeriod {
   HAFTALIK
-  IKIAylik
+  IKIHAFTALIK
   AYLIK
   IKIAYLIK
   UCAYLIK

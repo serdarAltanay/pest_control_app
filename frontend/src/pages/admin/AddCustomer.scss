@@ -8,7 +8,7 @@
     margin: 0 0 16px;
     font-size: 22px;
     font-weight: 700;
-    color: darken($color-secondary, 12%); // müşteri için farklı ton
+    color: darken($color-secondary, 12%);
   }
 
   .panel {
@@ -21,8 +21,7 @@
     .grid3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-
+      gap: 16px;
       .col-span-2 { grid-column: span 2; }
     }
 
@@ -44,13 +43,21 @@
       background: #fff;
       transition: box-shadow $transition, border-color $transition;
 
-      &::placeholder { color: rgba($color-dark, 0.4); }
+      color: #111;
+      caret-color: $color-primary;
+      &::placeholder { color: rgba(0,0,0,0.45); }
 
       &:focus {
         outline: none;
-        border-color: $color-primary; // müşteride de net görünürlük için
+        border-color: $color-primary;
         box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
       }
+    }
+
+    input:-webkit-autofill,
+    select:-webkit-autofill {
+      -webkit-text-fill-color: #111 !important;
+      transition: background-color 9999s ease-in-out 0s;
     }
 
     .hint {
@@ -60,38 +67,43 @@
       margin-bottom: 8px;
     }
 
+    /* BUTON RENGİ DEĞİŞTİRİLDİ */
     .success {
       margin-top: 10px;
       height: 42px;
       padding: 0 16px;
       border: none;
       border-radius: $border-radius;
-      background: $color-light;      // açık zemin
-      color: $color-dark;            // kontrast yazı
+      background: $color-secondary; /* <-- yeni renk */
+      color: #fff;                   /* kontrast */
       font-weight: 800;
       cursor: pointer;
       transition: transform 0.08s ease, box-shadow $transition, background $transition;
 
-      &:hover { 
-        background: lighten($color-light, 3%);
+      &:hover {
+        background: lighten($color-secondary, 5%);
         box-shadow: 0 10px 20px rgba(0,0,0,0.08);
       }
       &:active { transform: translateY(1px) scale(.99); }
       &:disabled { opacity: .6; cursor: not-allowed; }
     }
   }
+
 }
 
 @media (max-width: 1200px) {
   .add-user-page .panel .grid3 {
     grid-template-columns: repeat(2, 1fr);
   }
+  .customers-list .customers-table {
+    th:nth-child(7), td:nth-child(7) { max-width: 220px; } /* address daralt */
+  }
 }
+
 @media (max-width: 768px) {
   .add-user-page { padding: 16px; }
   .add-user-page .panel .grid3 {
     grid-template-columns: 1fr;
-
     .col-span-2 { grid-column: span 1; }
   }
 }

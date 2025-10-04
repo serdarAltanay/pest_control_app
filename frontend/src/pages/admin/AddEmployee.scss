@@ -68,18 +68,108 @@
       &:disabled { opacity: .6; cursor: not-allowed; }
     }
   }
+
+  /* --- Personeller listesi (yalnızca görünüm düzeltmeleri) --- */
+  .employees-list {
+    margin-top: 24px;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: $border-radius;
+    padding: 16px;
+
+    .list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+
+      h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: $color-dark;
+      }
+
+      button {
+        height: 36px;
+        padding: 0 12px;
+        border: 1px solid rgba(0,0,0,.1);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        transition: box-shadow $transition, transform .08s ease;
+
+        &:hover { box-shadow: 0 6px 14px rgba(0,0,0,.08); }
+        &:active { transform: translateY(1px) scale(.99); }
+        &:disabled { opacity: .6; cursor: not-allowed; }
+      }
+    }
+
+    .table-wrapper {
+      overflow-x: auto; /* yatay taşma */
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .employees-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      table-layout: fixed; /* ellipsis için */
+
+      thead th {
+        text-align: left;
+        background: #f8fafc;
+        color: rgba($color-dark, 0.85);
+        font-weight: 700;
+        border-bottom: 1px solid #edf2f7;
+      }
+
+      th, td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* isim ve e-posta kolonlarına genişlik verip ellipsis uygula */
+      th:nth-child(1), td:nth-child(1) { max-width: 220px; }
+      th:nth-child(2), td:nth-child(2) { max-width: 260px; }
+      th:nth-child(3), td:nth-child(3) { max-width: 160px; }
+
+      /* zebra & hover */
+      tbody tr:nth-child(odd)  { background: #fafafa; }
+      tbody tr:hover { background: rgba($color-secondary, 0.06); }
+
+      /* son satır alt çizgiyi temizle */
+      tbody tr:last-child td { border-bottom: 0; }
+    }
+  }
 }
 
+/* --- responsive --- */
 @media (max-width: 1200px) {
   .add-user-page .panel .grid3 {
     grid-template-columns: repeat(2, 1fr);
   }
+  .employees-list .employees-table {
+    th:nth-child(2), td:nth-child(2) { max-width: 220px; }
+  }
 }
+
 @media (max-width: 768px) {
   .add-user-page { padding: 16px; }
   .add-user-page .panel .grid3 {
     grid-template-columns: 1fr;
-
     .col-span-2 { grid-column: span 1; }
+  }
+
+  /* küçük ekranda uzun tarih kolonlarını gizle */
+  .employees-list .employees-table {
+    th:nth-child(6), td:nth-child(6) { display: none; } /* Son Güncelleme */
+    th:nth-child(5), td:nth-child(5) { display: none; } /* Eklenme */
   }
 }

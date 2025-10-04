@@ -31,6 +31,30 @@
     padding: 0;
     margin: 0;
 
+    /* Bölüm başlığı */
+    .section-title {
+      padding: 10px 16px;
+      margin: 10px 12px 6px;
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      border-left: 3px solid rgba(255,255,255,0.4);
+      border-radius: $border-radius;
+      background: rgba(255,255,255,0.06);
+      user-select: none;
+    }
+
+    /* Kapalı modda başlıkları gizle */
+    .sidebar ~ & {}
+  }
+
+  &.closed .section-title {
+    display: none;
+  }
+
+  .sidebar-menu {
     .sidebar-item {
       display: block;
       padding: 12px 16px;
@@ -40,7 +64,7 @@
       a { color: inherit; text-decoration: none; }
 
       text-decoration: none;
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 255, 255, 0.10);
       border-radius: $border-radius;
       transition: background $transition;
 

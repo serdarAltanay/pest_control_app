@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
@@ -23,12 +24,14 @@ export default function AddCustomer() {
   const [showBalance, setShowBalance] = useState(false);
   const [visitPeriod, setVisitPeriod] = useState("BELIRTILMEDI");
   const [employeeId, setEmployeeId] = useState("");
+
   const [employees, setEmployees] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get("/admin/employees");
+        const res = await api.get("/employees");
         setEmployees(res.data || []);
       } catch {}
     })();
@@ -37,7 +40,7 @@ export default function AddCustomer() {
   const submit = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/admin/customers", {
+      await api.post("/customers/create", {
         code,
         title,
         accountingTitle: accountingTitle || undefined,
@@ -74,6 +77,7 @@ export default function AddCustomer() {
     <Layout>
       <div className="add-user-page">
         <h2>Müşteri Ekle</h2>
+
         <form className="panel" onSubmit={submit}>
           <div className="grid3">
             <div><label>Email</label><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Email Giriniz"/></div>
@@ -143,7 +147,17 @@ export default function AddCustomer() {
             </div>
           </div>
 
-          <button className="success">Müşteri Ekle</button>
+          <div className="form-actions">
+            <button className="success">Müşteri Ekle</button>
+            <button
+              type="button"
+              className="list-btn"
+              onClick={() => navigate("/admin/customers")}
+              title="Müşteri Listesi"
+            >
+              📋 Müşteri Listesi
+            </button>
+          </div>
         </form>
       </div>
     </Layout>

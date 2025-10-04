@@ -148,7 +148,12 @@ const handleUpload = async () => {
               <div className="profile-field">
                 <strong>Ad Soyad:</strong>
                 <span className="name-wrapper">
-                  <span className="name-text">{profile.name}</span>
+                  <span className="name-text">
+                    {profile.role === "customer"
+                      ? (profile.contactFullName || profile.title || "—")
+                      : (profile.fullName || "—")}
+                  </span>
+
                   <button
                     className="edit-btn"
                     onClick={() => setEditNameOpen(true)}
@@ -157,7 +162,6 @@ const handleUpload = async () => {
                   </button>
                 </span>
               </div>
-
               <div className="profile-field">
                 <strong>E-posta:</strong>
                 <span>{profile.email}</span>
@@ -167,11 +171,12 @@ const handleUpload = async () => {
                 <strong>Rol:</strong>
                 <span>{profile.role}</span>
               </div>
-
+              {profile.role !== "admin" && (
               <div className="profile-field">
                 <strong>Şirket:</strong>
                 <span>{profile.company || "Belirtilmemiş"}</span>
               </div>
+              )}
             </div>
 
             <div className="profile-avatar" onClick={handleAvatarClick}>
@@ -192,10 +197,10 @@ const handleUpload = async () => {
 
         {editNameOpen && (
           <EditNameModal
-            currentName={profile.name}
+            currentName={profile.fullName}
             onClose={() => setEditNameOpen(false)}
             onSave={(updatedUser) =>
-              setProfile((prev) => ({ ...prev, name: updatedUser.name }))
+              setProfile((prev) => ({ ...prev, fullName: updatedUser.fullName }))
             }
           />
         )}

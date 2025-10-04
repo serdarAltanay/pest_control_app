@@ -1,4 +1,4 @@
-// routes/wipe.js
+// backend/routes/wipe.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
@@ -6,17 +6,25 @@ import { auth, roleCheck } from "../middleware/auth.js";
 const router = Router();
 const prisma = new PrismaClient();
 
-// Tüm verileri sil, sadece admin yapabilir
-router.post("/", auth, roleCheck(["admin"]), async (req, res) => {
+router.post("/", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
-    await prisma.customers.deleteMany();
-    await prisma.employees.deleteMany();
-    await prisma.admins.deleteMany();
+    const result = await prisma.$transaction(async (tx) => {
+      const rt = await tx.refreshToken?.deleteMany({}).catch(() => ({ count: 0 }));
+      const c  = await tx.customer.deleteMany({});
+      const e  = await tx.employee.deleteMany({});
+      const a  = await tx.admin.deleteMany({});
+      return {
+        refreshTokens: rt?.count ?? 0,
+        customers: c.count,
+        employees: e.count,
+        admins: a.count,
+      };
+    });
 
-    res.json({ message: "Tüm veriler başarıyla silindi!" });
+    res.json({ message: "Tüm veriler başarıyla silindi!", stats: result });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error("WIPE error:", err);
+    res.status(500).json({ error: "Silme işlemi başarısız" });
   }
 });
 

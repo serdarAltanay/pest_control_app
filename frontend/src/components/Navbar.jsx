@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import api from "../api/axios";
 export default function Navbar() {
   const navigate = useNavigate();
-  const { profile } = useContext(ProfileContext);
+  const { profile, setProfile } = useContext(ProfileContext);
 
   // Tek isim: profileImage
   const imgSrc = profile?.profileImage || localStorage.getItem("profileImage") || "/noavatar.jpg";
@@ -19,7 +19,10 @@ export default function Navbar() {
       await api.post("/auth/logout");
 
       // Local storage temizle
+      localStorage.removeItem("profileImage"); 
+      setProfile(null);  
       localStorage.clear();
+      
 
       toast.success("Başarıyla Çıkış yaptınız!");
       navigate("/");

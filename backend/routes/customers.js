@@ -2,100 +2,98 @@
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { auth } from "../middleware/auth.js";
+import { auth, roleCheck } from "../middleware/auth.js";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// Yardımcı: sadece admin kontrolü
-function checkAdmin(req, res) {
-  if (req.user.role !== "admin") {
-    res.status(403).json({ success: false, message: "Yalnızca adminler yapabilir." });
-    return false;
-  }
-  return true;
-}
-
-// Admin şifresi doğrulama (email + password)
-router.post("/verify-admin", auth, async (req, res) => {
+// Müşterileri listele (admin ve employee)
+router.get("/", auth, async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ success: false, message: "Email ve şifre gerekli." });
+    const role = req.user?.role;
+    if (role !== "admin" && role !== "employee") {
+      return res.status(403).json({ message: "Yetkisiz erişim" });
+    }
 
-    // Email ile admini bul
-    const admin = await prisma.admins.findUnique({ where: { email } });
-    if (!admin) return res.status(404).json({ success: false, message: "Admin bulunamadı." });
+    const where =
+      role === "employee"
+        ? { employeeId: req.user.id }
+        : {}; // admin tümünü görür
 
-    // Şifre kontrolü
-    const match = await bcrypt.compare(password, admin.password);
-    if (!match) return res.status(401).json({ success: false, message: "Şifre yanlış." });
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
-  }
-});
-
-
-// Grup Şirket ekle
-router.post("/add-group", auth, async (req, res) => {
-  try {
-    if (!checkAdmin(req, res)) return;
-
-    const { name, email, title } = req.body;
-
-    const newGroup = await prisma.customers.create({
-      data: { name, email, title, parent_company_id: null },
+    const customers = await prisma.customer.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      // gerekirse burada select ile alanları daraltabilirsin
     });
 
-    res.json({ success: true, group: newGroup });
+    res.json(customers);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+    console.error("GET /customers error:", err);
+    res.status(500).json({ message: "Sunucu hatası" });
   }
 });
 
-// Mağaza ekle
-router.post("/add-store", auth, async (req, res) => {
+// --- MÜŞTERİ EKLE ---
+router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   try {
-    if (!checkAdmin(req, res)) return;
+    const {
+      code, title, accountingTitle, email, password,
+      contactFullName, phone, gsm, taxOffice, taxNumber,
+      address, city, pestType, areaM2, placeType,
+      showBalance, visitPeriod, employeeId,
+    } = req.body;
 
-    const { name, email, title, parent_company_id } = req.body;
+    if (!code || !title)
+      return res.status(400).json({ message: "Müşteri Kodu ve Ünvan zorunludur." });
 
-    const newStore = await prisma.customers.create({
+    const exists = await prisma.customer.findUnique({ where: { code } });
+    if (exists) return res.status(409).json({ message: "Bu müşteri kodu zaten kayıtlı." });
+
+    const hashed = password ? await bcrypt.hash(password, 10) : null;
+
+    const c = await prisma.customer.create({
       data: {
-        name,
-        email,
+        code,
         title,
-        parent_company_id: parent_company_id ? Number(parent_company_id) : null,
+        accountingTitle: accountingTitle || null,
+        email: email || null,
+        password: hashed,
+        contactFullName: contactFullName || null,
+        phone: phone || null,
+        gsm: gsm || null,
+        taxOffice: taxOffice || null,
+        taxNumber: taxNumber || null,
+        address: address || null,
+        city: city || null,
+        pestType: (pestType || "BELIRTILMEDI"),
+        areaM2: areaM2 ? parseFloat(areaM2) : null,
+        placeType: (placeType || "BELIRTILMEDI"),
+        showBalance: !!showBalance,
+        visitPeriod: (visitPeriod || "BELIRTILMEDI"),
+        employeeId: employeeId || null,
       },
     });
 
-    res.json({ success: true, store: newStore });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+    res.json({ message: "Müşteri eklendi", customer: c });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Sunucu hatası" });
   }
 });
 
-// Müşterileri listele
-router.get("/", auth, async (req, res) => {
+router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
-    let customers;
-    if (req.user.role === "admin") {
-      customers = await prisma.customers.findMany();
-    } else if (req.user.role === "employee") {
-      customers = await prisma.customers.findMany({ where: { assigned_to: req.user.id } });
-    } else {
-      return res.status(403).json({ success: false, message: "Yetkisiz erişim" });
-    }
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-    res.json(customers);  
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+    await prisma.customer.delete({ where: { id } });
+    return res.json({ message: "Müşteri silindi" });
+  } catch (e) {
+    if (e.code === "P2025") {
+      return res.status(404).json({ message: "Müşteri bulunamadı" });
+    }
+    console.error("DELETE /customers/:id error:", e);
+    return res.status(500).json({ message: "Sunucu hatası" });
   }
 });
 

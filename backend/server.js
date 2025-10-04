@@ -12,6 +12,7 @@ import adminRoutes from "./routes/admin.js";
 import profileRouter from "./routes/profile.js";
 import uploadRoutes from "./routes/upload.js";
 import cookieParser from "cookie-parser";
+import employeeRouter from "./routes/employee.js";
 
 dotenv.config();
 
@@ -28,11 +29,14 @@ app.use(cors({
 
 // Routes
 app.use("/api/auth", authRoutes);
+
 app.use("/api/seed", seedRoutes);
 app.use("/api/wipe", wipeRoutes);
+
 app.use("/api/customers", customerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRouter);
+app.use("/api/employees", employeeRouter);
 
 app.use("/uploads", express.static("uploads"));
 app.use("/api/upload", uploadRoutes);

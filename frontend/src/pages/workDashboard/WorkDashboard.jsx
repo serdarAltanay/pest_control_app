@@ -1,28 +1,70 @@
-// WorkDashboard.jsx
+// src/pages/workDashboard/WorkDashboard.jsx
 import { useState } from "react";
 import Layout from "../../components/Layout";
 import "./WorkDashboard.scss";
+import api from "../../api/axios";
+import { toast } from "react-toastify";
 
 export default function WorkDashboard() {
-  const role = localStorage.getItem("role");
+  const role = (localStorage.getItem("role") || "").toLowerCase();
   const [showCustomerSection, setShowCustomerSection] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const runSeed = async () => {
+    if (!window.confirm("Demo verilerini (admin/employee/customer) yüklemek istiyor musun?")) return;
+    try {
+      setBusy(true);
+      await api.post("/seed/run");     // -> routes/seed.js (POST /api/seed/run)
+      toast.success("Seed başarıyla çalıştı 🎉");
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.error || "Seed çalıştırılamadı");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runWipe = async () => {
+    if (!window.confirm("TÜM veriler silinecek. Emin misin?")) return;
+    try {
+      setBusy(true);
+      const { data } = await api.post("/wipe"); // -> routes/wipe.js (POST /api/wipe)
+      toast.success(data?.message || "Tüm veriler silindi 🧹");
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.error || "Silme başarısız");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Layout onCustomerClick={() => setShowCustomerSection(true)}>
       <div className="work-dashboard">
         <h1>İş Takip Paneli</h1>
 
+        {role === "admin" && (
+          <div className="admin-tools">
+            <button className="seed-btn" onClick={runSeed} disabled={busy}>
+              {busy ? "Çalışıyor..." : "Demo Verilerini Yükle (Seed)"}
+            </button>
+            <button className="wipe-btn" onClick={runWipe} disabled={busy}>
+              {busy ? "Çalışıyor..." : "Tüm Verileri Sil (Wipe)"}
+            </button>
+          </div>
+        )}
+
         {showCustomerSection && (
           <section className="customer-section">
             <h2>Müşteri İşleri</h2>
-            {/* Artık ekleme/çıkarma formları ve tablo yok */}
             {role === "admin" && (
               <div className="admin-buttons">
                 <p>Admin olarak buradan görev dağıtımı yapabilirsiniz.</p>
               </div>
             )}
-
-            <p>Görevleri bu sayfadan yönetebilirsiniz. Müşteri ve mağaza ekleme ayrı sayfada olacak.</p>
+            <p>
+              Görevleri bu sayfadan yönetebilirsiniz. Müşteri ve mağaza ekleme ayrı sayfada olacak.
+            </p>
           </section>
         )}
       </div>

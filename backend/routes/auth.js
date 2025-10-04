@@ -14,15 +14,18 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // REGISTER (Admin veya Employee)
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role, assigned_to } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { fullName, email, password, role, assignedTo } = req.body;
 
+    if (!fullName || !email || !password || !role)
+      return res.status(400).json({ error: "Eksik alanlar var." });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
     let user;
 
     if (role === "admin") {
-      user = await prisma.admins.create({
+      user = await prisma.admin.create({
         data: {
-          name,
+          fullName,
           email,
           password: hashedPassword,
           lastLoginAt: null,
@@ -30,23 +33,23 @@ router.post("/register", async (req, res) => {
         },
       });
     } else if (role === "employee") {
-      user = await prisma.employees.create({
+      user = await prisma.employee.create({
         data: {
-          name,
+          fullName,
           email,
           password: hashedPassword,
-          assigned_to: assigned_to || null,
+          adminId: assignedTo || null, // bağlı admin varsa
           lastLoginAt: null,
           lastProfileAt: null,
         },
       });
     } else {
-      return res.status(400).json({ error: "Sadece admin veya employee eklenebilir" });
+      return res.status(400).json({ error: "Sadece admin veya employee eklenebilir." });
     }
 
     res.status(201).json({
       id: user.id,
-      name: user.name,
+      fullName: user.fullName,
       email: user.email,
       role,
       createdAt: user.createdAt,
@@ -54,10 +57,13 @@ router.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.error("Register hatası:", err);
-    // Unique email hatası vs. için dilersen P2002 yakalayıp 409 dönebilirsin
-    res.status(500).json({ error: "DB hatası" });
+    if (err.code === "P2002")
+      return res.status(409).json({ error: "Bu email zaten kayıtlı." });
+
+    res.status(500).json({ error: "Sunucu hatası." });
   }
 });
+
 
 // LOGIN
 router.post("/login", async (req, res) => {
@@ -68,14 +74,14 @@ router.post("/login", async (req, res) => {
     let role = null;
 
     // Admin -> Employee -> Customer sırayla bak
-    user = await prisma.admins.findUnique({ where: { email } });
+    user = await prisma.admin.findUnique({ where: { email } });
     if (user) role = "admin";
     if (!user) {
-      user = await prisma.employees.findUnique({ where: { email } });
+      user = await prisma.employee.findUnique({ where: { email } });
       if (user) role = "employee";
     }
     if (!user) {
-      user = await prisma.customers.findUnique({ where: { email } });
+      user = await prisma.customer.findUnique({ where: { email } });
       if (user) role = "customer";
     }
 
@@ -86,11 +92,11 @@ router.post("/login", async (req, res) => {
 
     const now = new Date();
     if (role === "admin") {
-      await prisma.admins.update({ where: { id: user.id }, data: { lastLoginAt: now } });
+      await prisma.admin.update({ where: { id: user.id }, data: { lastLoginAt: now } });
     } else if (role === "employee") {
-      await prisma.employees.update({ where: { id: user.id }, data: { lastLoginAt: now } });
+      await prisma.employee.update({ where: { id: user.id }, data: { lastLoginAt: now } });
     } else if (role === "customer") {
-      await prisma.customers.update({ where: { id: user.id }, data: { lastLoginAt: now } });
+      await prisma.customer.update({ where: { id: user.id }, data: { lastLoginAt: now } });
     }
 
     const accessToken = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "15m" });
@@ -117,7 +123,7 @@ router.post("/login", async (req, res) => {
     res.json({
       accessToken,
       role,
-      name: user.name,
+      fullName: user.fullName,
       email: user.email,
     });
   } catch (err) {

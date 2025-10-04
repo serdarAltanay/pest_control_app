@@ -36,11 +36,11 @@ router.post("/avatar", upload.single("avatar"), async (req, res) => {
 
     let user;
     if (role === "admin") {
-      user = await prisma.admins.findUnique({ where: { id } });
+      user = await prisma.admin.findUnique({ where: { id } });
     } else if (role === "employee") {
-      user = await prisma.employees.findUnique({ where: { id } });
+      user = await prisma.employee.findUnique({ where: { id } });
     } else if (role === "customer") {
-      user = await prisma.customers.findUnique({ where: { id } });
+      user = await prisma.customer.findUnique({ where: { id } });
     } else return res.status(400).json({ error: "Geçersiz rol" });
 
     if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
@@ -53,11 +53,11 @@ router.post("/avatar", upload.single("avatar"), async (req, res) => {
     // 2️⃣ Yeni fotoğrafı kaydet
     const updateData = { profileImage: req.file.path };
     if (role === "admin") {
-      user = await prisma.admins.update({ where: { id }, data: updateData });
+      user = await prisma.admin.update({ where: { id }, data: updateData });
     } else if (role === "employee") {
-      user = await prisma.employees.update({ where: { id }, data: updateData });
+      user = await prisma.employee.update({ where: { id }, data: updateData });
     } else if (role === "customer") {
-      user = await prisma.customers.update({ where: { id }, data: updateData });
+      user = await prisma.customer.update({ where: { id }, data: updateData });
     }
 
     res.json({ message: "Fotoğraf yüklendi", profileImage: user.profileImage });

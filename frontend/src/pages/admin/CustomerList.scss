@@ -1,0 +1,150 @@
+@import "../../styles/variables";
+
+.customer-list-page {
+  padding: 16px;
+
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: $border-radius;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+
+    .search {
+      flex: 1;
+      height: 36px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0 12px;
+      background: #fff;
+      color: #111;
+      &:focus {
+        outline: none;
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.12);
+      }
+    }
+
+    .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .export {
+        padding: 6px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        color: #111;
+        font-size: 14px;
+      }
+
+      .page-size {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        label { color: #64748b; font-size: 14px; }
+        select {
+          height: 32px;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 0 8px;
+          background: #fff;
+          color: #111;
+        }
+      }
+    }
+  }
+
+  .table-wrap {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: $border-radius;
+    overflow: hidden;
+  }
+
+  .customer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+
+    thead th {
+      background: #f8fafc;
+      color: rgba($color-dark, 0.85);
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid #edf2f7;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(odd) { background: #fafafa; }
+
+    .email-cell { color: #ea4335; } // örnek kırmızı ton
+    .responsible { color: #2563eb; } // link benzeri mavi ton
+
+    .actions {
+      display: flex;
+      gap: 8px;
+
+      .btn {
+        height: 32px;
+        padding: 0 10px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 12px;
+        transition: transform .08s ease, box-shadow .15s ease;
+
+        &:hover { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+        &:active { transform: translateY(1px) scale(.99); }
+      }
+
+      .btn-dark   { background: #1f2937; color: #fff; }
+      .btn-edit   { background: #f59e0b; color: #111; } /* sarı */
+      .btn-delete { background: #ef4444; color: #fff; } /* kırmızı */
+    }
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+
+    .page-btn {
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      &:disabled { opacity: .6; cursor: not-allowed; }
+    }
+
+    .page-indicator {
+      background: #7c3aed; /* mor kutu */
+      color: #fff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-weight: 700;
+    }
+
+    .count-info {
+      margin-left: auto;
+      color: #64748b;
+      font-size: 13px;
+    }
+  }
+}
