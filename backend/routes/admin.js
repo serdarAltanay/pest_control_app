@@ -7,12 +7,17 @@ import { auth, roleCheck } from "../middleware/auth.js";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Basit sağlık testi veya kısa liste (opsiyonel)
 router.get("/", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
     const admins = await prisma.admin.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, fullName: true, email: true, createdAt: true },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        createdAt: true,
+        lastSeenAt: true,  // <-- EKLENDİ
+      },
     });
     res.json(admins);
   } catch (err) {
@@ -20,6 +25,7 @@ router.get("/", auth, roleCheck(["admin"]), async (_req, res) => {
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
+
 
 // --- ADMIN EKLE ---
 router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
@@ -44,7 +50,6 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-// --- ADMİN LİSTESİ ---
 router.get("/admins", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
     const list = await prisma.admin.findMany({
@@ -56,6 +61,7 @@ router.get("/admins", auth, roleCheck(["admin"]), async (_req, res) => {
         createdAt: true,
         updatedAt: true,
         lastLoginAt: true,
+        lastSeenAt: true,   // <-- EKLENDİ
       },
     });
     res.json(list);
@@ -64,5 +70,6 @@ router.get("/admins", auth, roleCheck(["admin"]), async (_req, res) => {
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
+
 
 export default router;

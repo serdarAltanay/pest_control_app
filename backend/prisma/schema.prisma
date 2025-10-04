@@ -33,32 +33,34 @@ enum PlaceType {
 }
 
 model Admin {
-  id            Int        @id @default(autoincrement())
-  fullName      String
-  email         String     @unique
-  password      String
-  profileImage  String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
-  // relations
-  employees     Employee[]
-}
-
-model Employee {
   id            Int       @id @default(autoincrement())
   fullName      String
-  email         String?   @unique
-  password      String?
-  username      String?   @unique
-  jobTitle      String? // Görevi
-  gsm           String? // 05xx ...
+  email         String    @unique
+  password      String
   profileImage  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
   lastProfileAt DateTime?
+  lastSeenAt    DateTime? // <- heartbeat için
+
+  // relations
+  employees Employee[]
+}
+
+model Employee {
+  id            Int       @id @default(autoincrement())
+  fullName      String
+  email         String    @unique // <- zorunlu
+  password      String // <- zorunlu
+  jobTitle      String // <- zorunlu
+  gsm           String // <- zorunlu
+  profileImage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  lastProfileAt DateTime?
+  lastSeenAt    DateTime? // <- heartbeat için
 
   // bağlı admin
   adminId Int?
@@ -94,6 +96,7 @@ model Customer {
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
   lastProfileAt DateTime?
+  lastSeenAt    DateTime? // <- heartbeat için
 
   // Sorumlu personel
   employeeId Int?

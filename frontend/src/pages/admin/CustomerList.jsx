@@ -39,6 +39,8 @@ export default function CustomerList() {
 
   useEffect(() => {
     fetchCustomers();
+    const t = setInterval(fetchCustomers, 30_000); // her 30 sn yenile
+    return () => clearInterval(t);
   }, []);
 
   // Arama filtresi
@@ -70,8 +72,37 @@ export default function CustomerList() {
 
   const fmtPeriod = (p) => PERIOD_TR[p] || "Belirtilmedi";
 
+  // ---- Presence helpers ----
+  const ONLINE_MS = 2 * 60 * 1000;  // 0–2 dk: online
+  const IDLE_MS   = 10 * 60 * 1000; // 2–10 dk: idle, >10 dk: offline
+
+  const getPresence = (lastSeenAt) => {
+    if (!lastSeenAt) return { cls: "status-offline", label: "Offline" };
+    const diff = Date.now() - new Date(lastSeenAt).getTime();
+    if (diff <= ONLINE_MS) return { cls: "status-online", label: "Online" };
+    if (diff <= IDLE_MS)   return { cls: "status-idle", label: "Idle" };
+    return { cls: "status-offline", label: "Offline" };
+  };
+
+  const relTime = (d) => {
+    if (!d) return "bilgi yok";
+    const diff = Math.max(0, Date.now() - new Date(d).getTime());
+    const s = Math.floor(diff / 1000);
+    if (s < 30) return "az önce";
+    if (s < 60) return `${s} sn önce`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} dk önce`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} sa önce`;
+    const g = Math.floor(h / 24);
+    if (g < 30) return `${g} gün önce`;
+    const ay = Math.floor(g / 30);
+    if (ay < 12) return `${ay} ay önce`;
+    const y = Math.floor(ay / 12);
+    return `${y} yıl önce`;
+  };
+
   const handleEdit = (id) => {
-    // Edit sayfan varsa ona yönlendir
     navigate(`/admin/customers/${id}/edit`);
   };
 
@@ -81,7 +112,6 @@ export default function CustomerList() {
     try {
       await api.delete(`/customers/${id}`);
       toast.success("Müşteri silindi");
-      // listeyi yenile
       fetchCustomers();
     } catch (err) {
       toast.error(err.response?.data?.message || "Müşteri silinemedi");
@@ -89,7 +119,6 @@ export default function CustomerList() {
   };
 
   const handleDetail = (id) => {
-    // “Kontrol Merkezi” benzeri detay sayfan varsa:
     navigate(`/admin/customers/${id}`);
   };
 
@@ -105,7 +134,6 @@ export default function CustomerList() {
           />
 
           <div className="right-controls">
-            {/* Export tuşlarını istersen daha sonra aktif edebilirsin */}
             <div className="export">Export</div>
 
             <div className="page-size">
@@ -127,6 +155,7 @@ export default function CustomerList() {
           <table className="customer-table">
             <thead>
               <tr>
+                <th>Durum</th>
                 <th>Müşteri Kod</th>
                 <th>Müşteri</th>
                 <th>Şehir</th>
@@ -139,40 +168,50 @@ export default function CustomerList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center" }}>
+                  <td colSpan={8} style={{ textAlign: "center" }}>
                     Yükleniyor...
                   </td>
                 </tr>
               ) : pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center" }}>
+                  <td colSpan={8} style={{ textAlign: "center" }}>
                     Kayıt bulunamadı
                   </td>
                 </tr>
               ) : (
-                pageItems.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.code || "—"}</td>
-                    <td>{c.title || "—"}</td>
-                    <td>{c.city || "—"}</td>
-                    <td className="email-cell">{c.email || "—"}</td>
-                    <td>{fmtPeriod(c.visitPeriod)}</td>
-                    <td className="responsible">
-                      {c.employee?.fullName ? c.employee.fullName : "—"}
-                    </td>
-                    <td className="actions">
-                      <button className="btn btn-dark" onClick={() => handleDetail(c.id)}>
-                        Kontrol Merkezi
-                      </button>
-                      <button className="btn btn-edit" onClick={() => handleEdit(c.id)}>
-                        ✏️
-                      </button>
-                      <button className="btn btn-delete" onClick={() => handleDelete(c.id)}>
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                pageItems.map((c) => {
+                  const presence = getPresence(c.lastSeenAt);
+                  return (
+                    <tr key={c.id}>
+                      <td
+                        className={`presence ${presence.cls}`}
+                        title={`Son görüldü: ${relTime(c.lastSeenAt)}`}
+                      >
+                        <span className="dot" />
+                        <span className="presence-label">{presence.label}</span>
+                      </td>
+                      <td>{c.code || "—"}</td>
+                      <td>{c.title || "—"}</td>
+                      <td>{c.city || "—"}</td>
+                      <td className="email-cell">{c.email || "—"}</td>
+                      <td>{fmtPeriod(c.visitPeriod)}</td>
+                      <td className="responsible">
+                        {c.employee?.fullName ? c.employee.fullName : "—"}
+                      </td>
+                      <td className="actions">
+                        <button className="btn btn-dark" onClick={() => handleDetail(c.id)}>
+                          Kontrol Merkezi
+                        </button>
+                        <button className="btn btn-edit" onClick={() => handleEdit(c.id)}>
+                          ✏️
+                        </button>
+                        <button className="btn btn-delete" onClick={() => handleDelete(c.id)}>
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

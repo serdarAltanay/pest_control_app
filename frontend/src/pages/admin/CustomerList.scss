@@ -115,6 +115,40 @@
       .btn-edit   { background: #f59e0b; color: #111; } /* sarı */
       .btn-delete { background: #ef4444; color: #fff; } /* kırmızı */
     }
+
+    /* --- ONLINE/IDLE/OFFLINE ROZETLERİ --- */
+    .presence {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      &.status-online .dot {
+        background: #22c55e; // yeşil
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+        animation: pulseDot 1.4s ease-in-out infinite;
+      }
+      &.status-idle .dot {
+        background: #f59e0b; // sarı
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
+      }
+      &.status-offline .dot {
+        background: #94a3b8; // gri
+        box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.12);
+      }
+
+      .presence-label {
+        font-size: 12px;
+        opacity: 0.9;
+      }
+    }
   }
 
   .pagination {
@@ -147,4 +181,11 @@
       font-size: 13px;
     }
   }
+}
+
+
+@keyframes pulseDot {
+  0%   { transform: scale(1);   opacity: .9; }
+  50%  { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1);   opacity: .9; }
 }

@@ -22,6 +22,9 @@ router.get("/", auth, roleCheck(["admin"]), async (_req, res) => {
         gsm: true,
         adminId: true,
         createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
       },
     });
     res.json(employees);

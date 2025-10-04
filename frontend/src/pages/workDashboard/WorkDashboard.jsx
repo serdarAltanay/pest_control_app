@@ -4,6 +4,7 @@ import Layout from "../../components/Layout";
 import "./WorkDashboard.scss";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import PresenceOverview from "../../components/PrecenceOverview";
 
 export default function WorkDashboard() {
   const role = (localStorage.getItem("role") || "").toLowerCase();
@@ -57,6 +58,7 @@ export default function WorkDashboard() {
         {showCustomerSection && (
           <section className="customer-section">
             <h2>Müşteri İşleri</h2>
+            <PresenceOverview />
             {role === "admin" && (
               <div className="admin-buttons">
                 <p>Admin olarak buradan görev dağıtımı yapabilirsiniz.</p>

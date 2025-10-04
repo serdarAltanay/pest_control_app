@@ -15,15 +15,30 @@ router.get("/", auth, async (req, res) => {
       return res.status(403).json({ message: "Yetkisiz erişim" });
     }
 
-    const where =
-      role === "employee"
-        ? { employeeId: req.user.id }
-        : {}; // admin tümünü görür
+    const where = role === "employee" ? { employeeId: req.user.id } : {};
 
     const customers = await prisma.customer.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      // gerekirse burada select ile alanları daraltabilirsin
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        city: true,              // <-- EKLENDİ
+        email: true,
+        visitPeriod: true,       // <-- EKLENDİ
+        contactFullName: true,
+        phone: true,
+        gsm: true,
+        address: true,
+        lastLoginAt: true,
+        lastSeenAt: true,        // presence kullanıyorsan
+        updatedAt: true,
+        createdAt: true,
+        employee: {              // “Sorumlu” için
+          select: { id: true, fullName: true },
+        },
+      },
     });
 
     res.json(customers);

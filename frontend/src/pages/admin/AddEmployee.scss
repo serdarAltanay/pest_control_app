@@ -63,13 +63,13 @@
       cursor: pointer;
       transition: transform 0.08s ease, box-shadow $transition;
 
-      &:hover { box-shadow: 0 10px 20px rgba($color-secondary, 0.2); }
+      &:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
       &:active { transform: translateY(1px) scale(.99); }
       &:disabled { opacity: .6; cursor: not-allowed; }
     }
   }
 
-  /* --- Personeller listesi (yalnızca görünüm düzeltmeleri) --- */
+  /* --- Personeller listesi --- */
   .employees-list {
     margin-top: 24px;
     background: #fff;
@@ -135,10 +135,18 @@
         white-space: nowrap;
       }
 
-      /* isim ve e-posta kolonlarına genişlik verip ellipsis uygula */
-      th:nth-child(1), td:nth-child(1) { max-width: 220px; }
-      th:nth-child(2), td:nth-child(2) { max-width: 260px; }
-      th:nth-child(3), td:nth-child(3) { max-width: 160px; }
+      /* Sütun genişlikleri — yeni sıraya göre:
+         1 Durum | 2 Ad Soyad | 3 E-posta | 4 Görevi
+         5 Son Görülme | 6 Son Giriş | 7 Eklenme | 8 Son Güncelleme
+      */
+      th:nth-child(1), td:nth-child(1) { max-width: 140px; } /* Durum */
+      th:nth-child(2), td:nth-child(2) { max-width: 220px; } /* Ad Soyad */
+      th:nth-child(3), td:nth-child(3) { max-width: 240px; } /* E-posta */
+      th:nth-child(4), td:nth-child(4) { max-width: 180px; } /* Görevi */
+      th:nth-child(5), td:nth-child(5) { max-width: 160px; } /* Son Görülme */
+      th:nth-child(6), td:nth-child(6) { max-width: 160px; } /* Son Giriş */
+      th:nth-child(7), td:nth-child(7) { max-width: 160px; } /* Eklenme */
+      th:nth-child(8), td:nth-child(8) { max-width: 180px; } /* Son Güncelleme */
 
       /* zebra & hover */
       tbody tr:nth-child(odd)  { background: #fafafa; }
@@ -146,7 +154,52 @@
 
       /* son satır alt çizgiyi temizle */
       tbody tr:last-child td { border-bottom: 0; }
+
+      /* Presence rozetleri */
+      .presence {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+
+        .dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          display: inline-block;
+        }
+
+        &.status-online .dot  { 
+          background: #10b981;
+          animation: pulseDot 1.4s ease-in-out infinite; } // yeşil
+        &.status-idle   .dot  { background: #f59e0b; } // turuncu
+        &.status-offline .dot { background: #9ca3af; } // gri
+
+        .presence-label { font-size: 12px; color: #374151; }
+      }
     }
+    .name {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    .avatar {
+      width: 25px;
+      height: 25px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba($color-secondary,.25), rgba($color-secondary,.05));
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: $color-secondary;
+      border: 1px solid rgba($color-secondary, .25);
+      flex: 0 0 28px;
+    }
+    .full { display: inline-block; }
+  }
+
   }
 }
 
@@ -156,7 +209,8 @@
     grid-template-columns: repeat(2, 1fr);
   }
   .employees-list .employees-table {
-    th:nth-child(2), td:nth-child(2) { max-width: 220px; }
+    th:nth-child(2), td:nth-child(2) { max-width: 200px; } /* Ad Soyad */
+    th:nth-child(3), td:nth-child(3) { max-width: 200px; } /* E-posta */
   }
 }
 
@@ -167,9 +221,20 @@
     .col-span-2 { grid-column: span 1; }
   }
 
-  /* küçük ekranda uzun tarih kolonlarını gizle */
+  /* küçük ekranda uzun tarih kolonlarını gizle (6-7-8) */
   .employees-list .employees-table {
-    th:nth-child(6), td:nth-child(6) { display: none; } /* Son Güncelleme */
-    th:nth-child(5), td:nth-child(5) { display: none; } /* Eklenme */
+    th:nth-child(6), td:nth-child(6),
+    th:nth-child(7), td:nth-child(7),
+    th:nth-child(8), td:nth-child(8) {
+      display: none;
+    }
   }
+}
+
+
+
+@keyframes pulseDot {
+  0%   { transform: scale(1);   opacity: .9; }
+  50%  { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1);   opacity: .9; }
 }

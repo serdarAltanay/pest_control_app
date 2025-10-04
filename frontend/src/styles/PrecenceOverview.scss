@@ -1,0 +1,40 @@
+/* src/components/PresenceOverview.scss */
+@import "../styles/variables";
+
+.presence-overview {
+  background: #fff;
+  border: 1px solid rgba(30, 25, 25, 0.06);
+  border-radius: $border-radius;
+  padding: 14px;
+  margin: 12px 0;
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+    h3 { margin: 0; font-size: 16px; font-weight: 700; color: $color-dark; }
+    button {
+      height: 32px; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer;
+      &:disabled { opacity: .6; cursor: not-allowed; }
+    }
+  }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  }
+
+  .presence-card {
+    border: 1px solid #1d2126; border-radius: 10px; padding: 12px; background: #fafafa;
+    .title { font-weight: 700; margin-bottom: 8px; color: #111; }
+    .stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .pill { padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; color: #fff; }
+    .online { background: #10b981; }  /* yeşil */
+    .idle { background: #f59e0b; }    /* sarı */
+    .offline { background: #ef4444; } /* kırmızı */
+    .total { margin-left: auto; color: #64748b; font-size: 12px; }
+  }
+
+  .updated-at { margin-top: 8px; font-size: 12px; color: #64748b; }
+}
+
+@media (max-width: 900px) {
+  .presence-overview .grid { grid-template-columns: 1fr; }
+}
