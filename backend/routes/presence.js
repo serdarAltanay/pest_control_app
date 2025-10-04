@@ -11,7 +11,7 @@ const IDLE_MS   = 10 * 60 * 1000;
 // Basit heartbeat — her çağrıda lastSeenAt güncellenir
 router.post("/heartbeat", auth, async (req, res) => {
   try {
-    const { id, role } = req.user;
+    const { role, id } = req.user; // token’dan geliyor
     const now = new Date();
 
     if (role === "admin") {
@@ -20,14 +20,12 @@ router.post("/heartbeat", auth, async (req, res) => {
       await prisma.employee.update({ where: { id }, data: { lastSeenAt: now } });
     } else if (role === "customer") {
       await prisma.customer.update({ where: { id }, data: { lastSeenAt: now } });
-    } else {
-      return res.status(400).json({ ok: false, message: "Bilinmeyen rol" });
     }
 
-    res.json({ ok: true, at: now.toISOString() });
-  } catch (err) {
-    console.error("POST /presence/heartbeat error:", err);
-    res.status(500).json({ ok: false });
+    return res.status(204).end(); // ÖNEMLİ: body yok
+  } catch (e) {
+    // Heartbeat hata verse bile sessiz kalalım
+    return res.status(204).end();
   }
 });
 
