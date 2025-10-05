@@ -35,8 +35,6 @@ export default function CustomerDetail() {
 
   useEffect(() => {
     fetchDetail();
-    const t = setInterval(fetchDetail, 30_000);
-    return () => clearInterval(t);
   }, [id]);
 
   const ONLINE_MS = 2 * 60 * 1000;

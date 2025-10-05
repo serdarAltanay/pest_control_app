@@ -20,6 +20,11 @@ export default function CustomerList() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // 👇 eklendi: rol’ü al
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  const canEdit = role === "admin" || role === "employee";
+  const canDelete = role === "admin";
+
   // UI state
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(10);
@@ -39,11 +44,8 @@ export default function CustomerList() {
 
   useEffect(() => {
     fetchCustomers();
-    const t = setInterval(fetchCustomers, 30_000); // her 30 sn yenile
-    return () => clearInterval(t);
   }, []);
 
-  // Arama filtresi
   const filtered = useMemo(() => {
     if (!query.trim()) return customers;
     const q = query.toLowerCase();
@@ -59,23 +61,20 @@ export default function CustomerList() {
     });
   }, [customers, query]);
 
-  // Sayfalama
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * pageSize;
   const pageItems = filtered.slice(startIdx, startIdx + pageSize);
 
   useEffect(() => {
-    // arama/sayfa boyutu değişince sayfayı başa al
     setPage(1);
   }, [query, pageSize]);
 
   const fmtPeriod = (p) => PERIOD_TR[p] || "Belirtilmedi";
 
-  // ---- Presence helpers ----
-  const ONLINE_MS = 2 * 60 * 1000;  // 0–2 dk: online
-  const IDLE_MS   = 10 * 60 * 1000; // 2–10 dk: idle, >10 dk: offline
-
+  // Presence
+  const ONLINE_MS = 2 * 60 * 1000;
+  const IDLE_MS   = 10 * 60 * 1000;
   const getPresence = (lastSeenAt) => {
     if (!lastSeenAt) return { cls: "status-offline", label: "Offline" };
     const diff = Date.now() - new Date(lastSeenAt).getTime();
@@ -83,7 +82,6 @@ export default function CustomerList() {
     if (diff <= IDLE_MS)   return { cls: "status-idle", label: "Idle" };
     return { cls: "status-offline", label: "Offline" };
   };
-
   const relTime = (d) => {
     if (!d) return "bilgi yok";
     const diff = Math.max(0, Date.now() - new Date(d).getTime());
@@ -122,6 +120,12 @@ export default function CustomerList() {
     navigate(`/admin/customers/${id}`);
   };
 
+  // 👇 eklendi: müşteri adına tıklayınca yetkiye göre edit/detay
+  const handleNameClick = (id, e) => {
+    e.preventDefault();
+     handleDetail(id);
+  };
+
   return (
     <Layout>
       <div className="customer-list-page">
@@ -135,7 +139,6 @@ export default function CustomerList() {
 
           <div className="right-controls">
             <div className="export">Export</div>
-
             <div className="page-size">
               <label>Show</label>
               <select
@@ -182,7 +185,11 @@ export default function CustomerList() {
                 pageItems.map((c) => {
                   const presence = getPresence(c.lastSeenAt);
                   return (
-                    <tr key={c.id}>
+                    <tr
+                      key={c.id}
+                      onDoubleClick={() => handleDetail(c.id)} // 👈 çift tık detay
+                      style={{ cursor: "default" }}
+                    >
                       <td
                         className={`presence ${presence.cls}`}
                         title={`Son görüldü: ${relTime(c.lastSeenAt)}`}
@@ -191,23 +198,55 @@ export default function CustomerList() {
                         <span className="presence-label">{presence.label}</span>
                       </td>
                       <td>{c.code || "—"}</td>
-                      <td>{c.title || "—"}</td>
+
+                      {/* 👇 müşteri adı tıklanabilir */}
+                      <td>
+                        <a
+                          href="#edit"
+                          onClick={(e) => handleNameClick(c.id, e)}
+                          className={canEdit ? "link-strong" : "link-soft"}
+                          title={"Detayı aç"}
+                        >
+                          {c.title || "—"}
+                        </a>
+                      </td>
+
                       <td>{c.city || "—"}</td>
                       <td className="email-cell">{c.email || "—"}</td>
                       <td>{fmtPeriod(c.visitPeriod)}</td>
                       <td className="responsible">
                         {c.employee?.fullName ? c.employee.fullName : "—"}
                       </td>
+
                       <td className="actions">
-                        <button className="btn btn-dark" onClick={() => handleDetail(c.id)}>
+                        <button
+                          className="btn btn-dark"
+                          onClick={() => handleDetail(c.id)}
+                        >
                           Kontrol Merkezi
                         </button>
-                        <button className="btn btn-edit" onClick={() => handleEdit(c.id)}>
-                          ✏️
-                        </button>
-                        <button className="btn btn-delete" onClick={() => handleDelete(c.id)}>
-                          🗑️
-                        </button>
+
+                        {/* 👇 edit: admin + employee */}
+                        {canEdit && (
+                          <button
+                            className="btn btn-edit"
+                            onClick={() => handleEdit(c.id)}
+                            title="Düzenle"
+                          >
+                            Düzenle
+                          </button>
+                        )}
+
+                        {/* 👇 delete: sadece admin */}
+                        {canDelete && (
+                          <button
+                            className="btn btn-delete"
+                            onClick={() => handleDelete(c.id)}
+                            title="Sil"
+                          >
+                           Sil
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

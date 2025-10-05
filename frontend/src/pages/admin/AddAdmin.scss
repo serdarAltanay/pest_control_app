@@ -1,15 +1,12 @@
 @import "../../styles/variables";
 
 /* -----------------------------
-   Add Admin Page (Refactor)
-   - Form panel + Admins table
-   - Mobile-first, sticky header, states
+   Add Admin Page (Full)
 --------------------------------*/
 .add-user-page {
   padding: 20px;
   color: $color-dark;
 
-  /* Page title */
   h2 {
     margin: 0 0 16px;
     font-size: 22px;
@@ -18,7 +15,6 @@
     letter-spacing: .2px;
   }
 
-  /* ------- Panel (Form) ------- */
   .panel {
     background: #fff;
     border-radius: $border-radius;
@@ -78,7 +74,6 @@
     }
   }
 
-  /* ------- Admins List ------- */
   .admins-list {
     margin-top: 24px;
 
@@ -115,12 +110,6 @@
 
           &:hover { border-color: rgba(0,0,0,0.18); box-shadow: 0 6px 14px rgba(0,0,0,0.06); }
           &:active { transform: translateY(1px); }
-          &.primary {
-            background: $color-primary;
-            border-color: $color-primary;
-            color: #fff;
-            &:hover { box-shadow: 0 8px 18px rgba($color-primary, .18); }
-          }
         }
       }
     }
@@ -160,15 +149,9 @@
         vertical-align: middle;
       }
 
-      tbody tr:hover {
-        background: #fafbff;
-      }
+      tbody tr:hover { background: #fafbff; }
+      tbody tr:last-child td { border-bottom: 0; }
 
-      tbody tr:last-child td {
-        border-bottom: 0;
-      }
-
-      /* Name + badge */
       .name {
         display: flex;
         align-items: center;
@@ -187,24 +170,9 @@
           color: $color-primary;
           border: 1px solid rgba($color-primary, .25);
         }
-
-        .badge {
-          margin-left: 4px;
-          padding: 2px 8px;
-          border-radius: 999px;
-          font-size: 11px;
-          font-weight: 700;
-          line-height: 1.6;
-          color: #fff;
-          background: $color-primary;
-          opacity: .9;
-        }
       }
 
-      .muted {
-        color: rgba($color-dark, 0.7);
-        font-variant-numeric: tabular-nums;
-      }
+      .muted { color: rgba($color-dark, 0.7); font-variant-numeric: tabular-nums; }
 
       .empty-row td {
         text-align: center;
@@ -212,7 +180,6 @@
         padding: 24px 12px;
       }
 
-      /* Presence rozetleri */
       .presence {
         display: inline-flex;
         align-items: center;
@@ -224,98 +191,75 @@
           border-radius: 999px;
           display: inline-block;
         }
-
-        &.status-online  .dot { 
-          background: #10b981; 
+        &.status-online  .dot {
+          background: #10b981;
           animation: pulseDot 1.4s ease-in-out infinite;
-      } // yeşil
-        &.status-idle    .dot { background: #f59e0b; } // sarı
-        &.status-offline .dot { background: #94a3b8; } // gri
+        }
+        &.status-idle    .dot { background: #f59e0b; }
+        &.status-offline .dot { background: #94a3b8; }
 
-        .presence-label {
+        .presence-label { font-weight: 700; font-size: 12px; }
+      }
+
+      .actions {
+        display: inline-flex;
+        gap: 8px;
+
+        .btn {
+          height: 32px;
+          padding: 0 10px;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
           font-weight: 700;
           font-size: 12px;
+          transition: transform .08s ease, box-shadow .15s ease;
+
+          &:hover { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+          &:active { transform: translateY(1px) scale(.99); }
         }
+        .btn-edit   { background: #f59e0b; color: #111; }
+        .btn-delete { background: #ef4444; color: #fff; }
       }
     }
 
-    /* Loading skeleton (basit) */
     &.is-loading {
-      .admins-table tbody td {
-        position: relative;
-        color: transparent;
-      }
+      .admins-table tbody td { position: relative; color: transparent; }
       .admins-table tbody td::after {
-        content: "";
-        display: block;
-        height: 10px;
-        border-radius: 6px;
+        content: ""; display: block; height: 10px; border-radius: 6px;
         background: linear-gradient(90deg, #f0f2f5, #f7f8fa, #f0f2f5);
-        background-size: 200% 100%;
-        animation: shimmer 1.2s infinite;
+        background-size: 200% 100%; animation: shimmer 1.2s infinite;
       }
     }
   }
 }
 
-/* --------- Responsive --------- */
-@media (min-width: 768px) {
-  .add-user-page {
-    .panel .row {
-      grid-template-columns: 1fr 1fr;
-    }
+
+/* modal içi edit yerleşimi */
+.edit-grid{
+  display:grid; grid-template-columns: 1fr 220px; gap:16px;
+  .form .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form label{ font-size:13px; font-weight:700; color:#6b7280; margin-bottom:4px; display:block; }
+  .form input{
+    width:100%; height:40px; border:1px solid #e5e7eb; border-radius:10px; padding:0 12px;
+    &:focus{ outline:none; border-color:$color-primary; box-shadow:0 0 0 3px rgba($color-primary,.15); }
   }
+  .form .col-span-2{ grid-column: 1 / -1; }
+  .side{ display:flex; justify-content:center; }
+}
+@media (max-width:900px){
+  .edit-grid{ grid-template-columns: 1fr; }
 }
 
+
+
+@media (min-width: 768px) {
+  .add-user-page .panel .row { grid-template-columns: 1fr 1fr; }
+}
 @media (min-width: 992px) {
   .add-user-page { padding: 24px; }
-
-  .add-user-page .panel .row {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
+  .add-user-page .panel .row { grid-template-columns: 1fr 1fr 1fr; }
 }
 
-/* --------- Dark-ish mode tweak (optional) --------- */
-@media (prefers-color-scheme: dark) {
-  .add-user-page {
-    color: rgba(#fff, .92);
-
-    .panel,
-    .table-wrapper {
-      background: #0f1115;
-      border-color: rgba(255,255,255,0.08);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    }
-
-    .panel input {
-      background: #0c0e12;
-      border-color: rgba(255,255,255,0.08);
-      color: rgba(#fff, .92);
-
-      &:focus {
-        border-color: $color-primary;
-        box-shadow: 0 0 0 3px rgba($color-primary, 0.25);
-      }
-    }
-
-    .admins-table {
-      thead th { background: #121520; color: rgba(#fff, .8); border-bottom-color: rgba(255,255,255,.06); }
-      tbody td { color: rgba(#fff, .92); border-bottom-color: rgba(255,255,255,.06); }
-      tbody tr:hover { background: #0f1320; }
-      .muted { color: rgba(#fff, .7); }
-    }
-  }
-}
-
-/* --------- Animations --------- */
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-
-@keyframes pulseDot {
-  0%   { transform: scale(1);   opacity: .9; }
-  50%  { transform: scale(1.25); opacity: 1; }
-  100% { transform: scale(1);   opacity: .9; }
-}
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+@keyframes pulseDot { 0%{transform:scale(1);opacity:.9} 50%{transform:scale(1.25);opacity:1} 100%{transform:scale(1);opacity:.9} }

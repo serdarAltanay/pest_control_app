@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useContext, useCallback } from "react"
+import { useEffect, useState, useRef, useContext, useCallback } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios.js";
 import { toast } from "react-toastify";
@@ -21,29 +21,23 @@ export default function Profile() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [editNameOpen, setEditNameOpen] = useState(false);
 
-
   const stopCamera = useCallback(() => {
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach((track) => track.stop());
+      tracks.forEach((t) => t.stop());
       videoRef.current.srcObject = null;
     }
-   setCameraOpen(false);
- }, []);
+    setCameraOpen(false);
+  }, []);
 
   useEffect(() => {
-    if (!profile) {
-      fetchProfile();
-    }
+    if (!profile) fetchProfile();
   }, [profile, fetchProfile]);
 
-  // Modal kapandığında kamerayı durdur (kaçak stream olmasın)
+  // modal kapanınca kamera stop
   useEffect(() => {
-    if (!editModalOpen) {
-      stopCamera();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [editModalOpen, stopCamera]);
+    if (!editModalOpen) stopCamera();
+  }, [editModalOpen, stopCamera]);
 
   if (!profile) {
     return (
@@ -55,20 +49,16 @@ export default function Profile() {
     );
   }
 
-  // Avatar alanını tek anahtar üzerinden kullan
+  // tek kaynak
   const profileImage = profile.profileImage || "/noavatar.jpg";
 
-  const handleAvatarClick = () => {
-    setEditModalOpen(true);
-  };
+  const handleAvatarClick = () => setEditModalOpen(true);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      setImageSrc(reader.result);
-    });
+    reader.onload = () => setImageSrc(reader.result);
     reader.readAsDataURL(file);
   };
 
@@ -96,46 +86,57 @@ export default function Profile() {
     stopCamera();
   };
 
-  const onCropComplete = (_croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+  const onCropComplete = (_area, areaPx) => setCroppedAreaPixels(areaPx);
+
+  const handleUpload = async () => {
+    try {
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const formData = new FormData();
+      formData.append("avatar", croppedBlob, "avatar.jpg");
+
+      const res = await api.post("/upload/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // backend { profileImage } döndürüyor
+      const rawUrl = res.data.profileImage;
+      const nextUrl = rawUrl
+        ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}v=${Date.now()}`
+        : "";
+
+      setProfile((prev) => ({
+        ...prev,
+        profileImage: nextUrl,
+        updatedAt: new Date().toISOString(),
+      }));
+      localStorage.setItem("profileImage", nextUrl);
+
+      setEditModalOpen(false);
+      setImageSrc(null);
+      toast.success("Profil fotoğrafı güncellendi");
+    } catch (err) {
+      console.error("Avatar güncelleme hatası:", err);
+      toast.error(err?.response?.data?.error || "Avatar güncellenemedi 😕");
+    }
   };
 
-const handleUpload = async () => {
-  try {
-    const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-    const formData = new FormData();
-    formData.append("avatar", croppedBlob, "avatar.jpg");
-
-    const res = await api.post("/upload/avatar", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    // Backend 'res.data.avatar' döndürüyor. Tek isim: profileImage
-    const rawUrl = res.data.avatar;
-    // Cache-buster: aynı isimle overwrite’ta tarayıcı eski resmi göstermesin
-    const profileImage = rawUrl
-      ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}v=${Date.now()}`
-      : "";
-
-    // Context'te TEK alanı güncelle
-    setProfile((prev) => ({
-      ...prev,
-      profileImage,
-      updatedAt: new Date().toISOString(),
-    }));
-
-    // Navbar ilk render’da fallback olarak kullanabilsin
-    localStorage.setItem("profileImage", profileImage);
-
-    setEditModalOpen(false);
-    setImageSrc(null);
-    toast.success("Profil fotoğrafı başarıyla güncellendi");
-  } catch (err) {
-    console.error("Avatar güncelleme hatası:", err);
-    toast.error(err?.response?.data?.error || "Avatar güncellenemedi 😕");
-  }
-};
-
+  // --- YENİ: sadece kendi avatarını kaldır ---
+  const handleRemoveAvatar = async () => {
+    if (!window.confirm("Profil fotoğrafınızı kaldırmak istiyor musunuz?")) return;
+    try {
+      await api.delete("/upload/avatar"); // self delete
+      setProfile((prev) => ({
+        ...prev,
+        profileImage: null,
+        updatedAt: new Date().toISOString(),
+      }));
+      localStorage.removeItem("profileImage");
+      toast.success("Profil fotoğrafınız kaldırıldı");
+    } catch (err) {
+      console.error("Avatar kaldırma hatası:", err);
+      toast.error(err?.response?.data?.error || "Kaldırılamadı");
+    }
+  };
 
   return (
     <Layout>
@@ -150,18 +151,15 @@ const handleUpload = async () => {
                 <span className="name-wrapper">
                   <span className="name-text">
                     {profile.role === "customer"
-                      ? (profile.contactFullName || profile.title || "—")
-                      : (profile.fullName || "—")}
+                      ? profile.contactFullName || profile.title || "—"
+                      : profile.fullName || "—"}
                   </span>
-
-                  <button
-                    className="edit-btn"
-                    onClick={() => setEditNameOpen(true)}
-                  >
+                  <button className="edit-btn" onClick={() => setEditNameOpen(true)}>
                     Düzenle
                   </button>
                 </span>
               </div>
+
               <div className="profile-field">
                 <strong>E-posta:</strong>
                 <span>{profile.email}</span>
@@ -171,19 +169,29 @@ const handleUpload = async () => {
                 <strong>Rol:</strong>
                 <span>{profile.role}</span>
               </div>
+
               {profile.role !== "admin" && (
-              <div className="profile-field">
-                <strong>Şirket:</strong>
-                <span>{profile.company || "Belirtilmemiş"}</span>
-              </div>
+                <div className="profile-field">
+                  <strong>Şirket:</strong>
+                  <span>{profile.company || "Belirtilmemiş"}</span>
+                </div>
               )}
             </div>
 
-            <div className="profile-avatar" onClick={handleAvatarClick}>
-              <img src={profileImage} alt="Profil Fotoğrafı" />
-              <div className="avatar-overlay">
-                <span>Düzenle</span>
+            <div className="profile-avatar-block">
+              <div className="profile-avatar" onClick={handleAvatarClick}>
+                <img src={profileImage} alt="Profil Fotoğrafı" />
+                <div className="avatar-overlay">
+                  <span>Düzenle</span>
+                </div>
               </div>
+
+              <div className="avatar-actions">
+                <button className="btn danger" onClick={handleRemoveAvatar}>
+                  Profil Fotoğrafını Kaldır
+                </button>
+              </div>
+
               <input
                 type="file"
                 ref={fileInputRef}
@@ -199,9 +207,7 @@ const handleUpload = async () => {
           <EditNameModal
             currentName={profile.fullName}
             onClose={() => setEditNameOpen(false)}
-            onSave={(updatedUser) =>
-              setProfile((prev) => ({ ...prev, fullName: updatedUser.fullName }))
-            }
+            onSave={(u) => setProfile((prev) => ({ ...prev, fullName: u.fullName }))}
           />
         )}
 
@@ -212,9 +218,7 @@ const handleUpload = async () => {
 
               {!imageSrc && !cameraOpen && (
                 <>
-                  <button onClick={() => fileInputRef.current.click()}>
-                    Yerelden Seç
-                  </button>
+                  <button onClick={() => fileInputRef.current.click()}>Yerelden Seç</button>
                   <button onClick={openCamera}>Kameradan Çek</button>
                   <button onClick={() => setEditModalOpen(false)}>İptal</button>
                 </>

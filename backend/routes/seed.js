@@ -9,39 +9,39 @@ const prisma = new PrismaClient();
 
 /**
  * POST /api/seed/run
- * - Sadece admin çalıştırabilir (Authorization: Bearer <accessToken>)
- * - Idempotent: upsert ile tekrar çalıştırılsa da duplicate üretmez
+ * - Sadece admin
+ * - Idempotent: upsert ile tekrar çalıştırılsa bile veriler güncellenir, duplicate olmaz
+ * - TÜM kullanıcı şifreleri: 123456
  */
 router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
+    const DEFAULT_PASSWORD = "123456";
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+
     // --- 1) Admin(ler) ---
     const adminsInput = [
       {
         fullName: "Sistem Yöneticisi",
         email: "yonetim@pest.local",
-        password: "Admin123!",
       },
       {
         fullName: "Operasyon Admini",
         email: "operasyon@pest.local",
-        password: "Admin456!",
       },
     ];
 
     const admins = [];
     for (const a of adminsInput) {
-      const hashed = await bcrypt.hash(a.password, 10);
       const admin = await prisma.admin.upsert({
         where: { email: a.email },
         update: {
           fullName: a.fullName,
-          // parolayı her seed’de değiştirmek istemezseniz burayı kapatabilirsiniz
-          password: hashed,
+          password: hashedPassword, // her seed’de 123456 olarak güncelle
         },
         create: {
           fullName: a.fullName,
           email: a.email,
-          password: hashed,
+          password: hashedPassword,
         },
       });
       admins.push(admin);
@@ -55,7 +55,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
       {
         fullName: "Selin Karaca",
         email: "selin.karaca@pest.local",
-        password: "Emp12345!",
         jobTitle: "Servis Sorumlusu",
         gsm: "0554 123 45 67",
         adminId: defaultAdminId,
@@ -63,7 +62,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
       {
         fullName: "Emre Çetin",
         email: "emre.cetin@pest.local",
-        password: "Emp23456!",
         jobTitle: "Tekniker",
         gsm: "0553 456 78 90",
         adminId: defaultAdminId,
@@ -71,7 +69,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
       {
         fullName: "Burak Kılıç",
         email: "burak.kilic@pest.local",
-        password: "Emp34567!",
         jobTitle: "Ekip Lideri",
         gsm: "0552 987 65 43",
         adminId: defaultAdminId,
@@ -80,7 +77,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
 
     const employees = [];
     for (const e of employeesInput) {
-      const hashed = await bcrypt.hash(e.password, 10);
       const emp = await prisma.employee.upsert({
         where: { email: e.email },
         update: {
@@ -88,12 +84,12 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
           jobTitle: e.jobTitle,
           gsm: e.gsm,
           adminId: e.adminId,
-          // password: hashed, // her sefer güncellemek istemezseniz yoruma alabilirsiniz
+          password: hashedPassword, // her seed’de 123456 olarak güncelle
         },
         create: {
           fullName: e.fullName,
           email: e.email,
-          password: hashed,
+          password: hashedPassword,
           jobTitle: e.jobTitle,
           gsm: e.gsm,
           adminId: e.adminId,
@@ -106,17 +102,15 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
     const pickEmployeeId = (i) => employees[i % employees.length].id;
 
     // --- 3) Customer(lar) ---
-    // Şemanızdaki enum değerlerini birebir kullanıyorum:
-    // VisitPeriod: HAFTALIK | IKIHAFTALIK | AYLIK | IKIAYLIK | UCAYLIK | BELIRTILMEDI
-    // PestType: KEMIRGEN | HACCADI | UCAN | BELIRTILMEDI
-    // PlaceType: OFIS | DEPO | MAGAZA | FABRIKA | BELIRTILMEDI
+    // Enum değerleri: VisitPeriod: HAFTALIK | IKIHAFTALIK | AYLIK | IKIAYLIK | UCAYLIK | BELIRTILMEDI
+    //                 PestType: KEMIRGEN | HACCADI | UCAN | BELIRTILMEDI
+    //                 PlaceType: OFIS | DEPO | MAGAZA | FABRIKA | BELIRTILMEDI
     const customersInput = [
       {
         code: "202500001",
         title: "DEPOOS YEDEK PARÇA",
         accountingTitle: "DEPOOS YEDEK PARÇA TİC. LTD. ŞTİ.",
         email: "info@depoos.com",
-        password: null,
         contactFullName: "Mehmet Türe",
         phone: "0232 321 45 67",
         gsm: "0532 111 22 33",
@@ -136,7 +130,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         title: "YAKIN İNSAN KAYNAKLARI",
         accountingTitle: "YAKIN İK DANIŞMANLIK A.Ş.",
         email: "info@yakindanisman.com.tr",
-        password: null,
         contactFullName: "Pelin Saygın",
         phone: "0256 444 00 12",
         gsm: "0544 444 00 12",
@@ -156,7 +149,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         title: "TURA ÇEVRE",
         accountingTitle: "TURA ÇEVRE HİZMETLERİ LTD.",
         email: "ankara@turacevre.com",
-        password: null,
         contactFullName: "Tolga Uğur",
         phone: "0312 555 44 33",
         gsm: "0533 555 44 33",
@@ -176,7 +168,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         title: "KARDELEN MARKET",
         accountingTitle: "KARDELEN GIDA SAN. TİC. LTD.",
         email: "iletisim@kardelengida.com",
-        password: null,
         contactFullName: "Neslihan Kar",
         phone: "0212 333 22 11",
         gsm: "0507 333 22 11",
@@ -196,7 +187,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         title: "EFE TEKSTİL",
         accountingTitle: "EFE TEKSTİL SANAYİ A.Ş.",
         email: "info@efetekstil.com",
-        password: null,
         contactFullName: "Cem Efe",
         phone: "0232 777 66 55",
         gsm: "0555 777 66 55",
@@ -216,7 +206,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         title: "KUZUCUOĞLU LOJİSTİK",
         accountingTitle: "KUZUCUOĞLU LOJİSTİK A.Ş.",
         email: "destek@kuzuculoglu.com",
-        password: null,
         contactFullName: "Hakan Kuzu",
         phone: "0216 999 11 22",
         gsm: "0536 999 11 22",
@@ -236,7 +225,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         title: "MAVİSU KOZMETİK",
         accountingTitle: "MAVİSU KOZMETİK LTD.",
         email: "musteri@mavisu.com",
-        password: null,
         contactFullName: "Seda Mavi",
         phone: "0232 765 43 21",
         gsm: "0542 765 43 21",
@@ -256,7 +244,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         title: "DALGA PLASTİK",
         accountingTitle: "DALGA PLASTİK SAN. TİC. LTD.",
         email: "info@dalgaplastik.com",
-        password: null,
         contactFullName: "Levent Dal",
         phone: "0262 345 67 89",
         gsm: "0530 345 67 89",
@@ -294,13 +281,14 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
           showBalance: c.showBalance,
           visitPeriod: c.visitPeriod,
           employeeId: c.employeeId,
+          password: hashedPassword, // her seed’de 123456 olarak güncelle
         },
         create: {
           code: c.code,
           title: c.title,
           accountingTitle: c.accountingTitle,
           email: c.email,
-          password: c.password ? await bcrypt.hash(c.password, 10) : null,
+          password: hashedPassword, // tüm müşteriler 123456
           contactFullName: c.contactFullName,
           phone: c.phone,
           gsm: c.gsm,
@@ -320,7 +308,7 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
     }
 
     res.json({
-      message: "Seed başarıyla tamamlandı",
+      message: "Seed başarıyla tamamlandı (tüm şifreler 123456)",
       summary: {
         admins: admins.map(a => ({ id: a.id, fullName: a.fullName, email: a.email })),
         employees: employees.map(e => ({ id: e.id, fullName: e.fullName, email: e.email })),

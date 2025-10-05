@@ -1,71 +1,122 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { PrismaClient } from "@prisma/client";
-import jwt from "jsonwebtoken";
 import fs from "fs";
+import { PrismaClient } from "@prisma/client";
+import { auth } from "../middleware/auth.js";
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
-// uploads klasörü yoksa oluştur
-const uploadDir = "uploads";
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+/* ---------------- Folders ---------------- */
+const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+const AVATAR_DIR  = path.join(UPLOAD_ROOT, "avatars");
+
+// ensure folders
+for (const dir of [UPLOAD_ROOT, AVATAR_DIR]) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+/* ---------------- Helpers ---------------- */
+const fileFilter = (_req, file, cb) => {
+  const ok = ["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.mimetype);
+  cb(ok ? null : new Error("Geçersiz dosya türü (png/jpg/jpeg/webp)"), ok);
+};
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (_req, _file, cb) => cb(null, AVATAR_DIR),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, Date.now() + ext);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const role = req.user?.role || "user";
+    const id   = req.user?.id   || "x";
+    cb(null, `${role}-${id}-${Date.now()}${ext}`);
   },
 });
+const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const upload = multer({ storage });
+function removeIfExists(relOrAbsPath) {
+  if (!relOrAbsPath) return;
+  const abs = path.isAbsolute(relOrAbsPath) ? relOrAbsPath : path.join(process.cwd(), relOrAbsPath);
+  try { if (fs.existsSync(abs)) fs.unlinkSync(abs); }
+  catch (e) { console.warn("Avatar silinemedi:", e?.message); }
+}
 
-// JWT ile avatar güncelleme
-router.post("/avatar", upload.single("avatar"), async (req, res) => {
+async function getTargetUser(prismaClient, role, id) {
+  if (role === "admin")    return prismaClient.admin.findUnique({ where: { id } });
+  if (role === "employee") return prismaClient.employee.findUnique({ where: { id } });
+  if (role === "customer") return prismaClient.customer.findUnique({ where: { id } });
+  return null;
+}
+async function updateTargetUser(prismaClient, role, id, data) {
+  if (role === "admin")    return prismaClient.admin.update({ where: { id }, data });
+  if (role === "employee") return prismaClient.employee.update({ where: { id }, data });
+  if (role === "customer") return prismaClient.customer.update({ where: { id }, data });
+  throw new Error("Geçersiz rol");
+}
+
+/* ------------- POST /api/upload/avatar (upload) -------------
+   - Oturumdaki kullanıcının avatarını günceller
+   - Eski dosyayı siler, yenisini yazar
+------------------------------------------------------------- */
+router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: "Token gerekli" });
-
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { id, role } = decoded;
-
     if (!req.file) return res.status(400).json({ error: "Dosya yüklenmedi" });
 
-    let user;
-    if (role === "admin") {
-      user = await prisma.admin.findUnique({ where: { id } });
-    } else if (role === "employee") {
-      user = await prisma.employee.findUnique({ where: { id } });
-    } else if (role === "customer") {
-      user = await prisma.customer.findUnique({ where: { id } });
-    } else return res.status(400).json({ error: "Geçersiz rol" });
+    const { id, role } = req.user;
 
-    if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+    const current = await getTargetUser(prisma, role, id);
+    if (!current) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
 
-    // 1️⃣ Mevcut profil fotoğrafını sil
-    if (user.profileImage && fs.existsSync(user.profileImage)) {
-      fs.unlinkSync(user.profileImage);
-    }
+    // eski resmi sil
+    removeIfExists(current.profileImage);
 
-    // 2️⃣ Yeni fotoğrafı kaydet
-    const updateData = { profileImage: req.file.path };
-    if (role === "admin") {
-      user = await prisma.admin.update({ where: { id }, data: updateData });
-    } else if (role === "employee") {
-      user = await prisma.employee.update({ where: { id }, data: updateData });
-    } else if (role === "customer") {
-      user = await prisma.customer.update({ where: { id }, data: updateData });
-    }
+    const relativePath = path.join("uploads", "avatars", req.file.filename);
+    const updated = await updateTargetUser(prisma, role, id, { profileImage: relativePath });
 
-    res.json({ message: "Fotoğraf yüklendi", profileImage: user.profileImage });
+    res.json({ message: "Avatar güncellendi", profileImage: updated.profileImage });
   } catch (err) {
     console.error("Upload hatası:", err);
-    res.status(500).json({ error: "DB hatası" });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
+/* ------------- DELETE /api/upload/avatar (remove) -------------
+   - Body (opsiyonel): { role: "admin"|"employee"|"customer", id: number }
+   - Body verilmezse: oturumdaki kullanıcının avatarını siler
+   - Admin ise, istediği rol+id için silebilir
+   - Admin değilse, sadece kendi avatarını silebilir
+---------------------------------------------------------------- */
+router.delete("/avatar", auth, async (req, res) => {
+  try {
+    let { role: targetRole, id: targetId } = req.body || {};
+    if (targetId !== undefined) targetId = Number(targetId);
+
+    // self default
+    if (!targetRole || !targetId) {
+      targetRole = req.user.role;
+      targetId   = req.user.id;
+    }
+
+    // authorization: admin -> herkes; diğeri -> sadece kendi
+    const isSelf = req.user.role === targetRole && req.user.id === targetId;
+    if (!isSelf && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+
+    const target = await getTargetUser(prisma, targetRole, targetId);
+    if (!target) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+
+    // dosyayı sil
+    removeIfExists(target.profileImage);
+
+    // DB'de null yap
+    await updateTargetUser(prisma, targetRole, targetId, { profileImage: null });
+
+    res.json({ message: "Avatar kaldırıldı", id: targetId, role: targetRole });
+  } catch (err) {
+    console.error("DELETE /upload/avatar error:", err);
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
 
 export default router;
