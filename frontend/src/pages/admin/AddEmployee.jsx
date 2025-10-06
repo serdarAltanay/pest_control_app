@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
+import { getAvatarUrl } from "../../utils/getAssetUrl";
 import "./AddEmployee.scss";
 import "../shared/ModalWithAvatar.scss";
 
@@ -12,7 +13,7 @@ function EditEmployeeModal({ employee, onClose, onChanged }) {
   const [email, setEmail]       = useState(employee.email || "");
   const [password, setPassword] = useState("");
 
-  const img = employee.profileImage || "/noavatar.jpg";
+  const img = getAvatarUrl(employee?.profileImage);
 
   const handleRemoveAvatar = async () => {
     if (!window.confirm("Bu personelin profil fotoğrafını kaldırmak istiyor musunuz?")) return;
@@ -200,8 +201,8 @@ export default function AddEmployee() {
                       <td>{fmt(emp.createdAt)}</td>
                       <td>{fmt(emp.updatedAt)}</td>
                       <td className="actions">
-                        <button className="btn btn-edit" onClick={()=>setEditing(emp)}>✏️</button>
-                        <button className="btn btn-delete" onClick={()=>handleDelete(emp.id)}>🗑️</button>
+                        <button className="btn btn-edit" onClick={()=>setEditing(emp)}>Düzenle</button>
+                        <button className="btn btn-delete" onClick={()=>handleDelete(emp.id)}>Sil</button>
                       </td>
                     </tr>
                   );

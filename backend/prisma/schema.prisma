@@ -42,7 +42,7 @@ model Admin {
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
   lastProfileAt DateTime?
-  lastSeenAt    DateTime? // <- heartbeat için
+  lastSeenAt    DateTime?
 
   // relations
   employees Employee[]
@@ -98,9 +98,34 @@ model Customer {
   lastProfileAt DateTime?
   lastSeenAt    DateTime? // <- heartbeat için
 
+  stores Store[]
+
   // Sorumlu personel
   employeeId Int?
   employee   Employee? @relation(fields: [employeeId], references: [id])
+}
+
+model Store {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  name     String
+  code     String? // benzersiz değilse nullable bırak
+  city     String?
+  address  String?
+  phone    String?
+  manager  String?
+  isActive Boolean @default(true)
+
+  // YENİ: Koordinatlar
+  latitude  Decimal? @db.Decimal(10, 7) // ~0.1m hassasiyet
+  longitude Decimal? @db.Decimal(10, 7)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([customerId, code], map: "store_customer_code_unique")
 }
 
 model RefreshToken {

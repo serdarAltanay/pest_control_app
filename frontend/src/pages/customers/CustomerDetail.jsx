@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import { getAvatarUrl } from "../../utils/getAssetUrl";
 import "./CustomerDetail.scss";
 
 const PERIOD_TR = {
@@ -19,13 +20,16 @@ export default function CustomerDetail() {
   const navigate = useNavigate();
 
   const [customer, setCustomer] = useState(null);
+  const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const fetchDetail = async () => {
     try {
       setLoading(true);
       const { data } = await api.get(`/customers/${id}`);
       setCustomer(data);
+      setStores(Array.isArray(data?.stores) ? data.stores : []);
     } catch (err) {
       toast.error(err.response?.data?.message || "Müşteri bilgisi alınamadı");
     } finally {
@@ -35,15 +39,16 @@ export default function CustomerDetail() {
 
   useEffect(() => {
     fetchDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Presence
   const ONLINE_MS = 2 * 60 * 1000;
   const IDLE_MS = 10 * 60 * 1000;
-
   const presence = useMemo(() => {
-    const d = customer?.lastSeenAt ? new Date(customer.lastSeenAt).getTime() : 0;
-    if (!d) return { cls: "status-offline", label: "Offline" };
-    const diff = Date.now() - d;
+    const last = customer?.lastSeenAt ? new Date(customer.lastSeenAt).getTime() : 0;
+    if (!last) return { cls: "status-offline", label: "Offline" };
+    const diff = Date.now() - last;
     if (diff <= ONLINE_MS) return { cls: "status-online", label: "Online" };
     if (diff <= IDLE_MS) return { cls: "status-idle", label: "Idle" };
     return { cls: "status-offline", label: "Offline" };
@@ -61,20 +66,23 @@ export default function CustomerDetail() {
     if (h < 24) return `${h} sa önce`;
     const g = Math.floor(h / 24);
     if (g < 30) return `${g} gün önce`;
-    const ay = Math.floor(g / 30);
-    if (ay < 12) return `${ay} ay önce`;
-    const y = Math.floor(ay / 12);
+    const mo = Math.floor(g / 30);
+    if (mo < 12) return `${mo} ay önce`;
+    const y = Math.floor(mo / 12);
     return `${y} yıl önce`;
   };
 
-  const fmt = (val) => {
+  const fmtDate = (val) => {
     if (!val) return "—";
     try { return new Date(val).toLocaleString("tr-TR"); }
     catch { return String(val); }
   };
+
   const fmtPeriod = (p) => PERIOD_TR[p] || "Belirtilmedi";
 
-  const handleDelete = async () => {
+  const goEditCustomer = () => navigate(`/admin/customers/${id}/edit`);
+
+  const deleteCustomer = async () => {
     if (!window.confirm("Bu müşteriyi silmek istediğinize emin misiniz?")) return;
     try {
       await api.delete(`/customers/${id}`);
@@ -84,26 +92,73 @@ export default function CustomerDetail() {
       toast.error(err.response?.data?.message || "Silinemedi");
     }
   };
-  const goEdit = () => navigate(`/admin/customers/${id}/edit`);
+
+  const removeAvatar = async () => {
+    if (!window.confirm("Profil fotoğrafını kaldırmak istiyor musunuz?")) return;
+    try {
+      setRemoving(true);
+      await api.delete(`/upload/avatar/customer/${id}`);
+      setCustomer((p) => (p ? { ...p, profileImage: null, updatedAt: new Date().toISOString() } : p));
+      toast.success("Profil fotoğrafı kaldırıldı");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Fotoğraf kaldırılamadı");
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const deleteStore = async (storeId) => {
+    if (!window.confirm("Bu mağazayı silmek istiyor musunuz?")) return;
+    const prev = stores;
+    setStores((s) => s.filter((x) => x.id !== storeId));
+    try {
+      await api.delete(`/stores/${storeId}`);
+      toast.success("Mağaza silindi");
+    } catch (err) {
+      setStores(prev);
+      toast.error(err.response?.data?.message || "Silinemedi");
+    }
+  };
+
+  const avatarSrc = getAvatarUrl(customer?.profileImage);
 
   return (
     <Layout>
       <div className="customer-detail-page">
         <div className="header">
-          <div className="title-wrap">
-            <h1 className="title">{customer?.title || "—"}</h1>
-            <span
-              className={`presence ${presence.cls}`}
-              title={`Son görüldü: ${relTime(customer?.lastSeenAt)}`}
-            >
-              <span className="dot" />
-              {presence.label}
-            </span>
+          {/* Sol blok: başlık + presence + avatar (yan yana, ikisi de sol tarafta) */}
+          <div className="identity">
+            <div className="title-wrap">
+              <h1 className="title">{customer?.title || "—"}</h1>
+              <span
+                className={`presence ${presence.cls}`}
+                title={`Son görüldü: ${relTime(customer?.lastSeenAt)}`}
+              >
+                <span className="dot" />
+                {presence.label}
+              </span>
+            </div>
+
+            <div className="avatar-stack">
+              <div className="avatar-wrap">
+                <img src={avatarSrc} alt="Profil" />
+              </div>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={removeAvatar}
+                disabled={removing || !customer?.profileImage}
+                title={!customer?.profileImage ? "Fotoğraf yok" : "Profil fotoğrafını kaldır"}
+              >
+                {removing ? "Kaldırılıyor..." : (customer?.profileImage ? "Kaldır" : "Fotoğraf Yok")}
+              </button>
+            </div>
           </div>
 
+          {/* Sağ blok: aksiyonlar */}
           <div className="actions">
-            <button className="btn btn-edit" onClick={goEdit}>Düzenle</button>
-            <button className="btn btn-danger" onClick={handleDelete}>Sil</button>
+            <button className="btn btn-edit" onClick={goEditCustomer}>Düzenle</button>
+            <button className="btn btn-danger" onClick={deleteCustomer}>Sil</button>
           </div>
         </div>
 
@@ -113,14 +168,14 @@ export default function CustomerDetail() {
           <div className="card">Kayıt bulunamadı.</div>
         ) : (
           <>
-            {/* ÜST GRID: bilgi kartları */}
+            {/* Üst bilgi blokları */}
             <div className="top-grid">
               <section className="card">
                 <div className="card-title">Genel Bilgiler</div>
                 <div className="kv">
                   <div><b>Müşteri Kodu</b><span>{customer.code || "—"}</span></div>
                   <div><b>Şehir</b><span>{customer.city || "—"}</span></div>
-                  <div><b>Email</b><span>{customer.email || "—"}</span></div>
+                  <div><b>Email</b><span className="email">{customer.email || "—"}</span></div>
                   <div><b>Ziyaret Periyodu</b><span>{fmtPeriod(customer.visitPeriod)}</span></div>
                   <div><b>Sorumlu Personel</b><span>{customer.employee?.fullName || "—"}</span></div>
                   <div className="full"><b>Adres</b><span>{customer.address || "—"}</span></div>
@@ -151,19 +206,64 @@ export default function CustomerDetail() {
               <section className="card">
                 <div className="card-title">Sistem</div>
                 <div className="kv">
-                  <div><b>Son Giriş</b><span>{fmt(customer.lastLoginAt)}</span></div>
+                  <div><b>Son Giriş</b><span>{fmtDate(customer.lastLoginAt)}</span></div>
                   <div><b>Son Görülme</b><span>{customer.lastSeenAt ? relTime(customer.lastSeenAt) : "—"}</span></div>
-                  <div><b>Oluşturulma</b><span>{fmt(customer.createdAt)}</span></div>
-                  <div><b>Güncelleme</b><span>{fmt(customer.updatedAt)}</span></div>
+                  <div><b>Oluşturulma</b><span>{fmtDate(customer.createdAt)}</span></div>
+                  <div><b>Güncelleme</b><span>{fmtDate(customer.updatedAt)}</span></div>
                 </div>
               </section>
             </div>
 
-            {/* ALT GRID: Mağazalar (2/3) + Erişim Sahipleri (1/3) */}
+            {/* Mağazalar */}
             <div className="bottom-grid">
               <section className="card stores">
                 <div className="card-title">Mağazalar</div>
-                <div className="empty">Bu müşteri için mağaza yönetimi yakında eklenecek.</div>
+
+                <div className="store-toolbar">
+                  <Link className="btn primary" to={`/admin/customers/${id}/stores/new`}>
+                    + Mağaza Ekle
+                  </Link>
+                </div>
+
+                {stores.length === 0 ? (
+                  <div className="empty">Kayıtlı mağaza yok.</div>
+                ) : (
+                  <div className="store-table-wrap">
+                    <table className="store-table">
+                      <thead>
+                        <tr>
+                          <th>Ad</th>
+                          <th>Kod</th>
+                          <th>Şehir</th>
+                          <th>Telefon</th>
+                          <th>Yetkili</th>
+                          <th>Durum</th>
+                          <th>İşlem</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stores.map((s) => (
+                          <tr key={s.id}>
+                            <td className="strong">{s.name}</td>
+                            <td>{s.code || "—"}</td>
+                            <td>{s.city || "—"}</td>
+                            <td>{s.phone || "—"}</td>
+                            <td>{s.manager || "—"}</td>
+                            <td>
+                              <span className={`badge ${s.isActive ? "ok" : "no"}`}>
+                                {s.isActive ? "Aktif" : "Pasif"}
+                              </span>
+                            </td>
+                            <td className="actions">
+                              <Link className="btn" to={`/admin/stores/${s.id}/edit`}>Düzenle</Link>
+                              <button className="btn danger" onClick={() => deleteStore(s.id)}>Sil</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
 
               <section className="card access">

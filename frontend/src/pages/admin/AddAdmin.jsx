@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
+import { getAvatarUrl } from "../../utils/getAssetUrl";
 import "./AddAdmin.scss";
 import "../shared/ModalWithAvatar.scss";
 
@@ -12,7 +13,7 @@ function EditAdminModal({ admin, onClose, onChanged }) {
   const [email, setEmail] = useState(admin.email || "");
   const [password, setPassword] = useState("");
 
-  const img = admin.profileImage || "/noavatar.jpg";
+  const img = getAvatarUrl(admin?.profileImage);
 
   const handleRemoveAvatar = async () => {
     if (!window.confirm("Bu yöneticinin profil fotoğrafını kaldırmak istiyor musunuz?")) return;
@@ -200,8 +201,8 @@ export default function AddAdmin() {
                       <td>{fmt(a.updatedAt)}</td>
                       <td>{fmt(a.createdAt)}</td>
                       <td className="actions">
-                        <button className="btn btn-edit" onClick={()=>setEditing(a)}>✏️</button>
-                        <button className="btn btn-delete" onClick={()=>handleDelete(a.id)}>🗑️</button>
+                        <button className="btn btn-edit" onClick={()=>setEditing(a)}>Düzenle</button>
+                        <button className="btn btn-delete" onClick={()=>handleDelete(a.id)}>Sil</button>
                       </td>
                     </tr>
                   );

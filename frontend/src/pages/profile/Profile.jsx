@@ -6,6 +6,7 @@ import Cropper from "react-easy-crop";
 import getCroppedImg from "../../utils/cropImage.jsx";
 import { ProfileContext } from "../../context/ProfileContext";
 import EditNameModal from "../../utils/EditNameModal.jsx";
+import { getAvatarUrl, addCacheBust } from "../../utils/getAssetUrl.js";
 import "./Profile.scss";
 
 export default function Profile() {
@@ -34,7 +35,6 @@ export default function Profile() {
     if (!profile) fetchProfile();
   }, [profile, fetchProfile]);
 
-  // modal kapanınca kamera stop
   useEffect(() => {
     if (!editModalOpen) stopCamera();
   }, [editModalOpen, stopCamera]);
@@ -49,8 +49,8 @@ export default function Profile() {
     );
   }
 
-  // tek kaynak
-  const profileImage = profile.profileImage || "/noavatar.jpg";
+  // Görseli tek noktadan oluştur (relative/absolute + fallback + CDN/ORIGIN)
+  const avatarUrl = getAvatarUrl(profile?.profileImage);
 
   const handleAvatarClick = () => setEditModalOpen(true);
 
@@ -98,11 +98,9 @@ export default function Profile() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // backend { profileImage } döndürüyor
-      const rawUrl = res.data.profileImage;
-      const nextUrl = rawUrl
-        ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}v=${Date.now()}`
-        : "";
+      // backend { profileImage } döndürüyor (relative olabilir)
+      const abs = getAvatarUrl(res.data.profileImage);
+      const nextUrl = addCacheBust(abs); // cache-bust
 
       setProfile((prev) => ({
         ...prev,
@@ -120,14 +118,13 @@ export default function Profile() {
     }
   };
 
-  // --- YENİ: sadece kendi avatarını kaldır ---
   const handleRemoveAvatar = async () => {
     if (!window.confirm("Profil fotoğrafınızı kaldırmak istiyor musunuz?")) return;
     try {
-      await api.delete("/upload/avatar"); // self delete
+      await api.delete("/upload/avatar"); // self remove ucu
       setProfile((prev) => ({
         ...prev,
-        profileImage: null,
+        profileImage: null, // getAvatarUrl fallback gösterecek
         updatedAt: new Date().toISOString(),
       }));
       localStorage.removeItem("profileImage");
@@ -180,7 +177,7 @@ export default function Profile() {
 
             <div className="profile-avatar-block">
               <div className="profile-avatar" onClick={handleAvatarClick}>
-                <img src={profileImage} alt="Profil Fotoğrafı" />
+                <img src={avatarUrl} alt="Profil Fotoğrafı" />
                 <div className="avatar-overlay">
                   <span>Düzenle</span>
                 </div>
@@ -205,9 +202,17 @@ export default function Profile() {
 
         {editNameOpen && (
           <EditNameModal
-            currentName={profile.fullName}
+            currentName={profile.role === "customer" ? (profile.contactFullName || profile.title || "") : (profile.fullName || "")}
             onClose={() => setEditNameOpen(false)}
-            onSave={(u) => setProfile((prev) => ({ ...prev, fullName: u.fullName }))}
+            onSave={(u) =>
+              setProfile((prev) => ({
+                ...prev,
+                // customer ise contactFullName’i, değilse fullName’i güncelle
+                ...(profile.role === "customer"
+                  ? { contactFullName: u.fullName }
+                  : { fullName: u.fullName }),
+              }))
+            }
           />
         )}
 

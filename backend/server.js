@@ -13,9 +13,11 @@ import profileRouter from "./routes/profile.js";
 import uploadRoutes from "./routes/upload.js";
 import cookieParser from "cookie-parser";
 import employeeRouter from "./routes/employee.js";
+
 import heartbeatRoutes from "./routes/heartbeat.js";
 import onlineRoutes from "./routes/online.js";
 import presenceRouter from "./routes/presence.js";
+import storesRouter from "./routes/stores.js";
 
 
 dotenv.config();
@@ -48,6 +50,8 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/heartbeat", heartbeatRoutes);
 app.use("/api/online", onlineRoutes);
 app.use("/api/presence", presenceRouter);
+
+app.use("/api/stores", storesRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server ${PORT} portunda açıldı`));

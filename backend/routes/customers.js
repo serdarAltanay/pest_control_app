@@ -1,3 +1,4 @@
+// routes/customers.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
@@ -14,10 +15,21 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       where,
       orderBy: { createdAt: "desc" },
       select: {
-        id: true, code: true, title: true, city: true, email: true, visitPeriod: true,
-        contactFullName: true, phone: true, gsm: true, address: true,
-        lastLoginAt: true, lastSeenAt: true, updatedAt: true, createdAt: true,
-        employee: { select: { id: true, fullName: true } },
+        id: true,
+        code: true,
+        title: true,
+        city: true,
+        email: true,
+        visitPeriod: true,
+        contactFullName: true,
+        phone: true,
+        gsm: true,
+        address: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
+        updatedAt: true,
+        createdAt: true,
+        employee: { select: { id: true, fullName: true } }, // stores YOK (liste için)
       },
     });
     res.json(customers);
@@ -33,15 +45,38 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-    const where = req.user.role === "employee" ? { id, employeeId: req.user.id } : { id };
+    const where =
+      req.user.role === "employee" ? { id, employeeId: req.user.id } : { id };
+
     const c = await prisma.customer.findFirst({
       where,
       select: {
-        id: true, code: true, title: true, accountingTitle: true, email: true,
-        contactFullName: true, phone: true, gsm: true, address: true, city: true,
-        pestType: true, areaM2: true, placeType: true, showBalance: true, visitPeriod: true,
-        lastLoginAt: true, lastSeenAt: true, createdAt: true, updatedAt: true,
+        id: true,
+        code: true,
+        title: true,
+        accountingTitle: true,
+        email: true,
+        contactFullName: true,
+        phone: true,
+        gsm: true,
+        address: true,
+        city: true,
+        pestType: true,
+        areaM2: true,
+        placeType: true,
+        showBalance: true,
+        visitPeriod: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+        updatedAt: true,
         employee: { select: { id: true, fullName: true, email: true } },
+        // Detayda mağazalar ve sayısı
+        stores: {
+          select: { id: true, name: true, code: true, city: true, isActive: true },
+          orderBy: { createdAt: "desc" },
+        },
+        _count: { select: { stores: true } },
       },
     });
 
@@ -57,23 +92,43 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const {
-      code, title, accountingTitle, email, password,
-      contactFullName, phone, gsm, taxOffice, taxNumber,
-      address, city, pestType, areaM2, placeType,
-      showBalance, visitPeriod, employeeId,
+      code,
+      title,
+      accountingTitle,
+      email,
+      password,
+      contactFullName,
+      phone,
+      gsm,
+      taxOffice,
+      taxNumber,
+      address,
+      city,
+      pestType,
+      areaM2,
+      placeType,
+      showBalance,
+      visitPeriod,
+      employeeId,
     } = req.body;
 
-    if (!code || !title)
-      return res.status(400).json({ message: "Müşteri Kodu ve Ünvan zorunludur." });
+    if (!code || !title) {
+      return res
+        .status(400)
+        .json({ message: "Müşteri Kodu ve Ünvan zorunludur." });
+    }
 
     const exists = await prisma.customer.findUnique({ where: { code } });
-    if (exists) return res.status(409).json({ message: "Bu müşteri kodu zaten kayıtlı." });
+    if (exists) {
+      return res.status(409).json({ message: "Bu müşteri kodu zaten kayıtlı." });
+    }
 
-    const hashed = password ? await bcrypt.hash(password, 10) : null;
+    const hashed = password ? await bcrypt.hash(String(password), 10) : null;
 
     const c = await prisma.customer.create({
       data: {
-        code, title,
+        code: String(code),
+        title: String(title),
         accountingTitle: accountingTitle || null,
         email: email || null,
         password: hashed,
@@ -95,7 +150,7 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
 
     res.json({ message: "Müşteri eklendi", customer: c });
   } catch (e) {
-    console.error(e);
+    console.error("POST /customers/create error:", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
@@ -107,13 +162,27 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
     const {
-      code, title, accountingTitle, email, password,
-      contactFullName, phone, gsm, taxOffice, taxNumber,
-      address, city, pestType, areaM2, placeType,
-      showBalance, visitPeriod, employeeId,
+      code,
+      title,
+      accountingTitle,
+      email,
+      password,
+      contactFullName,
+      phone,
+      gsm,
+      taxOffice,
+      taxNumber,
+      address,
+      city,
+      pestType,
+      areaM2,
+      placeType,
+      showBalance,
+      visitPeriod,
+      employeeId,
     } = req.body;
 
-    // code uniq
+    // code uniq kontrolü (değiştiriliyorsa)
     if (code) {
       const other = await prisma.customer.findUnique({ where: { code } });
       if (other && other.id !== id) {
@@ -122,11 +191,11 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     }
 
     const data = {};
-    if (code !== undefined) data.code = code;
-    if (title !== undefined) data.title = title;
+    if (code !== undefined) data.code = String(code);
+    if (title !== undefined) data.title = String(title);
     if (accountingTitle !== undefined) data.accountingTitle = accountingTitle || null;
     if (email !== undefined) data.email = email || null;
-    if (password) data.password = await bcrypt.hash(password, 10);
+    if (password) data.password = await bcrypt.hash(String(password), 10);
     if (contactFullName !== undefined) data.contactFullName = contactFullName || null;
     if (phone !== undefined) data.phone = phone || null;
     if (gsm !== undefined) data.gsm = gsm || null;
@@ -144,21 +213,24 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     const updated = await prisma.customer.update({ where: { id }, data });
     res.json({ message: "Müşteri güncellendi", customer: updated });
   } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ message: "Müşteri bulunamadı" });
+    if (e.code === "P2025")
+      return res.status(404).json({ message: "Müşteri bulunamadı" });
     console.error("PUT /customers/:id error:", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
 
-/** Sil (admin) – profil resmi silme upload modülünüzde ele alınıyor */
+/** Sil (admin) — profil görseli kaldırma upload modülünde ele alınacak */
 router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
+
     await prisma.customer.delete({ where: { id } });
     res.json({ message: "Müşteri silindi" });
   } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ message: "Müşteri bulunamadı" });
+    if (e.code === "P2025")
+      return res.status(404).json({ message: "Müşteri bulunamadı" });
     console.error("DELETE /customers/:id error:", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }

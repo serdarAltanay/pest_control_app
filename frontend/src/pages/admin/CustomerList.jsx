@@ -1,3 +1,4 @@
+// src/pages/customers/CustomerList.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
@@ -20,10 +21,11 @@ export default function CustomerList() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 👇 eklendi: rol’ü al
-  const role = (localStorage.getItem("role") || "").toLowerCase();
-  const canEdit = role === "admin" || role === "employee";
-  const canDelete = role === "admin";
+  // Rol: güvenli oku
+  const role = (typeof window !== "undefined" ? localStorage.getItem("role") : "") || "";
+  const r = role.toLowerCase();
+  const canEdit = r === "admin" || r === "employee";
+  const canDelete = r === "admin";
 
   // UI state
   const [query, setQuery] = useState("");
@@ -36,7 +38,7 @@ export default function CustomerList() {
       const { data } = await api.get("/customers");
       setCustomers(Array.isArray(data) ? data : []);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Müşteri listesi alınamadı");
+      toast.error(err?.response?.data?.message || "Müşteri listesi alınamadı");
     } finally {
       setLoading(false);
     }
@@ -46,9 +48,10 @@ export default function CustomerList() {
     fetchCustomers();
   }, []);
 
+  // Arama filtresi
   const filtered = useMemo(() => {
-    if (!query.trim()) return customers;
-    const q = query.toLowerCase();
+    const q = query.trim().toLowerCase();
+    if (!q) return customers;
     return customers.filter((c) => {
       const responsible = c.employee?.fullName || "";
       return (
@@ -61,6 +64,7 @@ export default function CustomerList() {
     });
   }, [customers, query]);
 
+  // Sayfalama
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * pageSize;
@@ -72,14 +76,14 @@ export default function CustomerList() {
 
   const fmtPeriod = (p) => PERIOD_TR[p] || "Belirtilmedi";
 
-  // Presence
+  // Presence helpers
   const ONLINE_MS = 2 * 60 * 1000;
-  const IDLE_MS   = 10 * 60 * 1000;
+  const IDLE_MS = 10 * 60 * 1000;
   const getPresence = (lastSeenAt) => {
     if (!lastSeenAt) return { cls: "status-offline", label: "Offline" };
     const diff = Date.now() - new Date(lastSeenAt).getTime();
     if (diff <= ONLINE_MS) return { cls: "status-online", label: "Online" };
-    if (diff <= IDLE_MS)   return { cls: "status-idle", label: "Idle" };
+    if (diff <= IDLE_MS) return { cls: "status-idle", label: "Idle" };
     return { cls: "status-offline", label: "Offline" };
   };
   const relTime = (d) => {
@@ -100,30 +104,22 @@ export default function CustomerList() {
     return `${y} yıl önce`;
   };
 
-  const handleEdit = (id) => {
-    navigate(`/admin/customers/${id}/edit`);
-  };
-
+  // Actions
+  const handleDetail = (id) => navigate(`/admin/customers/${id}`);
+  const handleEdit = (id) => navigate(`/admin/customers/${id}/edit`);
   const handleDelete = async (id) => {
-    const ok = window.confirm("Bu müşteriyi silmek istediğinize emin misiniz?");
-    if (!ok) return;
+    if (!window.confirm("Bu müşteriyi silmek istediğinize emin misiniz?")) return;
     try {
       await api.delete(`/customers/${id}`);
       toast.success("Müşteri silindi");
       fetchCustomers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Müşteri silinemedi");
+      toast.error(err?.response?.data?.message || "Müşteri silinemedi");
     }
   };
-
-  const handleDetail = (id) => {
-    navigate(`/admin/customers/${id}`);
-  };
-
-  // 👇 eklendi: müşteri adına tıklayınca yetkiye göre edit/detay
   const handleNameClick = (id, e) => {
     e.preventDefault();
-     handleDetail(id);
+    handleDetail(id);
   };
 
   return (
@@ -138,7 +134,11 @@ export default function CustomerList() {
           />
 
           <div className="right-controls">
-            <div className="export">Export</div>
+            {/* Export yeri şimdilik pasif */}
+            <div className="export" aria-disabled>
+              Export
+            </div>
+
             <div className="page-size">
               <label>Show</label>
               <select
@@ -171,15 +171,11 @@ export default function CustomerList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center" }}>
-                    Yükleniyor...
-                  </td>
+                  <td colSpan={8} style={{ textAlign: "center" }}>Yükleniyor...</td>
                 </tr>
               ) : pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center" }}>
-                    Kayıt bulunamadı
-                  </td>
+                  <td colSpan={8} style={{ textAlign: "center" }}>Kayıt bulunamadı</td>
                 </tr>
               ) : (
                 pageItems.map((c) => {
@@ -187,7 +183,7 @@ export default function CustomerList() {
                   return (
                     <tr
                       key={c.id}
-                      onDoubleClick={() => handleDetail(c.id)} // 👈 çift tık detay
+                      onDoubleClick={() => handleDetail(c.id)}
                       style={{ cursor: "default" }}
                     >
                       <td
@@ -197,15 +193,15 @@ export default function CustomerList() {
                         <span className="dot" />
                         <span className="presence-label">{presence.label}</span>
                       </td>
+
                       <td>{c.code || "—"}</td>
 
-                      {/* 👇 müşteri adı tıklanabilir */}
                       <td>
                         <a
-                          href="#edit"
+                          href="#detail"
                           onClick={(e) => handleNameClick(c.id, e)}
                           className={canEdit ? "link-strong" : "link-soft"}
-                          title={"Detayı aç"}
+                          title="Detayı aç"
                         >
                           {c.title || "—"}
                         </a>
@@ -222,11 +218,11 @@ export default function CustomerList() {
                         <button
                           className="btn btn-dark"
                           onClick={() => handleDetail(c.id)}
+                          title="Kontrol Merkezi"
                         >
                           Kontrol Merkezi
                         </button>
 
-                        {/* 👇 edit: admin + employee */}
                         {canEdit && (
                           <button
                             className="btn btn-edit"
@@ -237,14 +233,13 @@ export default function CustomerList() {
                           </button>
                         )}
 
-                        {/* 👇 delete: sadece admin */}
                         {canDelete && (
                           <button
                             className="btn btn-delete"
                             onClick={() => handleDelete(c.id)}
                             title="Sil"
                           >
-                           Sil
+                            Sil
                           </button>
                         )}
                       </td>
@@ -264,7 +259,9 @@ export default function CustomerList() {
           >
             Prev
           </button>
+
           <span className="page-indicator">{currentPage}</span>
+
           <button
             className="page-btn"
             disabled={currentPage >= totalPages}
@@ -272,6 +269,7 @@ export default function CustomerList() {
           >
             Next
           </button>
+
           <div className="count-info">
             {filtered.length === 0
               ? "0"
