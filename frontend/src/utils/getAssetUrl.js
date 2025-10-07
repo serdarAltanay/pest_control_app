@@ -1,7 +1,23 @@
-// .env’de VITE_API_ORIGIN tanımlı değilse, window.location.origin’e düşer
-const API_ORIGIN =
-  import.meta?.env?.VITE_API_ORIGIN?.replace(/\/+$/, "") ||
-  window.location.origin;
+// src/utils/getAssetUrl.js
+
+// Bazı bundler'lar import.meta'ya doğrudan/opsiyonel zincir ile erişimde uyarı veriyor.
+// Bu yüzden önce güvenli bir şekilde env'i ayıklıyoruz (Vite varsa okur, yoksa undefined kalır).
+
+/* eslint-disable no-undef */
+const viteEnv =
+  (typeof import.meta !== "undefined" && import.meta && import.meta.env)
+    ? import.meta.env
+    : undefined;
+/* eslint-enable no-undef */
+
+// .env’de (Vite) VITE_API_ORIGIN veya (CRA/Webpack) REACT_APP_API_ORIGIN varsa kullan,
+// yoksa window.location.origin’e düş.
+const RAW_API_ORIGIN =
+  (viteEnv && viteEnv.VITE_API_ORIGIN) ||
+  (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_ORIGIN) ||
+  "";
+
+const API_ORIGIN = (RAW_API_ORIGIN.replace(/\/+$/, "")) || window.location.origin;
 
 // /uploads gibi relative bir yol mu? (http/https ile başlamıyorsa relative’tir)
 export function toAbsoluteUrl(path) {

@@ -73,7 +73,12 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         employee: { select: { id: true, fullName: true, email: true } },
         // Detayda mağazalar ve sayısı
         stores: {
-          select: { id: true, name: true, code: true, city: true, isActive: true },
+          select: {
+            id: true, name: true, code: true, city: true, address: true,
+            phone: true, manager: true, isActive: true,
+            latitude: true, longitude: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: "desc" },
         },
         _count: { select: { stores: true } },

@@ -15,6 +15,9 @@ const PERIOD_TR = {
   UCAYLIK: "3 Aylık",
 };
 
+const ONLINE_MS = 2 * 60 * 1000;
+const IDLE_MS = 10 * 60 * 1000;
+
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,8 +46,7 @@ export default function CustomerDetail() {
   }, [id]);
 
   // Presence
-  const ONLINE_MS = 2 * 60 * 1000;
-  const IDLE_MS = 10 * 60 * 1000;
+
   const presence = useMemo(() => {
     const last = customer?.lastSeenAt ? new Date(customer.lastSeenAt).getTime() : 0;
     if (!last) return { cls: "status-offline", label: "Offline" };
@@ -119,6 +121,8 @@ export default function CustomerDetail() {
       toast.error(err.response?.data?.message || "Silinemedi");
     }
   };
+  const goStore = (storeId) => navigate(`/admin/stores/${storeId}`);
+  const stop = (e) => e.stopPropagation();
 
   const avatarSrc = getAvatarUrl(customer?.profileImage);
 
@@ -243,8 +247,22 @@ export default function CustomerDetail() {
                       </thead>
                       <tbody>
                         {stores.map((s) => (
-                          <tr key={s.id}>
-                            <td className="strong">{s.name}</td>
+                          <tr
+                            key={s.id}
+                            className="clickable"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => goStore(s.id)}
+                            onKeyDown={(e) => { if (e.key === "Enter") goStore(s.id); }}
+                          >
+                            <td className="strong name-cell">
+                              {s.name}
+                              {!s.latitude || !s.longitude ? (
+                                <span className="badge warn" title="Koordinat yok">Koordinat Yok</span>
+                              ) : (
+                                <span className="badge ok" title={`${s.latitude}, ${s.longitude}`}>Konum Var</span>
+                              )}
+                            </td>
                             <td>{s.code || "—"}</td>
                             <td>{s.city || "—"}</td>
                             <td>{s.phone || "—"}</td>
@@ -254,9 +272,31 @@ export default function CustomerDetail() {
                                 {s.isActive ? "Aktif" : "Pasif"}
                               </span>
                             </td>
-                            <td className="actions">
+
+                            {/* İşlemler – satır tıklamasını engelliyoruz */}
+                            <td className="actions" onClick={stop}>
                               <Link className="btn" to={`/admin/stores/${s.id}/edit`}>Düzenle</Link>
-                              <button className="btn danger" onClick={() => deleteStore(s.id)}>Sil</button>
+                              <button className="btn danger" onClick={(e) => { e.stopPropagation(); deleteStore(s.id); }}>
+                                Sil
+                              </button>
+                              {s.latitude != null && s.longitude != null && (
+                                <a
+                                  className="btn ghost"
+                                  href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Haritada Aç"
+                                >
+                                  Haritada Aç
+                                </a>
+                              )}
+                            </td>
+
+                            {/* En sağda “Mağaza” sayfası */}
+                            <td className="go" onClick={stop}>
+                              <Link className="btn primary" to={`/admin/stores/${s.id}`}>
+                                Mağaza
+                              </Link>
                             </td>
                           </tr>
                         ))}

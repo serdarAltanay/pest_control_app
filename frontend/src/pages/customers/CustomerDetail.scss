@@ -117,6 +117,38 @@
         &.primary:hover { filter: brightness(0.95); }
       }
     }
+
+          /* mevcut .stores-table içine ekle */
+      .stores-table tbody tr.clickable {
+        cursor: pointer;
+        transition: background .12s ease;
+      }
+      .stores-table tbody tr.clickable:hover {
+        background: #f8fafc;
+      }
+      .stores-table tbody tr.clickable:focus {
+        outline: 2px solid #93c5fd;
+        outline-offset: -2px;
+      }
+
+      /* buton hizası */
+      .stores-table td.actions .btn,
+      .stores-table td.go .btn {
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        margin-right: 6px;
+      }
+      .stores-table td.go .btn.primary {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+      }
+
     
     .store-table td:nth-child(2) { color:#475569; font-variant-numeric: tabular-nums; }
     .store-table .badge.ok { background:#16a34a; }

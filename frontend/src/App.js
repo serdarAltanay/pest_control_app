@@ -15,6 +15,7 @@ import CustomerDetail from "./pages/customers/CustomerDetail.jsx";
 import CustomerEdit from "./pages/customers/CustomerEdit.jsx";
 import StoreCreate from "./pages/stores/StoreCreate.jsx";
 import StoreEdit from "./pages/stores/StoreEdit.jsx";
+import StoreDetail from "./pages/stores/StoreDetail.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -121,6 +122,14 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin', 'employee']}>
               <StoreEdit  />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <StoreDetail  />
             </PrivateRoute>
           }
         />

@@ -1,0 +1,10 @@
+/* src/styles/Map.scss */
+.leaflet-marker-icon.pin-old { filter: hue-rotate(310deg) saturate(2); }
+.leaflet-marker-icon.pin-new { filter: hue-rotate(110deg) saturate(1.8); }
+
+.map-picker .map-legend {
+  display:flex; align-items:center; gap:12px; margin-top:8px; font-size:13px; color:#4b5563;
+}
+.map-picker .map-legend .dot{ width:10px;height:10px;border-radius:50%;display:inline-block }
+.map-picker .map-legend .dot.old{ background:#ef4444 }
+.map-picker .map-legend .dot.new{ background:#10b981 }
