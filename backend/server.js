@@ -17,7 +17,14 @@ import employeeRouter from "./routes/employee.js";
 import heartbeatRoutes from "./routes/heartbeat.js";
 import onlineRoutes from "./routes/online.js";
 import presenceRouter from "./routes/presence.js";
+
 import storesRouter from "./routes/stores.js";
+import { stationsRouter,stationsNestedRouter } from "./routes/stations.js";
+
+import biocidesRouter from "./routes/Biocides.js";
+
+import visitsRouter from "./routes/visits.js";
+import ek1Router from "./routes/ek1.js";
 
 
 dotenv.config();
@@ -52,6 +59,14 @@ app.use("/api/online", onlineRoutes);
 app.use("/api/presence", presenceRouter);
 
 app.use("/api/stores", storesRouter);
+
+app.use("/api/stations", stationsRouter);
+app.use("/api", stationsNestedRouter);
+
+app.use("/api/biocides", biocidesRouter);
+
+app.use("/api/visits", visitsRouter);
+app.use("/api/ek1", ek1Router);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server ${PORT} portunda açıldı`));

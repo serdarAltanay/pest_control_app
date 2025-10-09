@@ -42,6 +42,9 @@ export default function Sidebar() {
               <li className="sidebar-item">
                 <Link to="/admin/admins/new">Admin Ekle</Link>
               </li>
+              <li className="sidebar-item" onClick={() => navigate("/admin/biocides")}>
+                Biyosidallar
+              </li>
             </>
           )}
         </ul>

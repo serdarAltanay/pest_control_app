@@ -17,6 +17,19 @@ const TYPE_TR = {
   GUVE_TUZAGI: "Güve Tuzağı",
 };
 
+const VISIT_TYPE_TR = {
+  PERIYODIK: "Periyodik Ziyaret",
+  ACIL_CAGRI: "Acil Çağrı",
+  ISTASYON_KURULUM: "İstasyon Kurulum",
+  ILK_ZIYARET: "İlk Ziyaret",
+  DIGER: "Diğer",
+};
+
+const PIE_COLORS = [
+  "#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+  "#14b8a6", "#f97316", "#06b6d4", "#84cc16", "#e11d48",
+];
+
 export default function StoreDetail() {
   const { storeId } = useParams();
   const navigate = useNavigate();
@@ -26,14 +39,17 @@ export default function StoreDetail() {
   const [visits, setVisits] = useState([]);
   const [metrics, setMetrics] = useState({}); // {TYPE: count}
 
+  // Mağaza + müşteri
   useEffect(() => {
     (async () => {
       try {
-        const s = await api.get(`/stores/${storeId}`);
-        setStore(s.data);
-        if (s.data.customerId) {
-          const c = await api.get(`/customers/${s.data.customerId}`);
-          setCustomer(c.data);
+        const { data: s } = await api.get(`/stores/${storeId}`);
+        setStore(s);
+        if (s.customerId) {
+          try {
+            const { data: c } = await api.get(`/customers/${s.customerId}`);
+            setCustomer(c);
+          } catch {}
         }
       } catch (e) {
         toast.error(e?.response?.data?.message || "Mağaza bilgisi alınamadı");
@@ -41,43 +57,68 @@ export default function StoreDetail() {
     })();
   }, [storeId]);
 
+  // Ziyaretler
   useEffect(() => {
     (async () => {
       try {
-        const v = await api.get(`/visits/store/${storeId}`);
-        setVisits(Array.isArray(v.data) ? v.data : []);
-      } catch {/* sessiz */}
+        let list = [];
+        try {
+          const { data } = await api.get(`/visits/store/${storeId}`);
+          list = data;
+        } catch {
+          const { data } = await api.get(`/stores/${storeId}/visits`);
+          list = data;
+        }
+        // güvenli sıralama (yeniden eskiye)
+        list = Array.isArray(list) ? [...list].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+        setVisits(list);
+      } catch {}
     })();
   }, [storeId]);
 
+  // İstasyon metrikleri (grafik)
   useEffect(() => {
     (async () => {
       try {
-        const m = await api.get(`/stations/metrics/store/${storeId}`);
-        setMetrics(m.data || {});
-      } catch {/* sessiz */}
+        let m = {};
+        try {
+          const { data } = await api.get(`/stations/metrics/store/${storeId}`);
+          m = data;
+        } catch {
+          const { data } = await api.get(`/stores/${storeId}/stations/metrics`);
+          m = data;
+        }
+        setMetrics(m || {});
+      } catch {}
     })();
   }, [storeId]);
 
-  const pieData = useMemo(() => {
-    return Object.entries(metrics)
-      .map(([k, v]) => ({ name: TYPE_TR[k] || k, value: v }))
-      .filter(d => d.value > 0);
-  }, [metrics]);
+  const pieData = useMemo(
+    () =>
+      Object.entries(metrics)
+        .map(([k, v]) => ({ name: TYPE_TR[k] || k, value: v }))
+        .filter((d) => d.value > 0),
+    [metrics]
+  );
 
   const fmtDate = (val) => {
     if (!val) return "—";
-    try { return new Date(val).toLocaleString("tr-TR"); }
+    try { return new Date(val).toLocaleDateString("tr-TR"); }
     catch { return String(val); }
   };
 
-  const handleDelete = async () => {
+  const fmtTime = (start, end) => {
+    const s = start || "—";
+    const e = end || "—";
+    return `${s} / ${e}`;
+  };
+
+  const handleDeleteStore = async () => {
     if (!store) return;
     if (!window.confirm("Bu mağazayı silmek istediğinize emin misiniz?")) return;
     try {
       await api.delete(`/stores/${storeId}`);
       toast.success("Mağaza silindi");
-      // müşteri sayfasına geri dön
       if (store.customerId) navigate(`/admin/customers/${store.customerId}`);
       else navigate("/admin/customers");
     } catch (e) {
@@ -123,7 +164,7 @@ export default function StoreDetail() {
                   <button className="btn ghost" disabled title="Koordinat yok">Haritada Göster</button>
                 )}
                 <Link className="btn warn" to={`/admin/stores/${storeId}/edit`}>Düzenle</Link>
-                <button className="btn danger" onClick={handleDelete}>Sil</button>
+                <button className="btn danger" onClick={handleDeleteStore}>Sil</button>
               </div>
             </div>
 
@@ -157,7 +198,13 @@ export default function StoreDetail() {
         <div className="grid">
           {/* SOL: ZİYARETLER */}
           <section className="card">
-            <div className="card-title">Son Ziyaretler</div>
+            <div className="card-title">
+              Son Ziyaretler
+              <Link className="btn primary" style={{ marginLeft: "auto" }} to={`/admin/stores/${storeId}/ek1`}>
+                + Yeni Ziyaret (EK-1)
+              </Link>
+            </div>
+
             {visits.length === 0 ? (
               <div className="empty">Henüz ziyaret kaydı yok.</div>
             ) : (
@@ -173,18 +220,28 @@ export default function StoreDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visits.map(v => (
+                  {visits.map((v) => (
                     <tr key={v.id}>
-                      <td>{v.date}</td>
-                      <td>{v.time}</td>
-                      <td>{v.company}</td>
-                      <td>{v.visitType}</td>
-                      <td>{v.actor}</td>
+                      <td className="date">{fmtDate(v.date)}</td>
+                      <td>{fmtTime(v.startTime, v.endTime)}</td>
+                      <td className="firm">{store?.name || "—"}</td>
+                      <td className="type">{VISIT_TYPE_TR[v.visitType] || v.visitType || "—"}</td>
+                      <td className="user">
+                        {Array.isArray(v.employees)
+                          ? v.employees.join(", ")
+                          : (typeof v.employees === "string" ? v.employees : "—")}
+                      </td>
                       <td className="row-actions">
                         <button className="btn">Mail</button>
                         <button className="btn warn">Gözlem</button>
                         <button className="btn danger">Sil</button>
-                        <button className="btn primary">EK-1</button>
+                        <Link
+                          className="btn primary"
+                          to={`/admin/stores/${storeId}/visits/${v.id}/biocides`}
+                          title="Ziyarete Biyosidal Ekle / EK-1"
+                        >
+                          EK-1
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -210,7 +267,14 @@ export default function StoreDetail() {
                     innerRadius={60}
                     outerRadius={100}
                     label
-                  />
+                  >
+                    {pieData.map((_, index) => (
+                      <Recharts.Cell
+                        key={`cell-${index}`}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
+                    ))}
+                  </Recharts.Pie>
                   <Recharts.Tooltip />
                   <Recharts.Legend />
                 </Recharts.PieChart>

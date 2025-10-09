@@ -1,3 +1,4 @@
+// src/components/StationModal.jsx
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
@@ -35,32 +36,53 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
     setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!form.type) return toast.error("İstasyon tipi zorunludur.");
-    if (!form.name.trim()) return toast.error("İstasyon adı zorunludur.");
-    if (!form.code.trim()) return toast.error("Barkod & QR zorunludur.");
-
+  const save = async () => {
     setSaving(true);
+    const payload = {
+      type: form.type,
+      name: form.name.trim(),
+      code: form.code.trim(),
+    };
+
     try {
       if (isEdit) {
-        await api.put(`/stations/${initial.id}`, { ...form });
+        // UPDATE
+        try {
+          await api.put(`/stations/${initial.id}`, payload);
+        } catch {
+          await api.put(`/stores/${storeId}/stations/${initial.id}`, payload);
+        }
         toast.success("İstasyon güncellendi");
       } else {
-        await api.post("/stations", { ...form, storeId });
+        // CREATE
+        try {
+          await api.post(`/stations`, { ...payload, storeId });
+        } catch {
+          await api.post(`/stores/${storeId}/stations`, payload);
+        }
         toast.success("İstasyon eklendi");
       }
+      onSaved?.(); // listeyi yenilesin
       onClose?.();
-      onSaved?.();
-    } catch (e2) {
-      toast.error(e2?.response?.data?.message || "İşlem başarısız");
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Kaydedilemedi");
     } finally {
       setSaving(false);
     }
   };
 
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return toast.error("İstasyon adı zorunludur.");
+    if (!form.code.trim()) return toast.error("Barkod & QR zorunludur.");
+    save();
+  };
+
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+    <div
+      className="modal-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+    >
       <div className="modal">
         <div className="modal-head">
           <div className="title">
@@ -84,14 +106,16 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
               <input name="name" value={form.name} onChange={onChange} required />
             </div>
             <div>
-              <label>Barkod & QR *</label>
+              <label>Barkod &amp; QR *</label>
               <input name="code" value={form.code} onChange={onChange} required />
             </div>
           </div>
 
           <div className="modal-actions">
             <button type="submit" className="btn primary" disabled={saving}>
-              {saving ? (isEdit ? "Güncelleniyor..." : "Kaydediliyor...") : (isEdit ? "İstasyon Güncelle" : "İstasyon Ekle")}
+              {saving
+                ? (isEdit ? "Güncelleniyor..." : "Kaydediliyor...")
+                : (isEdit ? "İstasyon Güncelle" : "İstasyon Ekle")}
             </button>
           </div>
         </form>

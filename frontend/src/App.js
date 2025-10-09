@@ -17,7 +17,10 @@ import StoreCreate from "./pages/stores/StoreCreate.jsx";
 import StoreEdit from "./pages/stores/StoreEdit.jsx";
 import StoreDetail from "./pages/stores/StoreDetail.jsx";
 import StoreStations from "./pages/Stations/StoreStation.jsx";
-
+import Biocides from "./pages/biocides/Biocides.jsx";
+import StoreEk1 from "./pages/ek1/StoreEk1.jsx";
+import VisitEk1 from "./pages/ek1/VisitEk1.jsx";
+import Ek1Preview from "./pages/ek1/Ek1Preview.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -156,6 +159,38 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin', 'employee']}>
               <StoreStations openMode="edit"  />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/biocides"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <Biocides/>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/ek1"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <StoreEk1 />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/visits/:visitId/biocides"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <VisitEk1 />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/visits/:visitId/preview"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <Ek1Preview  />
             </PrivateRoute>
           }
         />

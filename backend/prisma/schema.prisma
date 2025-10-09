@@ -32,6 +32,35 @@ enum PlaceType {
   BELIRTILMEDI
 }
 
+enum BiocideUnit {
+  ML
+  GR
+  LT
+  KG
+  ADET
+}
+
+model Biocide {
+  id               Int         @id @default(autoincrement())
+  name             String
+  activeIngredient String
+  antidote         String
+  unit             BiocideUnit
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  Ek1Line          Ek1Line[]
+
+  @@unique([name, activeIngredient])
+}
+
+enum StationType {
+  FARE_YEMLEME
+  CANLI_YAKALAMA
+  ELEKTRIKLI_SINEK_TUTUCU
+  BOCEK_MONITOR
+  GUVE_TUZAGI
+}
+
 model Admin {
   id            Int       @id @default(autoincrement())
   fullName      String
@@ -125,7 +154,94 @@ model Store {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  stations Station[] @relation("StoreStations")
+  Visit    Visit[]
+
   @@unique([customerId, code], map: "store_customer_code_unique")
+}
+
+model Station {
+  id        Int         @id @default(autoincrement())
+  storeId   Int
+  store     Store       @relation("StoreStations", fields: [storeId], references: [id], onDelete: Cascade)
+  type      StationType
+  name      String
+  code      String // Barkod/QR
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([storeId, code])
+}
+
+enum VisitType {
+  PERIYODIK
+  ACIL_CAGRI
+  ISTASYON_KURULUM
+  ILK_ZIYARET
+  DIGER
+}
+
+enum Ek1Status {
+  DRAFT
+  SUBMITTED
+  APPROVED
+}
+
+enum ApplicationMethod {
+  ULV
+  PUSKURTME
+  JEL
+  SISLEME
+  YENILEME
+  ATOMIZER
+  YEMLEME
+  PULVERİZE
+}
+
+model Visit {
+  id      Int   @id @default(autoincrement())
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  date        DateTime
+  startTime   String? // "08:15" gibi
+  endTime     String? // "09:00" gibi
+  visitType   VisitType
+  targetPests Json? // ["Akrep","Buğday Biti", ...]
+  notes       String?
+
+  employees Json? // ["Fatih Kaya","Mehmet Hasan"] gibi
+
+  ek1Lines Ek1Line[]
+  ek1      Ek1Report?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ek1Report {
+  id      Int   @id @default(autoincrement())
+  visitId Int   @unique
+  visit   Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  status    Ek1Status @default(DRAFT)
+  pdfUrl    String? // dosya yolu ya da S3 URL
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Ek1Line {
+  id      Int   @id @default(autoincrement())
+  visitId Int
+  visit   Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  biosidalId Int
+  biosidal   Biocide @relation(fields: [biosidalId], references: [id], onDelete: Restrict)
+
+  method    ApplicationMethod
+  amount    Float
+  createdAt DateTime          @default(now())
 }
 
 model RefreshToken {
