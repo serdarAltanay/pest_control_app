@@ -61,10 +61,8 @@ export default function Ek1VisitPage() {
         setStore(data);
       } catch {}
       try {
-        const r = await api
-          .get(`/stores/${storeId}/visits`)
-          .catch(() => api.get(`/visits/store/${storeId}`));
-        setVisits(Array.isArray(r.data) ? r.data : []);
+       const {data} = await api.get(`/visists/store/${storeId}`);
+       setVisits(Array.isArray(data) ? data : []);
       } catch {}
     })();
   }, [storeId]);

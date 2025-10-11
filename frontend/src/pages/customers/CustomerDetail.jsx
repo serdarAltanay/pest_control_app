@@ -46,7 +46,6 @@ export default function CustomerDetail() {
   }, [id]);
 
   // Presence
-
   const presence = useMemo(() => {
     const last = customer?.lastSeenAt ? new Date(customer.lastSeenAt).getTime() : 0;
     if (!last) return { cls: "status-offline", label: "Offline" };
@@ -121,16 +120,32 @@ export default function CustomerDetail() {
       toast.error(err.response?.data?.message || "Silinemedi");
     }
   };
-  const goStore = (storeId) => navigate(`/admin/stores/${storeId}`);
-  const stop = (e) => e.stopPropagation();
+  const goStore   = (storeId) => navigate(`/admin/stores/${storeId}`);
+  const stop      = (e) => e.stopPropagation();
 
   const avatarSrc = getAvatarUrl(customer?.profileImage);
+
+  // ---- Operasyon metrikleri (STORE'lardan) ----
+  const storeCount = stores.length;
+  const totalArea = useMemo(
+    () => stores.reduce((acc, s) => acc + (Number(s.areaM2) || 0), 0),
+    [stores]
+  );
+  const placeTypes = useMemo(
+    () => Array.from(new Set(stores.map(s => s.placeType).filter(Boolean))),
+    [stores]
+  );
+  // Eğer Store şemasına pestType eklediysen:
+  const pestTypes = useMemo(
+   () => Array.from(new Set(stores.map(s => s.pestType).filter(Boolean))),
+    [stores]
+  );
 
   return (
     <Layout>
       <div className="customer-detail-page">
         <div className="header">
-          {/* Sol blok: başlık + presence + avatar (yan yana, ikisi de sol tarafta) */}
+          {/* Sol blok: başlık + presence + avatar */}
           <div className="identity">
             <div className="title-wrap">
               <h1 className="title">{customer?.title || "—"}</h1>
@@ -197,13 +212,16 @@ export default function CustomerDetail() {
                 </div>
               </section>
 
+              {/* GÜNCEL: Operasyon bilgileri STORE'lardan türetiliyor */}
               <section className="card">
                 <div className="card-title">Operasyon</div>
                 <div className="kv">
-                  <div><b>Hedef Zararlı</b><span>{customer.pestType || "—"}</span></div>
-                  <div><b>Uygulama Alanı (m²)</b><span>{customer.areaM2 ?? "—"}</span></div>
-                  <div><b>Uygulama Yeri</b><span>{customer.placeType || "—"}</span></div>
+                  <div><b>Mağaza Sayısı</b><span>{storeCount}</span></div>
+                  <div><b>Toplam Uygulama Alanı (m²)</b><span>{totalArea || "—"}</span></div>
+                  <div><b>Uygulama Yeri Tür(leri)</b><span>{placeTypes.length ? placeTypes.join(", ") : "—"}</span></div>
                   <div><b>Bakiye Gösterimi</b><span>{customer.showBalance ? "Evet" : "Hayır"}</span></div>
+                  {/* Eğer Store’a pestType eklediysen: */}
+                   <div><b>Hedef Zararlı Tür(leri)</b><span>{pestTypes.length ? pestTypes.join(", ") : "—"}</span></div> 
                 </div>
               </section>
 

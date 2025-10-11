@@ -237,8 +237,8 @@ export default function StoreDetail() {
                         <button className="btn danger">Sil</button>
                         <Link
                           className="btn primary"
-                          to={`/admin/stores/${storeId}/visits/${v.id}/biocides`}
-                          title="Ziyarete Biyosidal Ekle / EK-1"
+                          to={`/admin/stores/${storeId}/visits/${v.id}/preview`}
+                          title="EK-1 Önizleme / PDF"
                         >
                           EK-1
                         </Link>

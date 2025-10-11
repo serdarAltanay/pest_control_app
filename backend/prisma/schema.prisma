@@ -8,6 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// prisma/schema.prisma
+
 enum VisitPeriod {
   HAFTALIK
   IKIHAFTALIK
@@ -40,138 +42,12 @@ enum BiocideUnit {
   ADET
 }
 
-model Biocide {
-  id               Int         @id @default(autoincrement())
-  name             String
-  activeIngredient String
-  antidote         String
-  unit             BiocideUnit
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  Ek1Line          Ek1Line[]
-
-  @@unique([name, activeIngredient])
-}
-
 enum StationType {
   FARE_YEMLEME
   CANLI_YAKALAMA
   ELEKTRIKLI_SINEK_TUTUCU
   BOCEK_MONITOR
   GUVE_TUZAGI
-}
-
-model Admin {
-  id            Int       @id @default(autoincrement())
-  fullName      String
-  email         String    @unique
-  password      String
-  profileImage  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
-  lastSeenAt    DateTime?
-
-  // relations
-  employees Employee[]
-}
-
-model Employee {
-  id            Int       @id @default(autoincrement())
-  fullName      String
-  email         String    @unique // <- zorunlu
-  password      String // <- zorunlu
-  jobTitle      String // <- zorunlu
-  gsm           String // <- zorunlu
-  profileImage  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
-  lastSeenAt    DateTime? // <- heartbeat için
-
-  // bağlı admin
-  adminId Int?
-  admin   Admin? @relation(fields: [adminId], references: [id])
-
-  // relations
-  customers Customer[] // Sorumlu olduğu müşteriler
-}
-
-model Customer {
-  id              Int     @id @default(autoincrement())
-  code            String  @unique // Müşteri Kodu
-  title           String // Ünvan & Müşteri Adı
-  accountingTitle String? // Muhasebe Ünvanı
-  email           String? @unique
-  password        String?
-  contactFullName String? // Yetkili kişi
-  phone           String? // Firma iletişim telefon
-  gsm             String? // Firma iletişim GSM
-  taxOffice       String? // Vergi Dairesi
-  taxNumber       String? // Vergi No & T.C.K.N
-  address         String?
-  city            String?
-
-  pestType    PestType    @default(BELIRTILMEDI) // Hedef Zararlı Türü
-  areaM2      Float? // Uygulama alanı m²
-  placeType   PlaceType   @default(BELIRTILMEDI) // Uygulama yeri
-  showBalance Boolean     @default(false) // Güncel bakiye görünsün mü?
-  visitPeriod VisitPeriod @default(BELIRTILMEDI) // Uygulama & ziyaret periyodu
-
-  profileImage  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
-  lastSeenAt    DateTime? // <- heartbeat için
-
-  stores Store[]
-
-  // Sorumlu personel
-  employeeId Int?
-  employee   Employee? @relation(fields: [employeeId], references: [id])
-}
-
-model Store {
-  id         Int      @id @default(autoincrement())
-  customerId Int
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  name     String
-  code     String? // benzersiz değilse nullable bırak
-  city     String?
-  address  String?
-  phone    String?
-  manager  String?
-  isActive Boolean @default(true)
-
-  // YENİ: Koordinatlar
-  latitude  Decimal? @db.Decimal(10, 7) // ~0.1m hassasiyet
-  longitude Decimal? @db.Decimal(10, 7)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  stations Station[] @relation("StoreStations")
-  Visit    Visit[]
-
-  @@unique([customerId, code], map: "store_customer_code_unique")
-}
-
-model Station {
-  id        Int         @id @default(autoincrement())
-  storeId   Int
-  store     Store       @relation("StoreStations", fields: [storeId], references: [id], onDelete: Cascade)
-  type      StationType
-  name      String
-  code      String // Barkod/QR
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  @@unique([storeId, code])
 }
 
 enum VisitType {
@@ -199,49 +75,180 @@ enum ApplicationMethod {
   PULVERİZE
 }
 
-model Visit {
-  id      Int   @id @default(autoincrement())
-  storeId Int
-  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+model ProviderProfile {
+  id                Int      @id @default(1)
+  companyName       String
+  address           String?
+  responsibleTitle  String?
+  responsibleName   String?
+  phoneFax          String?
+  certificateSerial String?
+  permissionNo      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
 
-  date        DateTime
-  startTime   String? // "08:15" gibi
-  endTime     String? // "09:00" gibi
-  visitType   VisitType
-  targetPests Json? // ["Akrep","Buğday Biti", ...]
-  notes       String?
+model Biocide {
+  id               Int         @id @default(autoincrement())
+  name             String
+  activeIngredient String
+  antidote         String
+  unit             BiocideUnit
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  Ek1Line          Ek1Line[]
 
-  employees Json? // ["Fatih Kaya","Mehmet Hasan"] gibi
+  @@unique([name, activeIngredient])
+}
 
-  ek1Lines Ek1Line[]
-  ek1      Ek1Report?
+model Admin {
+  id            Int        @id @default(autoincrement())
+  fullName      String
+  email         String     @unique
+  password      String
+  profileImage  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  lastLoginAt   DateTime?
+  lastProfileAt DateTime?
+  lastSeenAt    DateTime?
+  employees     Employee[]
+}
+
+model Employee {
+  id            Int        @id @default(autoincrement())
+  fullName      String
+  email         String     @unique
+  password      String
+  jobTitle      String
+  gsm           String
+  profileImage  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  lastLoginAt   DateTime?
+  lastProfileAt DateTime?
+  lastSeenAt    DateTime?
+  adminId       Int?
+  admin         Admin?     @relation(fields: [adminId], references: [id])
+  customers     Customer[]
+}
+
+model Customer {
+  id              Int     @id @default(autoincrement())
+  code            String  @unique
+  title           String
+  accountingTitle String?
+  email           String? @unique
+  password        String?
+  contactFullName String?
+  phone           String?
+  gsm             String?
+  taxOffice       String?
+  taxNumber       String?
+  address         String?
+  city            String?
+
+  // ⬇️ BUNLAR KALDIRILDI: pestType, placeType
+  showBalance Boolean     @default(false)
+  visitPeriod VisitPeriod @default(BELIRTILMEDI)
+
+  profileImage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  lastProfileAt DateTime?
+  lastSeenAt    DateTime?
+
+  stores Store[]
+
+  employeeId Int?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+}
+
+model Store {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  name     String
+  code     String?
+  city     String?
+  address  String?
+  phone    String?
+  manager  String?
+  isActive Boolean @default(true)
+
+  // ⬇️ operasyon bilgileri artık burada
+  pestType  PestType  @default(BELIRTILMEDI)
+  placeType PlaceType @default(BELIRTILMEDI)
+  areaM2    Float?
+
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  stations Station[] @relation("StoreStations")
+  Visit    Visit[]
+
+  @@unique([customerId, code], map: "store_customer_code_unique")
+}
+
+model Station {
+  id        Int         @id @default(autoincrement())
+  storeId   Int
+  store     Store       @relation("StoreStations", fields: [storeId], references: [id], onDelete: Cascade)
+  type      StationType
+  name      String
+  code      String
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([storeId, code])
+}
+
+model Visit {
+  id          Int        @id @default(autoincrement())
+  storeId     Int
+  store       Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  date        DateTime
+  startTime   String?
+  endTime     String?
+  visitType   VisitType
+  targetPests Json?
+  notes       String?
+  employees   Json?
+  ek1Lines    Ek1Line[]
+  ek1         Ek1Report?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Ek1Report {
-  id      Int   @id @default(autoincrement())
-  visitId Int   @unique
-  visit   Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
-
-  status    Ek1Status @default(DRAFT)
-  pdfUrl    String? // dosya yolu ya da S3 URL
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id                 Int       @id @default(autoincrement())
+  visitId            Int       @unique
+  visit              Visit     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  status             Ek1Status @default(DRAFT)
+  pdfUrl             String?
+  providerSignedAt   DateTime?
+  providerSignerName String?
+  customerSignedAt   DateTime?
+  customerSignerName String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Ek1Line {
-  id      Int   @id @default(autoincrement())
-  visitId Int
-  visit   Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
-
+  id         Int               @id @default(autoincrement())
+  visitId    Int
+  visit      Visit             @relation(fields: [visitId], references: [id], onDelete: Cascade)
   biosidalId Int
-  biosidal   Biocide @relation(fields: [biosidalId], references: [id], onDelete: Restrict)
-
-  method    ApplicationMethod
-  amount    Float
-  createdAt DateTime          @default(now())
+  biosidal   Biocide           @relation(fields: [biosidalId], references: [id], onDelete: Restrict)
+  method     ApplicationMethod
+  amount     Float
+  createdAt  DateTime          @default(now())
 }
 
 model RefreshToken {

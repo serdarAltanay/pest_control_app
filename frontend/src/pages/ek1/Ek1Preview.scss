@@ -1,0 +1,32 @@
+.ek1-print {
+  .toolbar { display:flex; gap:8px; margin:12px 0; }
+  .btn { height:36px; padding:0 12px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-weight:700; cursor:pointer; }
+  .btn.primary { background:#16a34a; border-color:#16a34a; color:#fff; }
+  .btn.warn { background:#f59e0b; border-color:#f59e0b; color:#fff; }
+  .btn.ghost { background:#fff; }
+
+  .page.A4 { width: 210mm; min-height: 297mm; margin: 0 auto; background:#fff; padding:14mm; box-shadow:0 0 0.5mm rgba(0,0,0,.1); }
+  .doc-head { display:grid; grid-template-columns: 60px 1fr 60px; align-items:center; margin-bottom:10px;
+    img { width:60px; height:60px; object-fit:contain; }
+    h1 { margin:0; text-align:center; font-size:18px; font-weight:800; }
+    .qr { justify-self:end; }
+  }
+
+  .block { margin-top:12px; }
+  .block-title { font-weight:800; border:1px solid #111; border-bottom:none; padding:6px 8px; }
+
+  table { width:100%; border-collapse:collapse; }
+  .kv th, .kv td { border:1px solid #111; padding:6px 8px; vertical-align:top; }
+  .kv th { width:45%; background:#f9fafb; font-weight:700; }
+
+  .list thead th { border:1px solid #111; background:#f9fafb; padding:6px 8px; }
+  .list tbody td { border:1px solid #111; padding:6px 8px; }
+  .center { text-align:center; }
+
+  .note { border:1px solid #111; padding:8px; margin-top:10px; font-size:12px; }
+
+  @media print {
+    .no-print { display:none !important; }
+    .page.A4 { box-shadow:none; margin:0; padding:0; width:auto; min-height:auto; }
+  }
+}

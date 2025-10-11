@@ -11,6 +11,7 @@ uploads/
 # testing
 /coverage
 
+/routes/Seed.js
 # production
 /build
 

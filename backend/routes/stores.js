@@ -64,81 +64,107 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 });
 
 /** Ekle */
-router.post("/", auth, roleCheck(["admin"]), async (req, res) => {
-  const msg = basicCheck(req.body);
-  if (msg) return res.status(400).json({ message: msg });
+router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
   try {
     const {
       customerId, name, code, city, address, phone, manager,
-      isActive, latitude, longitude
+      isActive,
+      pestType, placeType, areaM2,
+      latitude, longitude
     } = req.body;
 
-    if (!customerId || !name?.trim()) {
-      return res.status(400).json({ message: "Müşteri ve mağaza adı zorunludur." });
-    }
+    const data = {
+      customerId: Number(customerId),
+      name: String(name),
+      code: code ?? null,
+      city: city ?? null,
+      address: address ?? null,
+      phone: phone ?? null,
+      manager: manager ?? null,
+      isActive: isActive !== undefined ? !!isActive : true,
+      pestType: asEnum(pestType, ["KEMIRGEN","HACCADI","UCAN","BELIRTILMEDI"], "BELIRTILMEDI"),
+      placeType: asEnum(placeType, ["OFIS","DEPO","MAGAZA","FABRIKA","BELIRTILMEDI"], "BELIRTILMEDI"),
+      areaM2: areaM2 != null ? Number(areaM2) : null,
+      latitude: latitude != null ? Number(latitude) : null,
+      longitude: longitude != null ? Number(longitude) : null,
+    };
 
-    const created = await prisma.store.create({
-      data: {
-        customerId: Number(customerId),
-        name: String(name),
-        code: code || null,
-        city: city || null,
-        address: address || null,
-        phone: phone || null,
-        manager: manager || null,
-        isActive: !!isActive,
-        latitude: latitude == null ? null : Number(latitude),
-        longitude: longitude == null ? null : Number(longitude),
-      },
-    });
-
-    res.json({ message: "Mağaza eklendi", store: created });
+    const created = await prisma.store.create({ data });
+    res.json(created);
   } catch (e) {
     console.error("POST /stores", e);
-    res.status(500).json({ message: "Sunucu hatası" });
+    res.status(500).json({message:"Sunucu hatası"});
   }
 });
-
 /** Güncelle */
-router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
+// helpers
+const asEnum = (val, allowed, fallback) =>
+  allowed.includes(String(val)) ? String(val) : fallback;
+
+// CREATE  POST /api/stores
+router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
   try {
-    const id = Number(req.params.id);
-
-    if (!id) return res.status(400).json({ message: "Geçersiz id" });
-    const msg = basicCheck(req.body);
-    if (msg) return res.status(400).json({ message: msg });
-
     const {
-      name, code, city, address, phone, manager,
-      isActive, latitude, longitude
+      customerId, name, code, city, address, phone, manager,
+      isActive,
+      pestType, placeType, areaM2,
+      latitude, longitude
     } = req.body;
 
-    const updated = await prisma.store.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(code !== undefined && { code: code || null }),
-        ...(city !== undefined && { city: city || null }),
-        ...(address !== undefined && { address: address || null }),
-        ...(phone !== undefined && { phone: phone || null }),
-        ...(manager !== undefined && { manager: manager || null }),
-        ...(isActive !== undefined && { isActive: !!isActive }),
-        ...(latitude !== undefined && {
-          latitude: latitude == null ? null : Number(latitude),
-        }),
-        ...(longitude !== undefined && {
-          longitude: longitude == null ? null : Number(longitude),
-        }),
-      },
-    });
+    const data = {
+      customerId: Number(customerId),
+      name: String(name),
+      code: code ?? null,
+      city: city ?? null,
+      address: address ?? null,
+      phone: phone ?? null,
+      manager: manager ?? null,
+      isActive: isActive !== undefined ? !!isActive : true,
+      pestType: asEnum(pestType, ["KEMIRGEN","HACCADI","UCAN","BELIRTILMEDI"], "BELIRTILMEDI"),
+      placeType: asEnum(placeType, ["OFIS","DEPO","MAGAZA","FABRIKA","BELIRTILMEDI"], "BELIRTILMEDI"),
+      areaM2: areaM2 != null ? Number(areaM2) : null,
+      latitude: latitude != null ? Number(latitude) : null,
+      longitude: longitude != null ? Number(longitude) : null,
+    };
 
-    res.json({ message: "Mağaza güncellendi", store: updated });
+    const created = await prisma.store.create({ data });
+    res.json(created);
   } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ message: "Mağaza bulunamadı" });
-    console.error("PUT /stores/:id", e);
-    res.status(500).json({ message: "Sunucu hatası" });
+    console.error("POST /stores", e);
+    res.status(500).json({message:"Sunucu hatası"});
   }
 });
+
+// UPDATE  PUT /api/stores/:storeId
+router.put("/:storeId", auth, roleCheck(["admin","employee"]), async (req,res)=>{
+  try {
+    const id = Number(req.params.storeId);
+    const body = req.body;
+
+    const data = {};
+    if ("name" in body) data.name = String(body.name);
+    if ("code" in body) data.code = body.code ?? null;
+    if ("city" in body) data.city = body.city ?? null;
+    if ("address" in body) data.address = body.address ?? null;
+    if ("phone" in body) data.phone = body.phone ?? null;
+    if ("manager" in body) data.manager = body.manager ?? null;
+    if ("isActive" in body) data.isActive = !!body.isActive;
+    if ("pestType" in body)
+      data.pestType = asEnum(body.pestType, ["KEMIRGEN","HACCADI","UCAN","BELIRTILMEDI"], "BELIRTILMEDI");
+    if ("placeType" in body)
+      data.placeType = asEnum(body.placeType, ["OFIS","DEPO","MAGAZA","FABRIKA","BELIRTILMEDI"], "BELIRTILMEDI");
+    if ("areaM2" in body) data.areaM2 = body.areaM2 != null ? Number(body.areaM2) : null;
+    if ("latitude" in body) data.latitude = body.latitude != null ? Number(body.latitude) : null;
+    if ("longitude" in body) data.longitude = body.longitude != null ? Number(body.longitude) : null;
+
+    const updated = await prisma.store.update({ where: { id }, data });
+    res.json(updated);
+  } catch (e) {
+    console.error("PUT /stores/:id", e);
+    res.status(500).json({message:"Sunucu hatası"});
+  }
+});
+
 
 /** Sil */
 router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {

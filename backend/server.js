@@ -3,7 +3,6 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
-// Route'lar�� import et
 import authRoutes from "./routes/auth.js";
 import seedRoutes from "./routes/seed.js";
 import wipeRoutes from "./routes/wipe.js";
@@ -65,7 +64,9 @@ app.use("/api", stationsNestedRouter);
 
 app.use("/api/biocides", biocidesRouter);
 
+app.use("/api/visit", visitsRouter);
 app.use("/api/visits", visitsRouter);
+
 app.use("/api/ek1", ek1Router);
 
 const PORT = process.env.PORT || 5000;

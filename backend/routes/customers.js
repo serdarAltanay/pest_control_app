@@ -10,7 +10,9 @@ const prisma = new PrismaClient();
 /** Liste (admin + employee) */
 router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
-    const where = req.user.role === "employee" ? { employeeId: req.user.id } : {};
+    const where =
+      req.user.role === "employee" ? { employeeId: req.user.id } : {};
+
     const customers = await prisma.customer.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -29,9 +31,10 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         lastSeenAt: true,
         updatedAt: true,
         createdAt: true,
-        employee: { select: { id: true, fullName: true } }, // stores YOK (liste için)
+        employee: { select: { id: true, fullName: true } },
       },
     });
+
     res.json(customers);
   } catch (err) {
     console.error("GET /customers error:", err);
@@ -61,9 +64,6 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         gsm: true,
         address: true,
         city: true,
-        pestType: true,
-        areaM2: true,
-        placeType: true,
         showBalance: true,
         visitPeriod: true,
         lastLoginAt: true,
@@ -71,12 +71,21 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         createdAt: true,
         updatedAt: true,
         employee: { select: { id: true, fullName: true, email: true } },
-        // Detayda mağazalar ve sayısı
+        // Mağazalar: placeType / areaM2 artık STORE'da
         stores: {
           select: {
-            id: true, name: true, code: true, city: true, address: true,
-            phone: true, manager: true, isActive: true,
-            latitude: true, longitude: true,
+            id: true,
+            name: true,
+            code: true,
+            city: true,
+            address: true,
+            phone: true,
+            manager: true,
+            isActive: true,
+            latitude: true,
+            longitude: true,
+            placeType: true,
+            areaM2: true,
             createdAt: true,
           },
           orderBy: { createdAt: "desc" },
@@ -93,7 +102,7 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   }
 });
 
-/** Ekle (admin) */
+/** Ekle (admin) — NOT: pestType/placeType/areaM2 artık Customer'a yazılmıyor */
 router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const {
@@ -109,9 +118,6 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
       taxNumber,
       address,
       city,
-      pestType,
-      areaM2,
-      placeType,
       showBalance,
       visitPeriod,
       employeeId,
@@ -144,9 +150,6 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
         taxNumber: taxNumber || null,
         address: address || null,
         city: city || null,
-        pestType: pestType || "BELIRTILMEDI",
-        areaM2: areaM2 ? parseFloat(areaM2) : null,
-        placeType: placeType || "BELIRTILMEDI",
         showBalance: !!showBalance,
         visitPeriod: visitPeriod || "BELIRTILMEDI",
         employeeId: employeeId || null,
@@ -160,7 +163,7 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Güncelle (admin) */
+/** Güncelle (admin) — NOT: pestType/placeType/areaM2 Customer'da yok */
 router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -179,9 +182,6 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
       taxNumber,
       address,
       city,
-      pestType,
-      areaM2,
-      placeType,
       showBalance,
       visitPeriod,
       employeeId,
@@ -208,9 +208,6 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     if (taxNumber !== undefined) data.taxNumber = taxNumber || null;
     if (address !== undefined) data.address = address || null;
     if (city !== undefined) data.city = city || null;
-    if (pestType !== undefined) data.pestType = pestType || "BELIRTILMEDI";
-    if (areaM2 !== undefined) data.areaM2 = areaM2 ? parseFloat(areaM2) : null;
-    if (placeType !== undefined) data.placeType = placeType || "BELIRTILMEDI";
     if (showBalance !== undefined) data.showBalance = !!showBalance;
     if (visitPeriod !== undefined) data.visitPeriod = visitPeriod || "BELIRTILMEDI";
     if (employeeId !== undefined) data.employeeId = employeeId || null;
@@ -225,7 +222,7 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Sil (admin) — profil görseli kaldırma upload modülünde ele alınacak */
+/** Sil (admin) */
 router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
