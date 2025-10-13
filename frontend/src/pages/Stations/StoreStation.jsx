@@ -1,6 +1,5 @@
-// src/pages/stores/StoreStations.jsx
 import { useEffect, useState, useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -15,20 +14,34 @@ const TYPE_TR = {
   GUVE_TUZAGI: "Güve Tuzağı",
 };
 
-export default function StoreStations({ openMode }) {
-  const { storeId, stationId } = useParams();
+const ACT_PATH = {
+  FARE_YEMLEME: "rodent-bait",
+  CANLI_YAKALAMA: "live-catch",
+  ELEKTRIKLI_SINEK_TUTUCU: "efk",
+  BOCEK_MONITOR: "insect-monitor",
+  GUVE_TUZAGI: "moth-trap",
+};
+
+export default function StoreStations() {
+
+  const navigate = useNavigate();
+
+  const { storeId } = useParams();
 
   const [store, setStore] = useState(null);
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editStation, setEditStation] = useState(null);
+  // YENİ ekleme modalı
+  const [createOpen, setCreateOpen] = useState(false);
+
+  // En son ziyaret id (aktivasyon sayfasını doğrudan ziyaret bağlamında açmak için)
+  const [lastVisitId, setLastVisitId] = useState(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
 
-    // 1) Mağazayı getir (tek başına, hata olsa bile UI'yı bloklamayalım)
+    // 1) Mağaza
     try {
       const { data: s } = await api.get(`/stores/${storeId}`);
       let customerTitle = s.customer?.title || s.customerTitle || "";
@@ -36,7 +49,7 @@ export default function StoreStations({ openMode }) {
         try {
           const { data: c } = await api.get(`/customers/${s.customerId}`);
           customerTitle = c?.title || "";
-        } catch {/* sessiz */}
+        } catch {}
       }
       setStore({ ...s, customerTitle });
     } catch (e) {
@@ -44,14 +57,13 @@ export default function StoreStations({ openMode }) {
       setStore(null);
     }
 
-    // 2) İstasyon listesi – farklı backend'lere uyum için fallback
+    // 2) İstasyonlar
     try {
       let list = [];
       try {
         const { data } = await api.get(`/stations/store/${storeId}`);
         list = data;
-      } catch (e1) {
-        // örn: /stores/:id/stations kullanılıyordur
+      } catch {
         const { data } = await api.get(`/stores/${storeId}/stations`);
         list = data;
       }
@@ -65,40 +77,38 @@ export default function StoreStations({ openMode }) {
       }
     }
 
+    // 3) Son ziyaret (varsa)
+    try {
+      let visits = [];
+      try {
+        const { data } = await api.get(`/visits/store/${storeId}`);
+        visits = data;
+      } catch {
+        const { data } = await api.get(`/stores/${storeId}/visits`);
+        visits = data;
+      }
+      if (Array.isArray(visits) && visits.length) {
+        visits.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setLastVisitId(visits[0].id);
+      } else {
+        setLastVisitId(null);
+      }
+    } catch {
+      setLastVisitId(null);
+    }
+
     setLoading(false);
   }, [storeId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  useEffect(() => {
-    if (openMode === "create") { setEditStation(null); setModalOpen(true); }
-  }, [openMode]);
-
-  useEffect(() => {
-    if (openMode === "edit" && stationId) {
-      (async () => {
-        try {
-          const { data } = await api.get(`/stations/${stationId}`);
-          setEditStation(data);
-          setModalOpen(true);
-        } catch {
-          toast.error("İstasyon bulunamadı");
-        }
-      })();
-    }
-  }, [openMode, stationId]);
-
   const del = async (id) => {
     if (!window.confirm("Bu istasyonu silmek istiyor musunuz?")) return;
     const prev = stations;
-    setStations((arr) => arr.filter((x) => x.id !== id));
+    setStations(arr => arr.filter(x => x.id !== id));
     try {
-      // fallback: bazı backend'ler /stores/:sid/stations/:id ister
-      try {
-        await api.delete(`/stations/${id}`);
-      } catch {
-        await api.delete(`/stores/${storeId}/stations/${id}`);
-      }
+      try { await api.delete(`/stations/${id}`); }
+      catch { await api.delete(`/stores/${storeId}/stations/${id}`); }
       toast.success("İstasyon silindi");
     } catch (e) {
       setStations(prev);
@@ -111,7 +121,20 @@ export default function StoreStations({ openMode }) {
     window.open(`/qr/preview/${encodeURIComponent(code)}`, "_blank", "noopener");
   };
 
-  const handleSaved = () => { setModalOpen(false); setEditStation(null); fetchAll(); };
+  const handleCreated = () => { setCreateOpen(false); fetchAll(); };
+
+  // Aktivasyon sayfasına DOĞRUDAN giden rota (varsa son ziyaretle)
+const activationHref = (station) => {
+  const slug = ACT_PATH[station.type];
+  if (!slug) return null;
+  const base = `/admin/stores/${storeId}/stations/${station.id}/activation/${slug}`;
+  const withVisit = lastVisitId
+    ? `/admin/stores/${storeId}/visits/${lastVisitId}/stations/${station.id}/activation/${slug}`
+    : base;
+  // console.log("ACT PATH ->", withVisit); // bir kere bak
+  return withVisit;
+};
+
 
   return (
     <Layout>
@@ -134,9 +157,7 @@ export default function StoreStations({ openMode }) {
           </div>
 
           <div className="head-actions">
-            <button className="btn primary" onClick={() => { setEditStation(null); setModalOpen(true); }}>
-              + İstasyon Ekle
-            </button>
+            <button className="btn primary" onClick={() => setCreateOpen(true)}>+ İstasyon Ekle</button>
             <Link className="btn ghost" to={`/admin/stores/${storeId}`}>Mağaza Sayfası</Link>
           </div>
         </div>
@@ -148,12 +169,20 @@ export default function StoreStations({ openMode }) {
             <div className="card new-card">
               <div className="title">Yeni İstasyon Oluşturun</div>
               <p>Yeni bir istasyon oluşturun, barkod &amp; QR bilgilerinin benzersiz olmasına dikkat edin.</p>
-              <button className="btn primary" onClick={() => { setEditStation(null); setModalOpen(true); }}>Ekle</button>
+              <button className="btn primary" onClick={() => setCreateOpen(true)}>Ekle</button>
             </div>
 
             {stations.map((st) => (
               <div key={st.id} className="card station-card">
-                <div className="card-title">{TYPE_TR[st.type] || st.type}</div>
+                <div className="card-title">
+                  <Link
+                    to={`/admin/stations/${st.id}`}
+                    className="link"
+                    onClick={(e) => e.stopPropagation()}   // << ekle
+                  >
+                    {TYPE_TR[st.type] || st.type}
+                  </Link>
+                </div>
                 <div className="kv">
                   <div><b>Adı:</b> <span>{st.name || "—"}</span></div>
                   <div className="qr">
@@ -166,24 +195,57 @@ export default function StoreStations({ openMode }) {
                   </div>
                   <div><b>Tarih:</b> <span>{st.createdAt ? new Date(st.createdAt).toLocaleString("tr-TR") : "—"}</span></div>
                 </div>
-                <div className="actions">
+
+                <div className="actions" onClick={(e)=> e.stopPropagation()}>
                   <button className="btn indigo" onClick={() => qrPreview(st.code)}>QR Önizle</button>
-                  <button className="btn warn" onClick={() => { setEditStation(st); setModalOpen(true); }}>Güncelle</button>
+
+                  {/* GÜNCELLE => StationDetail + modal */}
+                  <Link
+                    className="btn warn"
+                    to={`/admin/stations/${st.id}/edit`}
+                    title="Güncelle"
+                  >
+                    Güncelle
+                  </Link>
+
                   <button className="btn danger" onClick={() => del(st.id)}>Sil</button>
+
+                  {/* AKTİVASYON: doğrudan oluşturma sayfası */}
+                  {ACT_PATH[st.type] ? (
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const slug = ACT_PATH[st.type];
+                        if (!slug) return toast.error("Bu istasyon tipi için aktivasyon sayfası yok.");
+                        navigate(`/admin/stores/${storeId}/stations/${st.id}/activation/${slug}`);
+                      }}
+                      title="Aktivasyon Ekle"
+                    >
+                      Aktivasyon
+                    </button>
+                  ) : (
+                    <button className="btn" disabled>Aktivasyon</button>
+                  )}
+
                 </div>
               </div>
             ))}
 
-            {stations.length === 0 && <div className="card empty-wide">Bu mağazaya ait istasyon bulunmuyor.</div>}
+            {stations.length === 0 && (
+              <div className="card empty-wide">Bu mağazaya ait istasyon bulunmuyor.</div>
+            )}
           </div>
         )}
 
-        {modalOpen && (
+        {createOpen && (
           <StationModal
             storeId={Number(storeId)}
-            initial={editStation}
-            onClose={() => setModalOpen(false)}
-            onSaved={handleSaved}
+            initial={null}
+            onClose={() => setCreateOpen(false)}
+            onSaved={handleCreated}
           />
         )}
       </div>

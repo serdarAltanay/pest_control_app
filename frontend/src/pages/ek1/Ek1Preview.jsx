@@ -72,12 +72,63 @@ export default function Ek1Preview() {
     } finally { setSigning(false); }
   };
 
+// Ek1Preview.jsx (içine ekle)
+const handlePrintOnlyPage = () => {
+  const root = document.querySelector(".ek1-print");
+  const page = root?.querySelector(".page");
+  if (!page) { window.print(); return; }
+
+  const printWin = window.open("", "_blank", "width=900,height=1200");
+  if (!printWin) return;
+
+  const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+    .map((el) => el.outerHTML)
+    .join("\n");
+
+  printWin.document.open();
+  printWin.document.write(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>EK-1 — ${store?.name ?? ""} — ${dateTR}</title>
+        ${styles}
+        <style>
+          @page { size: A4; margin: 10mm; }
+          html, body { background:#fff !important; }
+          .page.A4 { box-shadow: none !important; border: 0 !important; margin: 0 !important; }
+          .no-print { display: none !important; }
+
+          /* Ek güvence: logo boyutlarını baskıda kilitle */
+          .ek1-print .doc-head { display:grid; grid-template-columns:60px 1fr 60px; align-items:center; }
+          .ek1-print .doc-head img { width:60px !important; height:60px !important; object-fit:contain; }
+          .ek1-print .doc-head .qr { justify-self:end; }
+        </style>
+      </head>
+      <body>
+        <div class="ek1-print">
+          ${page.outerHTML}
+        </div>
+      </body>
+    </html>
+  `);
+  printWin.document.close();
+
+  printWin.onload = () => {
+    printWin.focus();
+    printWin.print();
+    setTimeout(() => printWin.close(), 300);
+  };
+};
+
+
+
   return (
     <Layout>
       <div className="ek1-print">
         <div className="toolbar no-print">
           <Link className="btn ghost" to={`/admin/stores/${storeId}/ek1`}>Ziyaretlere Dön</Link>
-          <button className="btn" onClick={() => window.print()}>YAZDIR</button>
+          <button className="btn" onClick={handlePrintOnlyPage}>YAZDIR</button>
           {!report?.providerSignedAt && (
             <button className="btn primary" onClick={handleProviderSign} disabled={signing}>
               {signing ? "İmzalanıyor..." : "Dijital İmzala"}

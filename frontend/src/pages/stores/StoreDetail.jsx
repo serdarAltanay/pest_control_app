@@ -16,6 +16,13 @@ const TYPE_TR = {
   BOCEK_MONITOR: "Böcek Monitörü",
   GUVE_TUZAGI: "Güve Tuzağı",
 };
+const ACT_PATH = {
+  FARE_YEMLEME: "rodent-bait",
+  CANLI_YAKALAMA: "live-catch",
+  ELEKTRIKLI_SINEK_TUTUCU: "efk",
+  BOCEK_MONITOR: "insect-monitor",
+  GUVE_TUZAGI: "moth-trap",
+};
 
 const VISIT_TYPE_TR = {
   PERIYODIK: "Periyodik Ziyaret",
@@ -38,6 +45,7 @@ export default function StoreDetail() {
   const [customer, setCustomer] = useState(null);
   const [visits, setVisits] = useState([]);
   const [metrics, setMetrics] = useState({}); // {TYPE: count}
+  const [stations, setStations] = useState([]); // << YENİ
 
   // Mağaza + müşteri
   useEffect(() => {
@@ -53,6 +61,25 @@ export default function StoreDetail() {
         }
       } catch (e) {
         toast.error(e?.response?.data?.message || "Mağaza bilgisi alınamadı");
+      }
+    })();
+  }, [storeId]);
+
+  // İstasyonlar (liste)
+  useEffect(() => {
+    (async () => {
+      try {
+        let list = [];
+        try {
+          const { data } = await api.get(`/stations/store/${storeId}`);
+          list = data;
+        } catch {
+          const { data } = await api.get(`/stores/${storeId}/stations`);
+          list = data;
+        }
+        setStations(Array.isArray(list) ? list : []);
+      } catch (e) {
+        // sessiz düş
       }
     })();
   }, [storeId]);
@@ -193,6 +220,107 @@ export default function StoreDetail() {
             </div>
           </section>
         </div>
+
+        {/* YENİ: KURULU İSTASYONLAR (bilgi ile ziyaretler arasına) */}
+        <section className="card">
+          <div className="card-title">
+            Kurulu İstasyonlar {stations.length ? `(${stations.length})` : ""}
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+              <Link className="btn" to={`/admin/stores/${storeId}/stations`}>Tümünü Yönet</Link>
+              <Link className="btn primary" to={`/admin/stores/${storeId}/stations/new`}>+ İstasyon Ekle</Link>
+            </div>
+          </div>
+
+          {stations.length === 0 ? (
+            <div className="empty">Bu mağazada henüz istasyon yok.</div>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Kod</th>
+                  <th>Ad</th>
+                  <th>Tür</th>
+                  <th>Durum</th>
+                  <th>Aktivite</th>
+                  <th>İşlem</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stations.map((s) => (
+                  <tr
+                    key={s.id}
+                    className="row-click"
+                    onClick={() => navigate(`/admin/stations/${s.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter") navigate(`/admin/stations/${s.id}`); }}
+                    title="Detay"
+                  >
+                    <td>{s.code}</td>
+                    <td className="strong">{s.name}</td>
+                    <td>{TYPE_TR[s.type] || s.type}</td>
+                    <td>
+                      <span className={`badge ${s.isActive ? "ok" : "no"}`}>
+                        {s.isActive ? "Aktif" : "Pasif"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="badge ghost" title="Sonraki aşamada eklenecek">—</span>
+                    </td>
+                    <td className="actions">
+                      {/* DÜZENLE → direkt edit rotası, bubbling engelleniyor */}
+                      <Link
+                        className="btn"
+                        to={`/admin/stations/${s.id}/edit`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate(`/admin/stations/${s.id}/edit`);
+                        }}
+                        title="Düzenle"
+                      >
+                        Düzenle
+                      </Link>
+
+                      {/* Liste butonu da satır tıklamasını tetiklemesin */}
+                      <Link
+                        className="btn ghost"
+                        to={`/admin/stores/${storeId}/stations`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // preventDefault gerekmez; Link kendi rotasına gider
+                        }}
+                      >
+                        Liste
+                      </Link>
+
+                      {ACT_PATH[s.type] ? (
+                        <button
+                          type="button"
+                          className="btn primary"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation(); // satırın onClick’ini iptal et
+                            const slug = ACT_PATH[s.type];
+                            navigate(`/admin/stores/${storeId}/stations/${s.id}/activation/${slug}`);
+                          }}
+                          title="Aktivasyon Ekle"
+                        >
+                          Aktivasyon
+                        </button>
+                      ) : (
+                        <button className="btn" disabled>Aktivasyon</button>
+                      )}
+                    </td>
+
+
+                  </tr>
+                ))}
+              </tbody>
+
+            </table>
+          )}
+        </section>
 
         {/* ALT GRID */}
         <div className="grid">

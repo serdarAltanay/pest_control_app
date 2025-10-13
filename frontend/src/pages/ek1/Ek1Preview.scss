@@ -25,8 +25,14 @@
 
   .note { border:1px solid #111; padding:8px; margin-top:10px; font-size:12px; }
 
-  @media print {
-    .no-print { display:none !important; }
-    .page.A4 { box-shadow:none; margin:0; padding:0; width:auto; min-height:auto; }
+/* Sadece print anında çalışır */
+@media print {
+  .ek1-print .doc-head img {
+    width: 60px !important;
+    height: 60px !important;
+    object-fit: contain;
   }
 }
+
+}
+

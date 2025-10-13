@@ -22,6 +22,15 @@ import StoreEk1 from "./pages/ek1/StoreEk1.jsx";
 import VisitEk1 from "./pages/ek1/VisitEk1.jsx";
 import Ek1Preview from "./pages/ek1/Ek1Preview.jsx";
 
+import RodentBaitActivation from "./pages/Stations/activations/RodentBaitActivation.jsx";
+import LiveCatchActivation from "./pages/Stations/activations/LiveCatchActivation.jsx";
+import EFKActivation from "./pages/Stations/activations/EfkActivation.jsx";
+import InsectMonitorActivation from "./pages/Stations/activations/InsectMonitorActivation.jsx";
+import MothTrapActivation from "./pages/Stations/activations/MothTrapActivation.jsx";
+
+import StationDetail from "./pages/Stations/StationDetail.jsx";
+
+
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
 import 'leaflet/dist/leaflet.css';
@@ -155,14 +164,6 @@ function App() {
           }
         />
         <Route
-          path="/admin/stations/:stationId/edit"
-          element={
-            <PrivateRoute allowedRoles={['admin', 'employee']}>
-              <StoreStations openMode="edit"  />
-            </PrivateRoute>
-          }
-        />
-        <Route
           path="/admin/biocides"
           element={
             <PrivateRoute allowedRoles={['admin', 'employee']}>
@@ -194,6 +195,105 @@ function App() {
             </PrivateRoute>
           }
         />
+        {/* --- İSTASYON AKTİVASYON SAYFALARI --- */}
+        <Route
+          path="/admin/stores/:storeId/stations/:stationId/activation/rodent-bait"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <RodentBaitActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/stations/:stationId/activation/live-catch"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <LiveCatchActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/stations/:stationId/activation/efk"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <EFKActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/stations/:stationId/activation/insect-monitor"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <InsectMonitorActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/stations/:stationId/activation/moth-trap"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <MothTrapActivation />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Ziyaret bağlamıyla kullanmak istersen bu beş rota da hazır dursun */}
+        <Route
+          path="/admin/stores/:storeId/visits/:visitId/stations/:stationId/activation/rodent-bait"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <RodentBaitActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/visits/:visitId/stations/:stationId/activation/live-catch"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <LiveCatchActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/visits/:visitId/stations/:stationId/activation/efk"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <EFKActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/visits/:visitId/stations/:stationId/activation/insect-monitor"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <InsectMonitorActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/visits/:visitId/stations/:stationId/activation/moth-trap"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <MothTrapActivation />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stations/:stationId"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <StationDetail />
+            </PrivateRoute>
+          }
+        />
+         <Route
+            path="/admin/stations/:stationId/edit"
+            element={
+              <PrivateRoute allowedRoles={['admin', 'employee']}>
+                <StationDetail openEdit />
+              </PrivateRoute>
+            }
+          />
       </Routes>
     </BrowserRouter>
     </ProfileProvider>

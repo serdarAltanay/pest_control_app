@@ -75,6 +75,66 @@ enum ApplicationMethod {
   PULVERİZE
 }
 
+enum RiskLevel {
+  RISK_YOK
+  DUSUK
+  ORTA
+  YUKSEK
+}
+
+model StationActivation {
+  id Int @id @default(autoincrement())
+
+  storeId Int
+  store   Store @relation("StoreActivations", fields: [storeId], references: [id], onDelete: Cascade)
+
+  stationId Int
+  station   Station @relation("StationActivations", fields: [stationId], references: [id], onDelete: Cascade)
+
+  visitId Int?
+  visit   Visit? @relation("VisitActivations", fields: [visitId], references: [id], onDelete: SetNull)
+
+  type       StationType
+  observedAt DateTime    @default(now())
+
+  aktiviteVar Boolean?
+  risk        RiskLevel @default(RISK_YOK)
+  notes       String?
+
+  deformeYem          Boolean?
+  yemDegisti          Boolean?
+  deformeMonitor      Boolean?
+  monitorDegisti      Boolean?
+  ulasilamayanMonitor Boolean?
+  yapiskanDegisti     Boolean?
+
+  sariBantDegisim Boolean?
+  arizaliEFK      Boolean?
+  tamirdeEFK      Boolean?
+  uvLambaDegisim  Boolean?
+  uvLambaAriza    Boolean?
+  karasinek       Int?     @default(0)
+  sivrisinek      Int?     @default(0)
+  diger           Int?     @default(0)
+
+  feromonDegisti    Boolean?
+  deformeTuzak      Boolean?
+  tuzakDegisti      Boolean?
+  ulasilamayanTuzak Boolean?
+  guve              Int?     @default(0)
+
+  hedefZararliSayisi Int? @default(0)
+
+  data      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stationId, observedAt])
+  @@index([storeId, observedAt])
+  @@index([storeId, type, observedAt])
+  @@index([storeId, risk, observedAt])
+}
+
 model ProviderProfile {
   id                Int      @id @default(1)
   companyName       String
@@ -192,6 +252,8 @@ model Store {
   stations Station[] @relation("StoreStations")
   Visit    Visit[]
 
+  activations StationActivation[] @relation("StoreActivations")
+
   @@unique([customerId, code], map: "store_customer_code_unique")
 }
 
@@ -205,6 +267,8 @@ model Station {
   isActive  Boolean     @default(true)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+
+  activations StationActivation[] @relation("StationActivations")
 
   @@unique([storeId, code])
 }
@@ -222,8 +286,11 @@ model Visit {
   employees   Json?
   ek1Lines    Ek1Line[]
   ek1         Ek1Report?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+
+  activations StationActivation[] @relation("VisitActivations")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Ek1Report {

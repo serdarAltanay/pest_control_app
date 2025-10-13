@@ -171,7 +171,7 @@ export const stationsNestedRouter = Router();
 
 // GET /api/stores/:storeId/stations
 stationsNestedRouter.get(
-  "/stores/:storeId/stations",
+  "/:storeId/stations",
   auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
@@ -191,7 +191,7 @@ stationsNestedRouter.get(
 
 // GET /api/stores/:storeId/stations/metrics
 stationsNestedRouter.get(
-  "/stores/:storeId/stations/metrics",
+  "/:storeId/stations/metrics",
   auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
@@ -218,7 +218,7 @@ stationsNestedRouter.get(
 
 // POST /api/stores/:storeId/stations
 stationsNestedRouter.post(
-  "/stores/:storeId/stations",
+  "/:storeId/stations",
   auth, roleCheck(["admin"]),
   async (req, res) => {
     try {
@@ -250,7 +250,7 @@ stationsNestedRouter.post(
 
 // PUT /api/stores/:storeId/stations/:stationId
 stationsNestedRouter.put(
-  "/stores/:storeId/stations/:stationId",
+  "/:storeId/stations/:stationId",
   auth, roleCheck(["admin"]),
   async (req, res) => {
     try {
@@ -274,7 +274,7 @@ stationsNestedRouter.put(
 
 // DELETE /api/stores/:storeId/stations/:stationId
 stationsNestedRouter.delete(
-  "/stores/:storeId/stations/:stationId",
+  "/:storeId/stations/:stationId",
   auth, roleCheck(["admin"]),
   async (req, res) => {
     try {

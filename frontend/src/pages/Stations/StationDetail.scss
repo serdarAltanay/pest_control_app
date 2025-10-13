@@ -1,0 +1,103 @@
+@import "../../styles/variables";
+
+// Renkler senin değişkenlerinden gelsin
+$brand: if(global-variable-exists(color-primary), $color-primary, #0077b6);
+$ink:   if(global-variable-exists(color-dark), $color-dark, #2d3436);
+$line:  #e5e7eb;
+$muted: #64748b;
+$bg:    #fff;
+
+$risk-none:   #64748b; // risk yok (slate)
+$risk-low:    if(global-variable-exists(color-secondary), $color-secondary, #22c55e); // düşük
+$risk-medium: #f59e0b; // orta (amber)
+$risk-high:   #ef4444; // yüksek (red)
+
+
+.station-detail-page {
+  padding: 16px;
+
+  .head {
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; margin-bottom: 14px;
+    .title {
+      h1 { margin:0; font-size:22px; font-weight:800; color:$ink; }
+      .sub { margin-top:4px; color:$muted; font-size:13px;
+        .link { text-decoration: none; color: $brand; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .muted { color: $muted; }
+      }
+    }
+    .head-actions {
+      display:flex; gap:8px;
+      .btn { height:32px; padding:0 12px; border:1px solid $line; border-radius:$border-radius; background:#fff; font-weight:700; cursor:pointer;
+        &.primary{ background:$brand; border-color:$brand; color:#fff; }
+        &.warn{ background:$color-secondary; border-color:$color-secondary; color:#fff; }
+        &.danger{ background:#ef4444; border-color:#ef4444; color:#fff; }
+        &.ghost{ background:#fff; }
+      }
+    }
+  }
+
+  .card {
+    background:$bg; border:1px solid $line; border-radius:12px; padding:14px; margin-bottom:12px;
+
+    .card-title { font-weight:800; color:$ink; border-left:3px solid $brand; padding-left:8px; margin-bottom:8px; }
+    .empty { padding:12px; border:1px dashed $line; border-radius:10px; background:#fafafa; color:$muted; font-size:13px; }
+  }
+
+  .info-card .kv {
+    display:grid; grid-template-columns: repeat(3,1fr); gap:12px;
+    > div { background:#fafafa; border:1px solid #edf2f7; border-radius:10px; padding:10px 12px;
+      b{ color:#64748b; font-weight:700; font-size:13px; }
+      span{ color:#111; font-size:14px; }
+    }
+    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; color:#fff;
+      &.ok{ background:#10b981; } &.no{ background:#9ca3af; }
+    }
+  }
+
+  .table {
+    width:100%; border-collapse: collapse; font-size:14px;
+    thead th{ text-align:left; background:#f8fafc; padding:10px 12px; border-bottom:1px solid #edf2f7; white-space:nowrap; color:#334155; font-weight:700; }
+    tbody td{ padding:10px 12px; border-bottom:1px solid #f1f5f9; white-space:nowrap; vertical-align:middle; }
+    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700;
+      &.ok{ background:#10b981; color:#fff; } &.ghost{ background:#eef2f7; color:#334155; }
+    }
+    .chip{
+      display:inline-block; padding:2px 8px; border-radius:8px;
+      font-size:12px; font-weight:700; line-height:1.6;
+
+      // RİSK RENKLERİ
+      &.risk-risk_yok{ background:$risk-none;   color:#fff; }
+      &.risk-dusuk{    background:$risk-low;    color:#fff; }
+      &.risk-orta{     background:$risk-medium; color:#111; } // kontrast için koyu yazı
+      &.risk-yuksek{   background:$risk-high;   color:#fff; }
+    }
+    .row-actions .btn{ height:28px; padding:0 10px; border:1px solid $line; border-radius:8px; background:#fff; font-weight:700; cursor:pointer;
+      &.danger{ background:#ef4444; border-color:#ef4444; color:#fff; }
+    }
+  }
+
+  /* Grafik kartı */
+  .charts-card {
+    .charts-head{
+      display:flex; align-items:center; justify-content:space-between;
+      .toolbar {
+        display:flex; gap:10px; align-items:center;
+        label {
+          display:flex; align-items:center; gap:8px; font-weight:600; color:$ink;
+          select{
+            height:32px; border:1px solid $line; border-radius:8px; background:#fff; padding:0 10px; cursor:pointer;
+          }
+        }
+      }
+    }
+    .chart-block{
+      margin-top:12px;
+      h4{ margin:0 0 8px 0; font-size:15px; font-weight:800; color:$ink; }
+    }
+  }
+}
+
+@media (max-width: 1024px){
+  .station-detail-page .info-card .kv { grid-template-columns: 1fr; }
+}

@@ -32,10 +32,9 @@ export default function VisitEk1() {
       setBiocides(Array.isArray(data) ? data : []);
     } catch {}
     try {
-  const { data } = await api.get(`/ek1/visit/${visitId}/lines`);
-  setLines(Array.isArray(data) ? data : []);
-  } catch {
-}
+      const { data } = await api.get(`/ek1/visit/${visitId}/lines`);
+      setLines(Array.isArray(data) ? data : []);
+    } catch {}
   };
 
   useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, [visitId]);
@@ -45,7 +44,7 @@ export default function VisitEk1() {
     if (!form.biosidalId || !form.amount) return toast.error("Ürün ve miktar gerekli.");
     setSaving(true);
     try {
-      await api.post(`/ek1/visit/${visitId}/ek1/lines`, {
+      await api.post(`/ek1/visit/${visitId}/lines`, {
         biosidalId: Number(form.biosidalId),
         method: form.method,
         amount: Number(form.amount),
@@ -63,7 +62,7 @@ export default function VisitEk1() {
   const removeLine = async (lineId) => {
     if (!window.confirm("Bu satırı silmek istiyor musunuz?")) return;
     try {
-      await api.delete(`ek1/visit/${visitId}/ek1/lines/${lineId}`);
+      await api.delete(`/ek1/visit/${visitId}/lines/${lineId}`);
       setLines((l) => l.filter((x) => x.id !== lineId));
       toast.success("Silindi");
     } catch (e2) {
@@ -74,7 +73,7 @@ export default function VisitEk1() {
   const submitForApproval = async () => {
     setSubmitting(true);
     try {
-      await api.post(`/visits/${visitId}/ek1/submit`);
+      await api.post(`/ek1/visit/${visitId}/submit`);
       toast.success("Onaya gönderildi");
       navigate(`/admin/stores/${storeId}/visits/${visitId}/preview`);
     } catch (e2) {

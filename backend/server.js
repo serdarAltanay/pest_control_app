@@ -25,6 +25,9 @@ import biocidesRouter from "./routes/Biocides.js";
 import visitsRouter from "./routes/visits.js";
 import ek1Router from "./routes/ek1.js";
 
+import  activationsRouter  from "./routes/activations.js";
+import  analyticsRouter  from "./routes/analytics.js";
+
 
 dotenv.config();
 
@@ -59,6 +62,9 @@ app.use("/api/presence", presenceRouter);
 
 app.use("/api/stores", storesRouter);
 
+app.use("/api/activations", activationsRouter);
+app.use("/api/analytics", analyticsRouter);
+
 app.use("/api/stations", stationsRouter);
 app.use("/api", stationsNestedRouter);
 
@@ -68,6 +74,8 @@ app.use("/api/visit", visitsRouter);
 app.use("/api/visits", visitsRouter);
 
 app.use("/api/ek1", ek1Router);
+
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server ${PORT} portunda açıldı`));
