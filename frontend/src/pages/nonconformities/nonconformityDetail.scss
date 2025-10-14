@@ -1,0 +1,105 @@
+.ncr-detail-page {
+  .page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+
+    .sub { color: #64748b; margin-top: 4px; }
+    .head-actions { display: flex; gap: 8px; }
+  }
+
+  /* ---- TABLOMSU BİLGİLER ---- */
+  .meta-card {
+    .card-title { margin-bottom: 10px; }
+
+    .kv-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden; /* köşe yuvarlakları için */
+
+      th, td {
+        padding: 12px 14px;
+        vertical-align: top;
+      }
+
+      th {
+        width: 240px;
+        background: #f8fafc;
+        color: #475569;
+        text-align: left;
+        font-weight: 600;
+        border-right: 1px solid #e2e8f0;
+      }
+
+      tr + tr th, tr + tr td { border-top: 1px solid #e2e8f0; }
+
+      td { color: #0f172a; }
+
+      .notes-row td {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    }
+  }
+
+  /* ---- GÖRSEL BLOĞU ---- */
+  .image-card {
+    .card-title { margin-bottom: 8px; }
+
+    .image-wrap {
+      display: block;
+      max-width: 840px;
+      margin: 0 auto;          /* ortala */
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f8fafc;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+
+      img { width: 100%; height: auto; display: block; }
+    }
+
+    .empty { text-align: center; color: #64748b; }
+  }
+
+  /* ---- ALTTAKİ BUTONLAR ---- */
+  .action-bar {
+    .actions {
+      display: flex;
+      justify-content: center; /* ortala */
+      gap: 12px;
+      padding-top: 4px;
+    }
+
+    .btn {
+      font-size: 15px;
+      padding: 12px 18px;   /* büyüt */
+      min-width: 140px;
+      border-radius: 10px;
+    }
+  }
+
+  /* Rozetler */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge.ok { background: #dcfce7; color: #166534; }
+  .badge.no { background: #fee2e2; color: #991b1b; }
+}
+
+@media (max-width: 900px) {
+  .ncr-detail-page {
+    .meta-card .kv-table th { width: 180px; }
+    .action-bar .btn { min-width: 120px; }
+  }
+}

@@ -252,7 +252,8 @@ model Store {
   stations Station[] @relation("StoreStations")
   Visit    Visit[]
 
-  activations StationActivation[] @relation("StoreActivations")
+  activations     StationActivation[] @relation("StoreActivations")
+  nonconformities Nonconformity[]
 
   @@unique([customerId, code], map: "store_customer_code_unique")
 }
@@ -271,6 +272,26 @@ model Station {
   activations StationActivation[] @relation("StationActivations")
 
   @@unique([storeId, code])
+}
+
+model Nonconformity {
+  id            Int       @id @default(autoincrement())
+  storeId       Int
+  title         String
+  category      String // "HIJYEN", "YALITIM", "DEPOLAMA", "DIGER"
+  notes         String?
+  image         String? // ör: "uploads/nonconformities/12-tura/efk-...jpg"
+  resolved      Boolean   @default(false)
+  observedAt    DateTime  @default(now()) // formdaki "Tarih"
+  createdAt     DateTime  @default(now())
+  resolvedAt    DateTime?
+  createdById   Int?
+  createdByRole String?
+  createdByName String?
+
+  Store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
 }
 
 model Visit {

@@ -9,7 +9,10 @@ import wipeRoutes from "./routes/wipe.js";
 import customerRoutes from "./routes/customers.js";
 import adminRoutes from "./routes/admin.js";
 import profileRouter from "./routes/profile.js";
+
 import uploadRoutes from "./routes/upload.js";
+import nonconformitiesRoutes from "./routes/nonconformities.js";
+
 import cookieParser from "cookie-parser";
 import employeeRouter from "./routes/employee.js";
 
@@ -55,6 +58,7 @@ app.use("/api/employees", employeeRouter);
 
 app.use("/uploads", express.static("uploads"));
 app.use("/api/upload", uploadRoutes);
+app.use("/api/nonconformities", nonconformitiesRoutes);
 
 app.use("/api/heartbeat", heartbeatRoutes);
 app.use("/api/online", onlineRoutes);
@@ -66,7 +70,7 @@ app.use("/api/activations", activationsRouter);
 app.use("/api/analytics", analyticsRouter);
 
 app.use("/api/stations", stationsRouter);
-app.use("/api", stationsNestedRouter);
+app.use("/api/stores", stationsNestedRouter);
 
 app.use("/api/biocides", biocidesRouter);
 

@@ -1,0 +1,45 @@
+@import "../../styles/variables";
+
+.ncr-page {
+  padding: 16px;
+
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-bottom:12px; }
+  .card-title { font-weight:800; border-left:3px solid #2563eb; padding-left:8px; margin-bottom:12px; }
+
+  .form-grid {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-weight:700; color:#374151; }
+    input, select, textarea { border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; }
+
+    .dropzone {
+      border:2px dashed #e5e7eb; border-radius:10px; padding:14px; display:grid; place-items:center; cursor:pointer;
+      min-height: 140px; text-align:center; color:#64748b;
+      img { max-width: 100%; max-height: 220px; border-radius:8px; }
+      &:hover { background:#fafafa; }
+    }
+
+    .actions { margin-top:6px; }
+    .btn { height:34px; padding:0 12px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; font-weight:700; cursor:pointer; }
+    .btn.primary { background:#ef4444; border-color:#ef4444; color:#fff; }
+    .btn.warn { background:#22c55e; border-color:#22c55e; color:#fff; }
+    .btn.danger { background:#ef4444; border-color:#ef4444; color:#fff; }
+  }
+
+  .table { width:100%; border-collapse: collapse; }
+  .table thead th { text-align:left; background:#f9fafb; padding:10px 12px; border-bottom:1px solid #e5e7eb; font-weight:800; }
+  .table tbody td { padding:10px 12px; border-bottom:1px solid #f3f4f6; vertical-align: middle; }
+  .badge.ok { background:#10b981; color:#fff; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+  .badge.no { background:#ef4444; color:#fff; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+  .row-actions .btn { margin-right:6px; }
+  .notes { max-width: 420px; overflow-wrap:anywhere; }
+  .muted.small { font-size:12px; color:#6b7280; }
+}
+
+.row-link { cursor: pointer; }
+.row-link:hover { background: #f8fafc; } /* hafif hover efekti */
+.link-like { text-decoration: underline; color: inherit; }

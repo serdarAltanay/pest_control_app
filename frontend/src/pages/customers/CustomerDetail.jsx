@@ -26,6 +26,16 @@ export default function CustomerDetail() {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filteredStores = useMemo(() => {
+  const t = query.trim().toLowerCase();
+  if (!t) return stores;
+  return stores.filter((s) =>
+    [s.name, s.code, s.city, s.phone, s.manager]
+      .some((v) => (v ?? "").toString().toLowerCase().includes(t))
+    );
+  }, [query, stores]);
 
   const fetchDetail = async () => {
     try {
@@ -242,6 +252,25 @@ export default function CustomerDetail() {
                 <div className="card-title">Mağazalar</div>
 
                 <div className="store-toolbar">
+                  <div className="search">
+                    <input
+                      type="search"
+                      placeholder="Mağaza ara (ad, kod, şehir, yetkili)…"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                    {query && (
+                      <button
+                        type="button"
+                        className="clear"
+                        aria-label="Temizle"
+                        onClick={() => setQuery("")}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
                   <Link className="btn primary" to={`/admin/customers/${id}/stores/new`}>
                     + Mağaza Ekle
                   </Link>
@@ -249,7 +278,9 @@ export default function CustomerDetail() {
 
                 {stores.length === 0 ? (
                   <div className="empty">Kayıtlı mağaza yok.</div>
-                ) : (
+                ) : filteredStores.length === 0 ? (
+                <div className="empty">Aramanıza uygun mağaza bulunamadı.</div>
+              ):(
                   <div className="store-table-wrap">
                     <table className="store-table">
                       <thead>
@@ -264,7 +295,7 @@ export default function CustomerDetail() {
                         </tr>
                       </thead>
                       <tbody>
-                        {stores.map((s) => (
+                        {filteredStores.map((s) => (
                           <tr
                             key={s.id}
                             className="clickable"

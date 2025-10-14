@@ -30,6 +30,9 @@ import MothTrapActivation from "./pages/Stations/activations/MothTrapActivation.
 
 import StationDetail from "./pages/Stations/StationDetail.jsx";
 
+import StoreNonconformities from "./pages/nonconformities/StoreNonconformities.jsx";
+import NonconformityDetail from "./pages/nonconformities/nonconformityDetail.jsx";
+
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -294,6 +297,22 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/admin/stores/:storeId/nonconformities"
+            element={
+              <PrivateRoute allowedRoles={['admin', 'employee']}>
+                <StoreNonconformities />
+              </PrivateRoute>
+            }
+          />
+          <Route
+          path="/admin/stores/:storeId/nonconformities/:ncrId"
+          element={
+            <PrivateRoute allowedRoles={['admin','employee']}>
+              <NonconformityDetail />
+            </PrivateRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
     </ProfileProvider>
