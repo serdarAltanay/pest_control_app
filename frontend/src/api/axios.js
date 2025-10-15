@@ -1,8 +1,17 @@
 // src/api/axios.js
 import axios from "axios";
 
+// --- Backend origin'i ENV'den al (Vite/CRA) ve /api ekle ---
+const API_ORIGIN =
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_ORIGIN) ||
+  (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_ORIGIN) ||
+  (typeof window !== "undefined" && window.__API_ORIGIN__) || // opsiyonel: index.html'de set edebilirsin
+  "http://localhost:5000";
+
+const API_BASE = `${String(API_ORIGIN).replace(/\/+$/, "")}/api`;
+
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE,          // ⬅️ eskiden "/api" idi
   withCredentials: true,
 });
 
@@ -31,14 +40,15 @@ api.interceptors.response.use(
 
     // Heartbeat 401/403 verirse: refresh deneme, redirect yapma (sessizce geç)
     if (isHeartbeat && (status === 401 || status === 403)) {
-      return Promise.reject(error); // çağıran tarafta zaten try/catch ile yutuyoruz
+      return Promise.reject(error);
     }
 
     // --- Normal refresh akışı ---
     if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const res = await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+        // ⬇️ Global axios ile de aynı BASE'i kullan
+        const res = await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
         const newAccessToken = res.data.accessToken;
         if (!newAccessToken) throw new Error("Refresh döndü ama accessToken yok");
 
@@ -61,5 +71,9 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+if (typeof console !== "undefined") {
+  console.log("[api] baseURL =", api.defaults.baseURL);
+}
 
 export default api;

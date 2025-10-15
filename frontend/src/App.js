@@ -33,6 +33,10 @@ import StationDetail from "./pages/Stations/StationDetail.jsx";
 import StoreNonconformities from "./pages/nonconformities/StoreNonconformities.jsx";
 import NonconformityDetail from "./pages/nonconformities/nonconformityDetail.jsx";
 
+import StoreReports from "./pages/reports/StoreReports.jsx";
+import StoreAnalytics from "./pages/analytics/StoreAnalytics.jsx";
+import ReportDetail from "./pages/reports/ReportDetail.jsx";
+
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -310,6 +314,30 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin','employee']}>
               <NonconformityDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/reports"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <StoreReports />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/analytics"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <StoreAnalytics />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/reports/:reportId"
+          element={
+            <PrivateRoute allowedRoles={['admin','employee']}>
+              <ReportDetail />
             </PrivateRoute>
           }
         />

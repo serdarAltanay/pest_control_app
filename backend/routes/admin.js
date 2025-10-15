@@ -101,6 +101,36 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
+router.get("/:id", auth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Geçersiz id" });
+    }
+
+    const admin = await prisma.admin.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        profileImage: true,   // << avatar yolu
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
+        lastProfileAt: true,
+      },
+    });
+
+    if (!admin) return res.status(404).json({ error: "Kayıt bulunamadı" });
+    res.json(admin);
+  } catch (e) {
+    console.error("GET /admin/:id error:", e);
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
 /** Sil (profil resmi varsa upload modülünde zaten kaldırıyoruz) */
 router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {

@@ -1,0 +1,183 @@
+@import "../../styles/variables";
+
+.report-detail-page {
+  padding: 16px;
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 800;
+      color: $color-dark;
+    }
+
+    .sub {
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 13px;
+
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 1px 6px;
+      }
+    }
+
+    .head-actions {
+      display: flex;
+      gap: 8px;
+
+      .btn {
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform .08s ease, box-shadow .15s ease;
+
+        &:hover { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+        &:active { transform: translateY(1px); }
+        &.ghost { background: #fff; }
+      }
+    }
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: $border-radius;
+    padding: 14px;
+    margin-bottom: 12px;
+
+    .card-title {
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: rgba($color-dark, .92);
+      border-left: 3px solid $color-primary;
+      padding-left: 8px;
+    }
+  }
+
+  /* Üst bilgi tablosu */
+  .meta {
+    .info {
+      width: 100%;
+      border-collapse: collapse;
+
+      th, td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: top;
+        font-size: 14px;
+      }
+
+      th {
+        width: 220px;
+        background: #f8fafc;
+        text-align: left;
+        color: #475569;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      td {
+        color: #111;
+        word-break: break-word;
+      }
+
+      a {
+        color: $color-primary;
+        text-decoration: underline;
+        word-break: break-all;
+      }
+    }
+  }
+
+  /* Önizleme alanı */
+  .viewer {
+    .pdf-view,
+    .img-view {
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+
+    .pdf-view {
+      height: clamp(420px, 70vh, 880px);
+    }
+
+    .img-view {
+      max-height: 70vh;
+      object-fit: contain;
+      display: block;
+    }
+
+    .empty {
+      padding: 14px;
+      border: 1px dashed #e5e7eb;
+      border-radius: 10px;
+      background: #fafafa;
+      color: #64748b;
+      text-align: center;
+
+      .btn {
+        margin-top: 8px;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    }
+  }
+
+  /* Alt buton barı */
+  .actions-bar {
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center; /* ortalı */
+      align-items: center;
+
+      .btn {
+        height: 42px;
+        padding: 0 16px;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform .08s ease, box-shadow .15s ease;
+
+        &:hover { box-shadow: 0 10px 18px rgba(0,0,0,.08); }
+        &:active { transform: translateY(1px); }
+
+        &.danger {
+          background: #ef4444;
+          border-color: #ef4444;
+          color: #fff;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    .head { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .meta .info th { width: 160px; }
+    .actions-bar .actions .btn { height: 38px; padding: 0 14px; }
+  }
+}

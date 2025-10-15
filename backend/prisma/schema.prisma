@@ -255,6 +255,8 @@ model Store {
   activations     StationActivation[] @relation("StoreActivations")
   nonconformities Nonconformity[]
 
+  reports Report[]
+
   @@unique([customerId, code], map: "store_customer_code_unique")
 }
 
@@ -272,6 +274,21 @@ model Station {
   activations StationActivation[] @relation("StationActivations")
 
   @@unique([storeId, code])
+}
+
+model Report {
+  id      Int   @id @default(autoincrement())
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  title      String
+  file       String // ör: "uploads/stores/<slug-id>/reports/rep-...pdf"
+  mime       String? // (opsiyonel) içerik tipi
+  notes      String?
+  uploadedAt DateTime @default(now()) // yüklenme tarihi
+  createdAt  DateTime @default(now()) // kayıt oluşturma
+
+  @@index([storeId, uploadedAt])
 }
 
 model Nonconformity {

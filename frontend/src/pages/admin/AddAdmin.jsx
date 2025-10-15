@@ -1,24 +1,47 @@
-import { useEffect, useState } from "react";
+// src/pages/admin/AddAdmin.jsx
 import api from "../../api/axios";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
+import { useMemo, useState, useEffect } from "react";
 import { getAvatarUrl } from "../../utils/getAssetUrl";
 import "./AddAdmin.scss";
 import "../shared/ModalWithAvatar.scss";
-
-
 
 function EditAdminModal({ admin, onClose, onChanged }) {
   const [fullName, setFullName] = useState(admin.fullName || "");
   const [email, setEmail] = useState(admin.email || "");
   const [password, setPassword] = useState("");
+  const [avatarPath, setAvatarPath] = useState(admin?.profileImage ?? null);
 
-  const img = getAvatarUrl(admin?.profileImage);
+  // Modal açıldığında tekil admin’i tazele (özellikle profileImage için)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await api.get(`/admin/${admin.id}`);
+        if (!alive) return;
+        setFullName(data.fullName || "");
+        setEmail(data.email || "");
+        setAvatarPath(data.profileImage || null);
+      } catch {
+        // sessiz geç
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [admin.id]);
+
+  const img = useMemo(() => getAvatarUrl(avatarPath, { bust: true }), [avatarPath]);
+  console.log(avatarPath)
+  console.log("Avatar URL:", img);
 
   const handleRemoveAvatar = async () => {
     if (!window.confirm("Bu yöneticinin profil fotoğrafını kaldırmak istiyor musunuz?")) return;
     try {
-      await api.delete(`/upload/avatar/admin/${admin.id}`);
+      // Doğru endpoint: body ile role/id gönder
+      await api.delete("/upload/avatar", { data: { role: "admin", id: admin.id } });
+      setAvatarPath(null);
       toast.success("Avatar kaldırıldı");
       onChanged?.(); // listeyi yenile
     } catch (err) {
@@ -43,7 +66,10 @@ function EditAdminModal({ admin, onClose, onChanged }) {
   };
 
   return (
-    <div className="mwav-backdrop" onClick={(e) => e.target.classList.contains("mwav-backdrop") && onClose()}>
+    <div
+      className="mwav-backdrop"
+      onClick={(e) => e.target.classList.contains("mwav-backdrop") && onClose()}
+    >
       <div className="mwav-modal">
         <div className="mwav-header">
           <h3>Yönetici Güncelle</h3>
@@ -53,17 +79,28 @@ function EditAdminModal({ admin, onClose, onChanged }) {
         <form className="mwav-body" onSubmit={handleSave}>
           <div className="mwav-form">
             <label>Ad Soyad *</label>
-            <input value={fullName} onChange={(e)=>setFullName(e.target.value)} required/>
+            <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
 
             <label>E-posta *</label>
-            <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required/>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
 
             <label>Parola (opsiyonel)</label>
-            <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Boş bırakırsan değişmez"/>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Boş bırakırsan değişmez"
+            />
           </div>
 
           <aside className="mwav-aside">
-            <img src={img} alt="avatar" />
+            <img
+              src={img}
+              alt="avatar"
+              onError={(e) => {
+                e.currentTarget.src = "/noavatar.jpg";
+              }}
+            />
             <button type="button" className="mwav-danger" onClick={handleRemoveAvatar}>
               Profil Fotoğrafını Kaldır
             </button>
@@ -81,25 +118,26 @@ function EditAdminModal({ admin, onClose, onChanged }) {
 
 export default function AddAdmin() {
   const [fullName, setFullName] = useState("");
-  const [email, setEmail]       = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [admins, setAdmins]   = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [editing, setEditing] = useState(null); // seçili admin
 
   const ONLINE_MS = 2 * 60 * 1000;
-  const IDLE_MS   = 10 * 60 * 1000;
+  const IDLE_MS = 10 * 60 * 1000;
 
   const getPresence = (lastSeenAt) => {
     if (!lastSeenAt) return { cls: "status-offline", label: "Offline" };
     const diff = Date.now() - new Date(lastSeenAt).getTime();
     if (diff <= ONLINE_MS) return { cls: "status-online", label: "Online" };
-    if (diff <= IDLE_MS)   return { cls: "status-idle",   label: "Idle" };
+    if (diff <= IDLE_MS) return { cls: "status-idle", label: "Idle" };
     return { cls: "status-offline", label: "Offline" };
   };
-  const fmt = (v)=> v ? new Date(v).toLocaleString("tr-TR") : "—";
+
+  const fmt = (v) => (v ? new Date(v).toLocaleString("tr-TR") : "—");
 
   const fetchAdmins = async () => {
     try {
@@ -113,14 +151,18 @@ export default function AddAdmin() {
     }
   };
 
-  useEffect(()=>{ fetchAdmins(); }, []);
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
     try {
       await api.post("/admin/create", { fullName, email, password });
       toast.success("Yönetici eklendi");
-      setFullName(""); setEmail(""); setPassword("");
+      setFullName("");
+      setEmail("");
+      setPassword("");
       fetchAdmins();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Hata");
@@ -147,15 +189,15 @@ export default function AddAdmin() {
           <div className="row">
             <div>
               <label>Ad Soyad *</label>
-              <input value={fullName} onChange={(e)=>setFullName(e.target.value)} required/>
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             </div>
             <div>
               <label>E-posta *</label>
-              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required/>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div>
               <label>Parola *</label>
-              <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required/>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
           </div>
           <button className="primary">Yönetici Ekle</button>
@@ -187,26 +229,49 @@ export default function AddAdmin() {
               </thead>
               <tbody>
                 {admins.length === 0 && !loading ? (
-                  <tr className="empty-row"><td colSpan={8}>Kayıt bulunamadı</td></tr>
-                ) : admins.map((a)=> {
-                  const p = getPresence(a.lastSeenAt);
-                  const initials = (a.fullName||"").split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
-                  return (
-                    <tr key={a.id}>
-                      <td className={`presence ${p.cls}`}><span className="dot"/><span className="presence-label">{p.label}</span></td>
-                      <td><div className="name"><span className="avatar">{initials||"AD"}</span><span>{a.fullName||"—"}</span></div></td>
-                      <td className="muted">{a.email||"—"}</td>
-                      <td>{fmt(a.lastLoginAt)}</td>
-                      <td>{fmt(a.lastSeenAt)}</td>
-                      <td>{fmt(a.updatedAt)}</td>
-                      <td>{fmt(a.createdAt)}</td>
-                      <td className="actions">
-                        <button className="btn btn-edit" onClick={()=>setEditing(a)}>Düzenle</button>
-                        <button className="btn btn-delete" onClick={()=>handleDelete(a.id)}>Sil</button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                  <tr className="empty-row">
+                    <td colSpan={8}>Kayıt bulunamadı</td>
+                  </tr>
+                ) : (
+                  admins.map((a) => {
+                    const p = getPresence(a.lastSeenAt);
+                    const initials = (a.fullName || "")
+                      .split(" ")
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((w) => w[0])
+                      .join("")
+                      .toUpperCase();
+
+                    return (
+                      <tr key={a.id}>
+                        <td className={`presence ${p.cls}`}>
+                          <span className="dot" />
+                          <span className="presence-label">{p.label}</span>
+                        </td>
+                        <td>
+                          <div className="name">
+                            <span className="avatar">{initials || "AD"}</span>
+                            <span>{a.fullName || "—"}</span>
+                          </div>
+                        </td>
+                        <td className="muted">{a.email || "—"}</td>
+                        <td>{fmt(a.lastLoginAt)}</td>
+                        <td>{fmt(a.lastSeenAt)}</td>
+                        <td>{fmt(a.updatedAt)}</td>
+                        <td>{fmt(a.createdAt)}</td>
+                        <td className="actions">
+                          <button className="btn btn-edit" onClick={() => setEditing(a)}>
+                            Düzenle
+                          </button>
+                          <button className="btn btn-delete" onClick={() => handleDelete(a.id)}>
+                            Sil
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -215,7 +280,7 @@ export default function AddAdmin() {
         {editing && (
           <EditAdminModal
             admin={editing}
-            onClose={()=>setEditing(null)}
+            onClose={() => setEditing(null)}
             onChanged={fetchAdmins}
           />
         )}

@@ -1,37 +1,36 @@
+// src/components/Navbar.jsx
 import "../styles/Navbar.scss";
 import { useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { ProfileContext } from "../context/ProfileContext";
 import { toast } from "react-toastify";
 import api from "../api/axios";
+import { getAvatarUrl } from "../utils/getAssetUrl";
+
 export default function Navbar() {
   const navigate = useNavigate();
   const { profile, setProfile } = useContext(ProfileContext);
 
-  // Tek isim: profileImage
-  const imgSrc = profile?.profileImage || localStorage.getItem("profileImage") || "/noavatar.jpg";
+  // localStorage’da (relative) bir yol varsa onu; yoksa profilden geleni kullan.
+  // getAvatarUrl -> absolute URL’yi üretir, yoksa /noavatar.jpg döner.
+  const rawAvatar = profile?.profileImage ?? localStorage.getItem("profileImage");
+  const imgSrc = getAvatarUrl(rawAvatar) || localStorage.getItem("profileImage") || "/noavatar.jpg"; // cache-bust, yeni yüklenen avatar hemen görünsün
 
   const handleProfileClick = () => navigate("/profile");
 
   const handleLogoutClick = async () => {
     try {
-      // Backend'e logout isteği at (cookie silinsin)
       await api.post("/auth/logout");
-
-      // Local storage temizle
-      localStorage.removeItem("profileImage"); 
-      setProfile(null);  
+      localStorage.removeItem("profileImage");
+      setProfile(null);
       localStorage.clear();
-      
-
-      toast.success("Başarıyla Çıkış yaptınız!");
+      toast.success("Başarıyla çıkış yaptınız!");
       navigate("/");
     } catch (err) {
       console.error("Logout hatası:", err);
       toast.error("Çıkış yapılamadı ❌");
     }
   };
-
 
   return (
     <nav className="navbar">

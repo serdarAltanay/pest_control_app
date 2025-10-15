@@ -18,6 +18,14 @@ for (const dir of [UPLOAD_ROOT, AVATAR_DIR]) {
 }
 
 /* ---------------- Helpers ---------------- */
+// DB'ye yazarken: absolute → relative (ve forward slash)
+const rel = (abs) =>
+  path.relative(process.cwd(), abs).split(path.sep).join("/");
+
+// DB'den okurken: relative → absolute (Windows/mac uyumlu)
+const absFromRel = (p) =>
+  path.resolve(process.cwd(), String(p || "").replace(/^\/+/, "").replace(/\\/g, "/"));
+
 const fileFilter = (_req, file, cb) => {
   const ok = ["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.mimetype);
   cb(ok ? null : new Error("Geçersiz dosya türü (png/jpg/jpeg/webp)"), ok);
@@ -36,7 +44,7 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024
 
 function removeIfExists(relOrAbsPath) {
   if (!relOrAbsPath) return;
-  const abs = path.isAbsolute(relOrAbsPath) ? relOrAbsPath : path.join(process.cwd(), relOrAbsPath);
+  const abs = path.isAbsolute(relOrAbsPath) ? relOrAbsPath : absFromRel(relOrAbsPath);
   try { if (fs.existsSync(abs)) fs.unlinkSync(abs); }
   catch (e) { console.warn("Avatar silinemedi:", e?.message); }
 }
@@ -54,10 +62,7 @@ async function updateTargetUser(prismaClient, role, id, data) {
   throw new Error("Geçersiz rol");
 }
 
-/* ------------- POST /api/upload/avatar (upload) -------------
-   - Oturumdaki kullanıcının avatarını günceller
-   - Eski dosyayı siler, yenisini yazar
-------------------------------------------------------------- */
+/* ------------- POST /api/upload/avatar ------------- */
 router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "Dosya yüklenmedi" });
@@ -70,7 +75,8 @@ router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
     // eski resmi sil
     removeIfExists(current.profileImage);
 
-    const relativePath = path.join("uploads", "avatars", req.file.filename);
+    // 🔧 DB'ye hep forward slash ile kaydet
+    const relativePath = rel(req.file.path); // "uploads/avatars/....jpg"
     const updated = await updateTargetUser(prisma, role, id, { profileImage: relativePath });
 
     res.json({ message: "Avatar güncellendi", profileImage: updated.profileImage });
@@ -80,12 +86,7 @@ router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
   }
 });
 
-/* ------------- DELETE /api/upload/avatar (remove) -------------
-   - Body (opsiyonel): { role: "admin"|"employee"|"customer", id: number }
-   - Body verilmezse: oturumdaki kullanıcının avatarını siler
-   - Admin ise, istediği rol+id için silebilir
-   - Admin değilse, sadece kendi avatarını silebilir
----------------------------------------------------------------- */
+/* ------------- DELETE /api/upload/avatar ------------- */
 router.delete("/avatar", auth, async (req, res) => {
   try {
     let { role: targetRole, id: targetId } = req.body || {};

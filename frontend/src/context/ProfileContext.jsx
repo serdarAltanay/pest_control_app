@@ -1,13 +1,20 @@
-// ProfileContext.jsx
+// src/context/ProfileContext.jsx
 import { createContext, useState, useEffect, useRef } from "react";
 import api from "../api/axios.js";
 import { toast } from "react-toastify";
+import { getAvatarUrl, addCacheBust } from "../utils/getAssetUrl"; // ✅ EKLENDİ
 
 export const ProfileContext = createContext();
 
 export function ProfileProvider({ children }) {
   const [profile, setProfile] = useState(null);
-  const hbTimerRef = useRef(null); // <-- EKLENDİ
+  const hbTimerRef = useRef(null);
+
+  // localStorage'a her zaman MUTLAK url yaz (getAvatarUrl bunu garanti eder)
+  const cacheAvatar = (rawPath) => {
+    const absUrl = getAvatarUrl(rawPath, {bust:true});      // uploads/... -> http://localhost:5000/uploads/...
+    localStorage.setItem("profileImage", absUrl); // cache-bust ile taze görüntü
+  };
 
   const fetchProfile = async () => {
     try {
@@ -16,7 +23,7 @@ export function ProfileProvider({ children }) {
 
       const res = await api.get("/profile");
       setProfile(res.data);
-      localStorage.setItem("profileImage", res.data.profileImage || "/noavatar.jpg");
+      cacheAvatar(res.data.profileImage);      // ✅ eskisi: localStorage.setItem("profileImage", res.data.profileImage || "/noavatar.jpg");
     } catch (err) {
       console.error("Profil yükleme hatası:", err);
       if (err.response?.status !== 401) {
@@ -25,23 +32,15 @@ export function ProfileProvider({ children }) {
     }
   };
 
-  // --- Heartbeat başlat/durdur ---
+  // Heartbeat
   useEffect(() => {
-    // profil varsa ve token varsa çalıştır
     if (profile && localStorage.getItem("accessToken")) {
-      // varsa eskiyi temizle
       if (hbTimerRef.current) clearInterval(hbTimerRef.current);
-
-      // hemen bir kere at
       api.post("/presence/heartbeat").catch(() => {});
-
-      // 60 sn’de bir at
       hbTimerRef.current = setInterval(() => {
         api.post("/presence/heartbeat").catch(() => {});
       }, 60_000);
     }
-
-    // cleanup
     return () => {
       if (hbTimerRef.current) {
         clearInterval(hbTimerRef.current);

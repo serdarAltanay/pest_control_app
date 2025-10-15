@@ -31,6 +31,8 @@ import ek1Router from "./routes/ek1.js";
 import  activationsRouter  from "./routes/activations.js";
 import  analyticsRouter  from "./routes/analytics.js";
 
+import reportsRoutes from "./routes/reports.js";
+
 
 dotenv.config();
 
@@ -59,6 +61,7 @@ app.use("/api/employees", employeeRouter);
 app.use("/uploads", express.static("uploads"));
 app.use("/api/upload", uploadRoutes);
 app.use("/api/nonconformities", nonconformitiesRoutes);
+app.use("/api/reports", reportsRoutes);
 
 app.use("/api/heartbeat", heartbeatRoutes);
 app.use("/api/online", onlineRoutes);

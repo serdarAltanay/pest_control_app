@@ -174,8 +174,11 @@ export default function StoreDetail() {
             <Link to={`/admin/stores/${storeId}/ek1`} className="tab">EK-1 Rapor İşleri</Link>
             <Link to={`/admin/stores/${storeId}/stations`} className="tab">İstasyonlar</Link>
             <Link to={`/admin/stores/${storeId}/nonconformities`} className="tab">Uygunsuzluklar</Link>
-            <Link to={`/admin/stores/${storeId}/activities`} className="tab">Aktivite Raporları</Link>
-            <Link to={`/admin/stores/${storeId}/files`} className="tab">Dosyalar</Link>
+            {/* 🔁 "Aktivite Raporları" → "Trend Analizi" */}
+            <Link to={`/admin/stores/${storeId}/analytics`} className="tab">Trend Analizi</Link>
+
+            {/* 🔁 "Dosyalar" → "Raporlar" */}
+            <Link to={`/admin/stores/${storeId}/reports`} className="tab">Raporlar</Link>
           </div>
         </div>
 
