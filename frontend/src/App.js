@@ -34,7 +34,7 @@ import StoreNonconformities from "./pages/nonconformities/StoreNonconformities.j
 import NonconformityDetail from "./pages/nonconformities/nonconformityDetail.jsx";
 
 import StoreReports from "./pages/reports/StoreReports.jsx";
-import StoreAnalytics from "./pages/analytics/StoreAnalytics.jsx";
+import TrendAnalysis from "./pages/analytics/TrendAnalysis.jsx";
 import ReportDetail from "./pages/reports/ReportDetail.jsx";
 
 
@@ -329,7 +329,7 @@ function App() {
           path="/admin/stores/:storeId/analytics"
           element={
             <PrivateRoute allowedRoles={['admin', 'employee']}>
-              <StoreAnalytics />
+              <TrendAnalysis />
             </PrivateRoute>
           }
         />
