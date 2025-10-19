@@ -33,6 +33,8 @@ import  analyticsRouter  from "./routes/analytics.js";
 
 import reportsRoutes from "./routes/reports.js";
 
+import scheduleRouter from "./routes/schedule.js";
+
 
 dotenv.config();
 
@@ -81,6 +83,8 @@ app.use("/api/visit", visitsRouter);
 app.use("/api/visits", visitsRouter);
 
 app.use("/api/ek1", ek1Router);
+
+app.use("/api/schedule", scheduleRouter);
 
 
 

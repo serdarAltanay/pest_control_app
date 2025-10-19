@@ -31,11 +31,15 @@ import MothTrapActivation from "./pages/Stations/activations/MothTrapActivation.
 import StationDetail from "./pages/Stations/StationDetail.jsx";
 
 import StoreNonconformities from "./pages/nonconformities/StoreNonconformities.jsx";
+import StoreList from "./pages/stores/StoreList.jsx";
 import NonconformityDetail from "./pages/nonconformities/nonconformityDetail.jsx";
 
 import StoreReports from "./pages/reports/StoreReports.jsx";
 import TrendAnalysis from "./pages/analytics/TrendAnalysis.jsx";
 import ReportDetail from "./pages/reports/ReportDetail.jsx";
+
+import VisitCalendar from "./pages/calendar/VisitCalendar.jsx";
+import VisitDetail from "./pages/calendar/VisitDetail.jsx";
 
 
 import "react-toastify/dist/ReactToastify.css";
@@ -135,6 +139,14 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin', 'employee']}>
               <StoreCreate />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <StoreList  />
             </PrivateRoute>
           }
         />
@@ -338,6 +350,22 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin','employee']}>
               <ReportDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <PrivateRoute allowedRoles={['admin','employee']}>
+              <VisitCalendar />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/calendar/visit/:id"
+          element={
+            <PrivateRoute allowedRoles={['admin','employee']}>
+              <VisitDetail />
             </PrivateRoute>
           }
         />

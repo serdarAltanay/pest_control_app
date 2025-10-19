@@ -82,6 +82,20 @@ enum RiskLevel {
   YUKSEK
 }
 
+enum UserRole {
+  admin
+  employee
+}
+
+enum VisitStatus {
+  PENDING
+  PLANNED
+  COMPLETED
+  FAILED
+  CANCELLED
+  POSTPONED
+}
+
 model StationActivation {
   id Int @id @default(autoincrement())
 
@@ -176,21 +190,22 @@ model Admin {
 }
 
 model Employee {
-  id            Int        @id @default(autoincrement())
-  fullName      String
-  email         String     @unique
-  password      String
-  jobTitle      String
-  gsm           String
-  profileImage  String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
-  lastSeenAt    DateTime?
-  adminId       Int?
-  admin         Admin?     @relation(fields: [adminId], references: [id])
-  customers     Customer[]
+  id             Int             @id @default(autoincrement())
+  fullName       String
+  email          String          @unique
+  password       String
+  jobTitle       String
+  gsm            String
+  profileImage   String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  lastLoginAt    DateTime?
+  lastProfileAt  DateTime?
+  lastSeenAt     DateTime?
+  adminId        Int?
+  admin          Admin?          @relation(fields: [adminId], references: [id])
+  scheduleEvents ScheduleEvent[]
+  customers      Customer[]
 }
 
 model Customer {
@@ -255,7 +270,8 @@ model Store {
   activations     StationActivation[] @relation("StoreActivations")
   nonconformities Nonconformity[]
 
-  reports Report[]
+  reports        Report[]
+  scheduleEvents ScheduleEvent[]
 
   @@unique([customerId, code], map: "store_customer_code_unique")
 }
@@ -354,6 +370,34 @@ model Ek1Line {
   method     ApplicationMethod
   amount     Float
   createdAt  DateTime          @default(now())
+}
+
+model ScheduleEvent {
+  id         Int      @id @default(autoincrement())
+  title      String
+  notes      String?  @db.Text
+  employeeId Int
+  storeId    Int
+  start      DateTime
+  end        DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  plannedById   Int?
+  plannedByRole UserRole?
+  plannedByName String?
+  plannedAt     DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  store    Store    @relation(fields: [storeId], references: [id])
+
+  status VisitStatus @default(PLANNED)
+
+  @@index([start])
+  @@index([employeeId])
+  @@index([storeId])
+  @@index([plannedById])
+  @@index([status])
 }
 
 model RefreshToken {

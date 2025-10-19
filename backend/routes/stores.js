@@ -8,7 +8,8 @@ const prisma = new PrismaClient();
 
 
 const norm = (s) => (typeof s === "string" ? s.trim() : s);
-
+const asEnum = (val, allowed, fallback) =>
+  allowed.includes(String(val)) ? String(val) : fallback;
 const basicCheck = (body) => {
   if (!norm(body.name)) return "Mağaza adı zorunludur.";
   if (body.phone) {
@@ -18,6 +19,38 @@ const basicCheck = (body) => {
   if (body.code && String(body.code).length > 12) return "Kod en fazla 12 karakter olmalı.";
   return null;
 };
+
+router.get("/search", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  try {
+    const q = (req.query.q || "").toString().trim();
+
+    if (!q) {
+      const latest = await prisma.store.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: { id: true, name: true, code: true, city: true, phone: true, manager: true, isActive: true },
+      });
+      return res.json(latest);
+    }
+
+    const list = await prisma.store.findMany({
+      where: {
+        OR: [
+          { name: { contains: q } },  // ← mode: "insensitive" KALDIRILDI
+          { code: { contains: q } },  // ← mode: "insensitive" KALDIRILDI
+        ],
+      },
+      orderBy: { name: "asc" },
+      take: 30,
+       select: { id: true, name: true, code: true, city: true, phone: true, manager: true, isActive: true },
+    });
+
+    res.json(list);
+  } catch (e) {
+    console.error("GET /stores/search", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
 
 /** Müşteriye göre mağazalar */
 router.get("/customer/:customerId", auth, roleCheck(["admin", "employee"]), async (req, res) => {
@@ -96,10 +129,6 @@ router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
     res.status(500).json({message:"Sunucu hatası"});
   }
 });
-/** Güncelle */
-// helpers
-const asEnum = (val, allowed, fallback) =>
-  allowed.includes(String(val)) ? String(val) : fallback;
 
 // CREATE  POST /api/stores
 router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{

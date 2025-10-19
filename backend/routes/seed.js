@@ -37,7 +37,7 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
 
     /* ------------------- 2) Employee(ler) ------------------ */
     const employeesInput = [
-      { fullName: "Selin Karaca", email: "selin.karaca@pest.local", jobTitle: "Servis Sorumlusu", gsm: "0554 123 45 67", adminId: defaultAdminId },
+      { fullName: "ahmet Karaca", email: "ahmt.karaca@pest.local", jobTitle: "Servis Sorumlusu", gsm: "0554 123 45 67", adminId: defaultAdminId },
       { fullName: "Emre Çetin",   email: "emre.cetin@pest.local",   jobTitle: "Tekniker",         gsm: "0553 456 78 90", adminId: defaultAdminId },
       { fullName: "Burak Kılıç",  email: "burak.kilic@pest.local",  jobTitle: "Ekip Lideri",      gsm: "0552 987 65 43", adminId: defaultAdminId },
     ];

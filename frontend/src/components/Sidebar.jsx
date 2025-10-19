@@ -29,6 +29,9 @@ export default function Sidebar() {
               <li className="sidebar-item" onClick={() => navigate("/work")}>İş Takibi</li>
               <li className="sidebar-item" onClick={() => navigate("/work/tasks")}>Görevler</li>
               <li className="sidebar-item" onClick={() => navigate("/work/reports")}>Raporlar</li>
+              <li className="sidebar-item" onClick={() => navigate("/calendar")}>
+                Ziyaret Takvimi
+              </li>
             </>
           )}
 
@@ -38,6 +41,9 @@ export default function Sidebar() {
               <li className="section-title">Yönetim İşleri</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/customers/new")}>Müşteri Ekle</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/customers")}>Müşteri Listesi</li>
+              <li className="sidebar-item" onClick={() => navigate("/admin/stores")}>
+                Mağaza Listesi
+              </li>
               <li className="sidebar-item" onClick={() => navigate("/admin/employees/new")}>Personel Ekle</li>
               <li className="sidebar-item">
                 <Link to="/admin/admins/new">Admin Ekle</Link>

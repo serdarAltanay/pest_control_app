@@ -5,6 +5,7 @@ import "./WorkDashboard.scss";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import PresenceOverview from "../../components/PrecenceOverview";
+import DashboardCalendar from "../calendar/DashboardCalendar.jsx";
 
 export default function WorkDashboard() {
   const role = (localStorage.getItem("role") || "").toLowerCase();
@@ -70,6 +71,7 @@ export default function WorkDashboard() {
           </section>
         )}
       </div>
+      <DashboardCalendar />
     </Layout>
   );
 }

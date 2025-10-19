@@ -1,0 +1,29 @@
+.dash-cal {
+  .head {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 10px 10px 0 0;
+    .t { font-weight: 700; }
+  }
+
+  .list {
+    padding: 8px 10px;
+
+    .empty {
+      padding: 14px;
+      color: #475569;
+    }
+
+    .row {
+      display: flex; gap: 10px; align-items: center;
+      padding: 8px 6px; border-bottom: 1px dashed #e5e7eb;
+      &:last-child { border-bottom: 0; }
+      .dot { width: 12px; height: 12px; border-radius: 999px; }
+      .meta {
+        .title { font-weight: 700; }
+        .sub { font-size: 12px; color: #475569; }
+      }
+    }
+  }
+}
