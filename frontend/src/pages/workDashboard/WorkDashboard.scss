@@ -26,4 +26,43 @@
       color: #7f1d1d;
     }
   }
+
+  /* en alttaki üç kartın yerleşimi */
+  .calendar-section {
+    margin-top: 28px;
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    /* kartların eşit yükseklik alması için */
+    .dash-cal.card {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      .list { flex: 1 1 auto; }
+    }
+  }
+
+  /* responsive kırılımlar */
+  @media (max-width: 1200px) {
+    .calendar-section .dash-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 720px) {
+    .calendar-section .dash-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 }

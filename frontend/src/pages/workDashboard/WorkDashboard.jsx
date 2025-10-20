@@ -5,7 +5,15 @@ import "./WorkDashboard.scss";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import PresenceOverview from "../../components/PrecenceOverview";
-import DashboardCalendar from "../calendar/DashboardCalendar.jsx";
+
+import DashCalToday, {
+  DashCalNext3,
+  DashCalFailedLast7,
+  CompletedVisitsTable,
+} from "../calendar/DashboardCalendar.jsx";
+
+
+import Ek1List from "../ek1/Ek1List.jsx";
 
 export default function WorkDashboard() {
   const role = (localStorage.getItem("role") || "").toLowerCase();
@@ -16,7 +24,7 @@ export default function WorkDashboard() {
     if (!window.confirm("Demo verilerini (admin/employee/customer) yüklemek istiyor musun?")) return;
     try {
       setBusy(true);
-      await api.post("/seed/run");     // -> routes/seed.js (POST /api/seed/run)
+      await api.post("/seed/run");
       toast.success("Seed başarıyla çalıştı 🎉");
     } catch (e) {
       console.error(e);
@@ -30,7 +38,7 @@ export default function WorkDashboard() {
     if (!window.confirm("TÜM veriler silinecek. Emin misin?")) return;
     try {
       setBusy(true);
-      const { data } = await api.post("/wipe"); // -> routes/wipe.js (POST /api/wipe)
+      const { data } = await api.post("/wipe");
       toast.success(data?.message || "Tüm veriler silindi 🧹");
     } catch (e) {
       console.error(e);
@@ -70,8 +78,19 @@ export default function WorkDashboard() {
             </p>
           </section>
         )}
+        <Ek1List/>
+        <CompletedVisitsTable />
+
+        {/* ───────── Ziyaret Özetleri (en aşağı) ───────── */}
+        <section className="calendar-section">
+          <h2>Ziyaret Özetleri</h2>
+          <div className="dash-grid">
+            <DashCalToday />
+            <DashCalNext3 />
+            <DashCalFailedLast7 />
+          </div>
+        </section>
       </div>
-      <DashboardCalendar />
     </Layout>
   );
 }

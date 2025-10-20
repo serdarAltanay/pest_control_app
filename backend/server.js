@@ -35,7 +35,6 @@ import reportsRoutes from "./routes/reports.js";
 
 import scheduleRouter from "./routes/schedule.js";
 
-
 dotenv.config();
 
 const app = express();
@@ -48,7 +47,6 @@ app.use(cors({
   credentials: true,
 }));
 
-
 // Routes
 app.use("/api/auth", authRoutes);
 
@@ -56,6 +54,14 @@ app.use("/api/seed", seedRoutes);
 app.use("/api/wipe", wipeRoutes);
 
 app.use("/api/customers", customerRoutes);
+
+/* ---- EK1 ROUTER MOUNTS (genişletildi) ---- */
+app.use("/api/ek1", ek1Router);
+// FE'nin zaman zaman /api/api/ek1 ve /api/admin/ek1 denemelerini de karşılayalım:
+app.use("/api/api/ek1", ek1Router);
+app.use("/api/admin/ek1", ek1Router);
+/* ------------------------------------------ */
+
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRouter);
 app.use("/api/employees", employeeRouter);
@@ -82,11 +88,7 @@ app.use("/api/biocides", biocidesRouter);
 app.use("/api/visit", visitsRouter);
 app.use("/api/visits", visitsRouter);
 
-app.use("/api/ek1", ek1Router);
-
 app.use("/api/schedule", scheduleRouter);
-
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server ${PORT} portunda açıldı`));

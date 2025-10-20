@@ -142,9 +142,21 @@ async function createEvent(payload) {
   return data;
 }
 
-/* ───────── Görsel sabitler (px) ───────── */
-const HOUR_PX = 60;      // her saat 60px → toplam 1440px
-const MIN_EVENT_PX = 72; // event minimum yüksekliği
+/* ───────── Görsel sabitler (px) ve gün penceresi ───────── */
+const HOUR_PX = 60;      // 1 saat = 60px
+const MIN_EVENT_PX = 72; // etkinlik min. yükseklik
+
+// Gün: 07:00 → ertesi gün 02:00 (19 saat)
+const DAY_START_MIN = 7 * 60;
+const DAY_END_MIN   = 26 * 60; // 24 + 2
+const DAY_SPAN_MIN  = DAY_END_MIN - DAY_START_MIN; // 1140 dk
+const GRID_HOURS    = DAY_SPAN_MIN / 60; // 19
+
+function windowBoundsForDay(d) {
+  const ws = new Date(d); ws.setHours(7, 0, 0, 0);
+  const we = new Date(d); we.setDate(we.getDate() + 1); we.setHours(2, 0, 0, 0);
+  return { ws, we };
+}
 
 export default function VisitCalendar() {
   const isAdmin = (localStorage.getItem("role") || "").toLowerCase() === "admin";
@@ -204,9 +216,8 @@ export default function VisitCalendar() {
   }, [range]);
   useEffect(() => { load(); }, [load]);
 
-  // Çalışanlar
+  // Çalışanlar/Müşteriler
   useEffect(() => { (async () => setEmployees(await fetchEmployees()))(); }, []);
-  // Müşteriler
   useEffect(() => { (async () => setCustomers(await fetchCustomers()))(); }, []);
 
   // Seçilen müşteri → mağazalar
@@ -278,8 +289,15 @@ export default function VisitCalendar() {
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
 
-    const start = new Date(modalDate); start.setHours(sh, sm, 0, 0);
-    const end   = new Date(modalDate); end.setHours(eh, em, 0, 0);
+    // 00–06 seçilirse ertesi güne kaydır
+    const start = new Date(modalDate);
+    if (sh < 7) start.setDate(start.getDate() + 1);
+    start.setHours(sh, sm, 0, 0);
+
+    const end = new Date(modalDate);
+    if (eh < 7) end.setDate(end.getDate() + 1);
+    end.setHours(eh, em, 0, 0);
+
     if (end <= start) return toast.error("Bitiş, başlangıçtan sonra olmalı");
 
     try {
@@ -296,16 +314,14 @@ export default function VisitCalendar() {
     }
   };
 
-  // Render helpers
-  const quarterOptions = useMemo(() => {
-    const out = [];
-    for (let m = 0; m < 24 * 60; m += 15) {
-      const h = Math.floor(m / 60);
-      const mm = m % 60;
-      out.push(`${pad2(h)}:${pad2(mm)}`);
-    }
-    return out;
-  }, []);
+  // Saat etiketleri: 07..23, ardından 00..01
+  const dayHourLabels = useMemo(() => {
+    if (view !== VIEW.DAY) return [];
+    const labels = [];
+    for (let h = 7; h <= 23; h++) labels.push(`${pad2(h)}:00`);
+    labels.push("00:00", "01:00");
+    return labels;
+  }, [view]);
 
   // Gün kolonları: -1, 0, +1, +2
   const dayColumns = useMemo(() => {
@@ -318,18 +334,33 @@ export default function VisitCalendar() {
     });
   }, [view, anchor]);
 
-  // Günlük eventleri lane'lerle biriktir
+  // Bir gün penceresine göre (07→02) eventleri paketle
   const dayEventsByDate = useMemo(() => {
     if (view !== VIEW.DAY) return {};
     const map = {};
-    for (const d of dayColumns) map[toDateInput(d)] = { events: [], laneCount: 1 };
-    for (const ev of events) {
-      const key = toDateInput(ev.start);
-      if (map[key]) map[key].events.push(ev);
-    }
-    for (const k of Object.keys(map)) {
-      const packed = assignLanesForDay(map[k].events);
-      map[k] = packed;
+    for (const d of dayColumns) {
+      const key = toDateInput(d);
+      const { ws, we } = windowBoundsForDay(d);
+
+      // Pencere ile kesişenleri al, pencereye göre kırp
+      const winEvents = [];
+      for (const e of events) {
+        if (e.end <= ws || e.start >= we) continue; // kesişmiyor
+        const s = new Date(Math.max(e.start, ws));
+        const ee = new Date(Math.min(e.end, we));
+        winEvents.push({
+          ...e,
+          // şerit atama için pencere-tabanlı start/end
+          start: s,
+          end: ee,
+          // render için göreli dakika
+          _relStartMin: Math.round((s - ws) / 60000),
+          _relEndMin: Math.round((ee - ws) / 60000),
+        });
+      }
+
+      const packed = assignLanesForDay(winEvents);
+      map[key] = packed;
     }
     return map;
   }, [view, dayColumns, events]);
@@ -372,16 +403,17 @@ export default function VisitCalendar() {
     return Array.from({ length: 12 }, (_, i) => new Date(anchor.getFullYear(), i, 1));
   }, [view, anchor]);
 
-  // Gün grid tıklaması
+  // Grid tıklama → 07→02 aralığına göre default saat üret
   const onGridClick = (day, e) => {
     if (!isAdmin) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
-    const totalHeight = rect.height;
-    const rawMin = (y / totalHeight) * (24 * 60);
-    const minutes = Math.max(0, Math.min(24 * 60 - 15, Math.round(rawMin)));
-    const s = nearestQuarter(minutes);
-    const defaults = { startMin: s, endMin: Math.min(s + 60, 24 * 60) };
+    const relMin = Math.round((y / rect.height) * DAY_SPAN_MIN);
+    const sRel = nearestQuarter(Math.max(0, Math.min(DAY_SPAN_MIN - 15, relMin)));
+    // mutlak gün içi dakika (0..1439)
+    const absStart = (DAY_START_MIN + sRel) % (24 * 60);
+    const absEnd   = (absStart + 60) % (24 * 60);
+    const defaults = { startMin: absStart, endMin: absEnd };
     openCreateForDay(day, defaults);
   };
 
@@ -459,13 +491,13 @@ export default function VisitCalendar() {
         {loading ? (
           <div className="card">Yükleniyor…</div>
         ) : view === VIEW.DAY ? (
-          <div className="vc-day">
+          <div className="vc-day" style={{ "--grid-hours": GRID_HOURS }}>
             {/* Saat kolonu */}
             <div className="hours">
               <div className="hours-head" />
               <div className="hours-grid">
-                {Array.from({ length: 24 }, (_, h) => (
-                  <div className="h" key={h}>{pad2(h)}:00</div>
+                {dayHourLabels.map((lbl, i) => (
+                  <div className="h" key={i}>{lbl}</div>
                 ))}
               </div>
             </div>
@@ -488,9 +520,8 @@ export default function VisitCalendar() {
                       style={{ "--lane-count": meta.laneCount }}
                     >
                       {meta.events.map((ev) => {
-                        const startMin = minutesFromMidnight(ev.start);
-                        const durMin   = Math.max(1, Math.round((ev.end - ev.start) / 60000));
-                        const topPx    = (startMin / 60) * HOUR_PX;
+                        const topPx    = (ev._relStartMin / 60) * HOUR_PX;
+                        const durMin   = Math.max(1, ev._relEndMin - ev._relStartMin);
                         const heightPx = Math.max((durMin / 60) * HOUR_PX, MIN_EVENT_PX);
 
                         return (
@@ -639,7 +670,10 @@ export default function VisitCalendar() {
                       ? `${pad2(Math.floor(modalDefaults.startMin/60))}:${pad2(modalDefaults.startMin%60)}`
                       : "09:00"
                   }>
-                    {quarterOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                    {Array.from({ length: 24 * 60 / 15 }, (_, i) => {
+                      const m = i * 15;
+                      return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+                    }).map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
 
@@ -650,7 +684,10 @@ export default function VisitCalendar() {
                       ? `${pad2(Math.floor(modalDefaults.endMin/60))}:${pad2(modalDefaults.endMin%60)}`
                       : "10:00"
                   }>
-                    {quarterOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                    {Array.from({ length: 24 * 60 / 15 }, (_, i) => {
+                      const m = i * 15;
+                      return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+                    }).map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
 

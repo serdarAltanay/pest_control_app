@@ -15,13 +15,11 @@ const toId = (v) => {
 const normalizeMethod = (m) => {
   if (!m) return m;
   const up = String(m).toUpperCase();
-  // Şemada "PULVERİZE" var; FE zaman zaman "PULVERIZE" gönderebilir.
   if (up === "PULVERIZE") return "PULVERİZE";
   return up;
 };
 
 async function ensureProviderProfile() {
-  // Model henüz generate edilmemişse 500 atmamak için güvenli dönüş
   if (!prisma.providerProfile || typeof prisma.providerProfile.findFirst !== "function") {
     return {
       companyName: "PESTAPP DEMO",
@@ -39,7 +37,6 @@ async function ensureProviderProfile() {
   }
   return p;
 }
-
 
 async function ensureReport(visitId) {
   let report = await prisma.ek1Report.findUnique({ where: { visitId } });
@@ -65,6 +62,7 @@ async function loadVisitBundle(visitId) {
     where: { id: visitId },
     include: {
       store: { include: { customer: true } },
+      // NOT: Visit modelinde employee ilişkisi yok, o yüzden kaldırıldı.
     },
   });
   if (!visit) return null;
@@ -132,11 +130,9 @@ async function hCreateLine(req, res) {
       return res.status(400).json({ message: "Zorunlu alanlar eksik" });
     }
 
-    // visit var mı
     const v = await prisma.visit.findUnique({ where: { id: visitId } });
     if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
 
-    // biocide var mı
     const bio = await prisma.biocide.findUnique({ where: { id: Number(biosidalId) } });
     if (!bio) return res.status(404).json({ message: "Biyosidal ürün bulunamadı" });
 
@@ -186,7 +182,7 @@ async function hSubmit(req, res) {
 }
 
 // POST sign (provider / customer)
-async function hSign(kind /* 'provider' | 'customer' */ , req, res) {
+async function hSign(kind, req, res) {
   try {
     const visitId = toId(req.params.visitId);
     if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
@@ -249,134 +245,119 @@ async function hPdf(req, res) {
 }
 
 /* --------------------- new endpoints --------------------- */
+// LIST: /api/ek1 → ek1 raporlarını (ziyaret+mağaza ile) en yeni → en eski
+async function hListEk1(req, res) {
+  try {
+    const list = await prisma.ek1Report.findMany({
+      include: {
+        visit: {
+          include: {
+            store: { include: { customer: true } },
+            // NOT: Visit modelinde employee ilişkisi yok
+          },
+        },
+      },
+      orderBy: [
+        { updatedAt: "desc" },
+        { visitId: "desc" },
+      ],
+    });
+
+    const mapped = list.map((r) => {
+      const v = r.visit || {};
+      const st = v.store || {};
+      const cust = st.customer || {};
+      return {
+        id: r.visitId,
+        title: `Ziyaret #${r.visitId}`,
+        customerName: cust.name || cust.fullName || cust.title || "-",
+        storeName: st.name || `Mağaza #${v.storeId || "-"}`,
+        storeId: v.storeId || st.id || null,
+        // Visit modelinde çalışan ilişkisi yok; bu alanlar şimdilik null
+        employeeName: null,
+        employeeId: null,
+        status: r.status || "DRAFT",
+        createdAt: v.createdAt || r.createdAt || null,
+        start: v.date || null, // Visit.date (DateTime)
+        fileUrl: r.pdfUrl || null,
+        pdfUrl: r.pdfUrl || null,
+      };
+    });
+
+    mapped.sort((a, b) => {
+      const A = a.createdAt ? new Date(a.createdAt).getTime() : (a.start ? new Date(a.start).getTime() : 0);
+      const B = b.createdAt ? new Date(b.createdAt).getTime() : (b.start ? new Date(b.start).getTime() : 0);
+      return B - A;
+    });
+
+    res.json(mapped);
+  } catch (e) {
+    console.error("LIST EK1", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+}
+
+/** SIGN SHORTCUT: /api/ek1/:visitId/sign → role’a göre provider/customer */
+async function hSignAuto(req, res) {
+  const role = (req.user?.role || "").toLowerCase();
+  if (role === "admin" || role === "employee") return hSign("provider", req, res);
+  if (role === "customer") return hSign("customer", req, res);
+  return res.status(403).json({ message: "Yetkiniz yok" });
+}
+
+/** SEND EMAIL (stub): /api/ek1/:visitId/send-email */
+async function hSendEmail(req, res) {
+  try {
+    const visitId = toId(req.params.visitId);
+    if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
+    const email = String(req.body?.email || "").trim();
+    if (!email) return res.status(400).json({ message: "E-posta gerekli" });
+
+    await ensureReport(visitId);
+    res.json({ message: "E-posta kuyruğa alındı", email, visitId });
+  } catch (e) {
+    console.error("SEND EMAIL", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+}
+
+/* ---------------------- ROUTES --------------------------- */
+// LIST
+router.get("/", auth, roleCheck(["admin", "employee", "customer"]), hListEk1);
+
 // Bundle
-router.get(
-  "/visit/:visitId",
-  auth,
-  roleCheck(["admin", "employee", "customer"]),
-  hGetBundle
-);
+router.get("/visit/:visitId", auth, roleCheck(["admin", "employee", "customer"]), hGetBundle);
 
 // Lines
-router.get(
-  "/visit/:visitId/lines",
-  auth,
-  roleCheck(["admin", "employee", "customer"]),
-  hListLines
-);
-router.post(
-  "/visit/:visitId/lines",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hCreateLine
-);
-router.delete(
-  "/visit/:visitId/lines/:lineId",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hDeleteLine
-);
+router.get("/visit/:visitId/lines", auth, roleCheck(["admin", "employee", "customer"]), hListLines);
+router.post("/visit/:visitId/lines", auth, roleCheck(["admin", "employee"]), hCreateLine);
+router.delete("/visit/:visitId/lines/:lineId", auth, roleCheck(["admin", "employee"]), hDeleteLine);
 
 // Submit
-router.post(
-  "/visit/:visitId/submit",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hSubmit
-);
+router.post("/visit/:visitId/submit", auth, roleCheck(["admin", "employee"]), hSubmit);
 
-// Sign
-router.post(
-  "/visit/:visitId/sign/provider",
-  auth,
-  roleCheck(["admin", "employee"]),
-  (req, res) => hSign("provider", req, res)
-);
-router.post(
-  "/visit/:visitId/sign/customer",
-  auth,
-  roleCheck(["customer", "admin", "employee"]),
-  (req, res) => hSign("customer", req, res)
-);
+// Sign (provider/customer) + shortcut
+router.post("/visit/:visitId/sign/provider", auth, roleCheck(["admin", "employee"]), (req, res) => hSign("provider", req, res));
+router.post("/visit/:visitId/sign/customer", auth, roleCheck(["customer", "admin", "employee"]), (req, res) => hSign("customer", req, res));
+router.post("/:visitId/sign", auth, roleCheck(["admin", "employee", "customer"]), hSignAuto);
 
-// Approve & PDF
-router.post(
-  "/visit/:visitId/approve",
-  auth,
-  roleCheck(["admin"]),
-  hApprove
-);
-router.post(
-  "/visit/:visitId/pdf",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hPdf
-);
+// Approve & PDF (+ alias)
+router.post("/visit/:visitId/approve", auth, roleCheck(["admin"]), hApprove);
+router.post("/visit/:visitId/pdf", auth, roleCheck(["admin", "employee"]), hPdf);
+router.post("/:visitId/pdf", auth, roleCheck(["admin", "employee"]), hPdf);
+
+// Send email (stub)
+router.post("/:visitId/send-email", auth, roleCheck(["admin", "employee"]), hSendEmail);
 
 /* -------------------- legacy aliases --------------------- */
-/*  /visits/:visitId/ek1          → bundle
-    /visits/:visitId/ek1/lines   → list/create
-    /visits/:visitId/ek1/lines/:lineId → delete
-    /visits/:visitId/ek1/submit  → submit
-    /visits/:visitId/ek1/sign/provider|customer
-    /visits/:visitId/ek1/approve → approve
-    /visits/:visitId/ek1/pdf     → pdf
-*/
-const as = (path) => path.replace("/visits/", "/ek1/visit/").replace("/ek1", "");
-
-router.get(
-  "/visits/:visitId/ek1",
-  auth,
-  roleCheck(["admin", "employee", "customer"]),
-  hGetBundle
-);
-router.get(
-  "/visits/:visitId/ek1/lines",
-  auth,
-  roleCheck(["admin", "employee", "customer"]),
-  hListLines
-);
-router.post(
-  "/visits/:visitId/ek1/lines",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hCreateLine
-);
-router.delete(
-  "/visits/:visitId/ek1/lines/:lineId",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hDeleteLine
-);
-router.post(
-  "/visits/:visitId/ek1/submit",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hSubmit
-);
-router.post(
-  "/visits/:visitId/ek1/sign/provider",
-  auth,
-  roleCheck(["admin", "employee"]),
-  (req, res) => hSign("provider", req, res)
-);
-router.post(
-  "/visits/:visitId/ek1/sign/customer",
-  auth,
-  roleCheck(["customer", "admin", "employee"]),
-  (req, res) => hSign("customer", req, res)
-);
-router.post(
-  "/visits/:visitId/ek1/approve",
-  auth,
-  roleCheck(["admin"]),
-  hApprove
-);
-router.post(
-  "/visits/:visitId/ek1/pdf",
-  auth,
-  roleCheck(["admin", "employee"]),
-  hPdf
-);
+router.get("/visits/:visitId/ek1", auth, roleCheck(["admin", "employee", "customer"]), hGetBundle);
+router.get("/visits/:visitId/ek1/lines", auth, roleCheck(["admin", "employee", "customer"]), hListLines);
+router.post("/visits/:visitId/ek1/lines", auth, roleCheck(["admin", "employee"]), hCreateLine);
+router.delete("/visits/:visitId/ek1/lines/:lineId", auth, roleCheck(["admin", "employee"]), hDeleteLine);
+router.post("/visits/:visitId/ek1/submit", auth, roleCheck(["admin", "employee"]), hSubmit);
+router.post("/visits/:visitId/ek1/sign/provider", auth, roleCheck(["admin", "employee"]), (req, res) => hSign("provider", req, res));
+router.post("/visits/:visitId/ek1/sign/customer", auth, roleCheck(["customer", "admin", "employee"]), (req, res) => hSign("customer", req, res));
+router.post("/visits/:visitId/ek1/approve", auth, roleCheck(["admin"]), hApprove);
+router.post("/visits/:visitId/ek1/pdf", auth, roleCheck(["admin", "employee"]), hPdf);
 
 export default router;

@@ -1,0 +1,144 @@
+.ek1-list {
+  font-size: 13px; /* genel küçük metin */
+
+  .ek1-head {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 10px 10px 0 0;
+    display: flex; align-items: center; justify-content: space-between;
+
+    .title { font-weight: 700; font-size: 14px; }
+
+    .controls {
+      display: flex; gap: 6px; align-items: center;
+
+      .search {
+        height: 30px;
+        border: 1px solid #e5e7eb; border-radius: 8px;
+        padding: 0 10px;
+        width: 240px; max-width: 45vw;
+        background: #fff; color: #111; font-size: 12px;
+      }
+
+      .page-size {
+        display: flex; align-items: center; gap: 6px; margin-left: 4px;
+        label { color: #64748b; font-size: 12px; }
+        select {
+          height: 28px;
+          border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 8px;
+          background: #fff; color: #111; font-size: 12px;
+        }
+      }
+
+      .refresh {
+        height: 30px; padding: 0 10px;
+        border-radius: 8px; border: 1px solid #e5e7eb;
+        background: #fff; cursor: pointer; font-size: 12px;
+      }
+    }
+  }
+
+  /* grid başlık + satırlar */
+  .grid {
+    display: grid;
+    /* dt, vtype, customer, store, emp, customer-approve, admin-approve, actions */
+    grid-template-columns: 160px 0.9fr 0.9fr 0.9fr 0.8fr 120px 120px 300px;
+    gap: 8px;
+    padding: 6px 8px;
+    align-items: center;
+
+    @media (max-width: 1360px) {
+      grid-template-columns: 150px 0.9fr 0.9fr 0.9fr 0.7fr 110px 110px 280px;
+    }
+    @media (max-width: 1180px) {
+      grid-template-columns: 150px 1fr 0.9fr 0.9fr 110px 110px 260px;
+      .emp { display: none; } /* dar ekranda personel kolonu gizlenir */
+    }
+    @media (max-width: 940px) {
+      grid-template-columns: 140px 1fr 0.9fr 100px 240px;
+      .customer, .emp { display: none; }
+      .appr + .appr { display: none; } /* ikinci onay dar ekranda gizlenir */
+    }
+  }
+
+  .head-row {
+    font-size: 12px; color: #475569; font-weight: 700;
+    border-bottom: 1px solid #e5e7eb; background: #fafafa;
+    .c { cursor: default; }
+    .c.dt, .c.vtype, .c.customer, .c.store, .c.emp { cursor: pointer; }
+    .sort { margin-left: 4px; opacity: .65; }
+  }
+
+  .data-row {
+    border-bottom: 1px dashed #e5e7eb;
+    &:last-child { border-bottom: 0; }
+
+    .dt-main { font-weight: 700; font-size: 12.5px; }
+    .dt-sub  { font-size: 11px; color: #6b7280; }
+    .title-main { font-weight: 700; font-size: 12.5px; }
+
+    .customer, .store, .emp { font-size: 12.5px; color: #111; }
+
+    .emp {
+      display: inline-flex; align-items: center; gap: 6px;
+      .dot { width: 10px; height: 10px; border-radius: 999px; }
+    }
+
+    .appr {
+      display: flex; align-items: center; justify-content: flex-start;
+      .appr-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 3px 8px; border-radius: 999px;
+        font-size: 11px; font-weight: 700; line-height: 1.1;
+        border: 1px solid transparent; white-space: nowrap;
+        &.ok {
+          background: #dcfce7; color: #166534; border-color: #bbf7d0; /* yeşil */
+        }
+        &.pending {
+          background: #f3f4f6; color: #374151; border-color: #e5e7eb; /* gri */
+        }
+      }
+    }
+
+    .actions {
+      display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;
+
+      .btn {
+        height: 28px; padding: 0 8px;
+        border: 1px solid #e5e7eb; border-radius: 8px;
+        cursor: pointer; background: #111827; color: #fff;
+        font-size: 12px; font-weight: 700;
+
+        &.ghost  { background: #fff; color: #111827; }
+        &.link   { background: #2563eb; color: #fff; border-color: #1d4ed8; }
+        &.danger { background: #ef4444; border-color: #dc2626; }
+        &:disabled { opacity: .6; cursor: not-allowed; }
+      }
+    }
+  }
+
+  .loading, .empty { padding: 12px; color: #475569; font-size: 12.5px; }
+
+  /* ► SAYFALAMA */
+  .ek1-pagination {
+    display: flex; align-items: center; gap: 8px;
+    margin: 8px 10px 12px;
+
+    .page-btn {
+      height: 28px; padding: 0 10px;
+      border: 1px solid #e5e7eb; background: #fff;
+      border-radius: 8px; cursor: pointer; font-size: 12px;
+      &:disabled { opacity: .6; cursor: not-allowed; }
+    }
+
+    .page-indicator {
+      background: #7c3aed; color: #fff;
+      border-radius: 6px; padding: 3px 8px; font-weight: 700; font-size: 12px;
+    }
+
+    .count-info {
+      margin-left: auto; color: #64748b; font-size: 12px;
+    }
+  }
+}
