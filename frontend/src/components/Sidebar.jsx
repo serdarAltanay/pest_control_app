@@ -44,6 +44,7 @@ export default function Sidebar() {
               <li className="sidebar-item" onClick={() => navigate("/admin/stores")}>
                 Mağaza Listesi
               </li>
+              <li className="sidebar-item" onClick={() => navigate("/tracking/employees")}>Personel Takip</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/employees/new")}>Personel Ekle</li>
               <li className="sidebar-item">
                 <Link to="/admin/admins/new">Admin Ekle</Link>

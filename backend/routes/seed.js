@@ -7,10 +7,225 @@ import { auth, roleCheck } from "../middleware/auth.js";
 const router = Router();
 const prisma = new PrismaClient();
 
+/** ------------ Şehir merkezleri (yaklaşık koordinatlar) ------------- */
+const CITY_COORDS = {
+  "İSTANBUL": [41.0151, 28.9795],
+  "ANKARA":   [39.9208, 32.8541],
+  "İZMİR":    [38.4237, 27.1428],
+  "AYDIN":    [37.8450, 27.8390],
+  "KOCAELİ":  [40.8533, 29.8815],
+  "KOCAELI":  [40.8533, 29.8815],
+  "TÜRKİYE":  [39.0, 35.0],
+  "":         [39.0, 35.0],
+};
+
+/** ------------------------------- Helpers ---------------------------- */
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const pick = (arr) => arr[randInt(0, arr.length - 1)];
+
+function addMeters(lat, lng, dxMeters, dyMeters) {
+  const dLat = dyMeters / 111_111;
+  const dLng = dxMeters / (111_111 * Math.cos((lat * Math.PI) / 180));
+  return [lat + dLat, lng + dLng];
+}
+function jitterAround(lat, lng, maxMeters = 1200) {
+  const dx = (Math.random() * 2 - 1) * maxMeters;
+  const dy = (Math.random() * 2 - 1) * maxMeters;
+  return addMeters(lat, lng, dx, dy);
+}
+
+const StationTypes = [
+  "FARE_YEMLEME",
+  "CANLI_YAKALAMA",
+  "ELEKTRIKLI_SINEK_TUTUCU",
+  "BOCEK_MONITOR",
+  "GUVE_TUZAGI",
+];
+
+const RiskLevels = ["RISK_YOK", "DUSUK", "ORTA", "YUKSEK"];
+
+const VisitTypes = [
+  "PERIYODIK",
+  "ACIL_CAGRI",
+  "ISTASYON_KURULUM",
+  "ILK_ZIYARET",
+  "DIGER",
+];
+
+const PestTypes = ["KEMIRGEN", "HACCADI", "UCAN", "BELIRTILMEDI"];
+const PlaceTypes = ["OFIS", "DEPO", "MAGAZA", "FABRIKA", "BELIRTILMEDI"];
+const VisitPeriods = ["HAFTALIK", "IKIHAFTALIK", "AYLIK", "IKIAYLIK", "UCAYLIK", "BELIRTILMEDI"];
+
+const AppMethods = ["ULV", "PUSKURTME", "JEL", "SISLEME", "YENILEME", "ATOMIZER", "YEMLEME", "PULVERİZE"];
+
+/** Aktivasyon payload’ı (istasyon tipine uygun) */
+function makeActivationPayload(type) {
+  const base = {
+    aktiviteVar: Math.random() < 0.45,
+    risk: pick(RiskLevels),
+    notes: Math.random() < 0.22 ? "Rutin kontrol yapıldı." : null,
+  };
+
+  if (type === "FARE_YEMLEME") {
+    Object.assign(base, {
+      deformeYem: Math.random() < 0.10,
+      yemDegisti: Math.random() < 0.25,
+      deformeMonitor: Math.random() < 0.05,
+      monitorDegisti: Math.random() < 0.20,
+      ulasilamayanMonitor: Math.random() < 0.05,
+    });
+  } else if (type === "CANLI_YAKALAMA") {
+    Object.assign(base, {
+      deformeMonitor: Math.random() < 0.05,
+      yapiskanDegisti: Math.random() < 0.20,
+      monitorDegisti: Math.random() < 0.15,
+      ulasilamayanMonitor: Math.random() < 0.05,
+    });
+  } else if (type === "ELEKTRIKLI_SINEK_TUTUCU") {
+    Object.assign(base, {
+      sariBantDegisim: Math.random() < 0.30,
+      arizaliEFK: Math.random() < 0.05,
+      tamirdeEFK: Math.random() < 0.02,
+      uvLambaDegisim: Math.random() < 0.20,
+      uvLambaAriza: Math.random() < 0.05,
+      ulasilamayanMonitor: Math.random() < 0.05,
+      karasinek: randInt(0, 6),
+      sivrisinek: randInt(0, 3),
+      diger: randInt(0, 2),
+    });
+  } else if (type === "BOCEK_MONITOR") {
+    Object.assign(base, {
+      monitorDegisti: Math.random() < 0.20,
+      hedefZararliSayisi: randInt(0, 10),
+    });
+  } else if (type === "GUVE_TUZAGI") {
+    Object.assign(base, {
+      feromonDegisti: Math.random() < 0.20,
+      deformeTuzak: Math.random() < 0.05,
+      tuzakDegisti: Math.random() < 0.15,
+      ulasilamayanTuzak: Math.random() < 0.05,
+      guve: randInt(0, 4),
+      diger: randInt(0, 2),
+    });
+  }
+
+  // otomatik aktivite tahmini
+  if (base.aktiviteVar === undefined) {
+    const anyCount =
+      (base.karasinek || 0) + (base.sivrisinek || 0) + (base.diger || 0) +
+      (base.guve || 0) + (base.hedefZararliSayisi || 0);
+    if (anyCount > 0) base.aktiviteVar = true;
+  }
+
+  return base;
+}
+
+/** 7 günlük çalışan rotası */
+async function seedTracksForEmployee(empId, baseLat, baseLng) {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 7);
+  const end = new Date();
+
+  // sadece son 7 günü temizle
+  await prisma.employeeTrackPoint.deleteMany({
+    where: { employeeId: empId, at: { gte: start, lte: end } },
+  });
+
+  const batch = [];
+  for (let d = 0; d < 7; d++) {
+    const day = new Date();
+    day.setDate(day.getDate() - d);
+    day.setHours(9, 0, 0, 0); // 09:00 başlangıç
+
+    let [lat, lng] = jitterAround(baseLat, baseLng, 500);
+    const steps = randInt(18, 30); // ~3-5 saat aktivite
+    for (let i = 0; i < steps; i++) {
+      day.setMinutes(day.getMinutes() + 10);
+      const dx = randInt(120, 420) * (Math.random() > 0.5 ? 1 : -1);
+      const dy = randInt(120, 420) * (Math.random() > 0.5 ? 1 : -1);
+      [lat, lng] = addMeters(lat, lng, dx, dy);
+
+      batch.push({
+        employeeId: empId,
+        lat, lng,
+        accuracy: randInt(5, 25),
+        speed: null,
+        heading: null,
+        source: "seed",
+        at: new Date(day),
+      });
+    }
+  }
+
+  if (batch.length) await prisma.employeeTrackPoint.createMany({ data: batch });
+}
+
+/** 15 dakikalık grid kontrolü */
+function isQuarter(date) {
+  return date.getMinutes() % 15 === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0;
+}
+function roundToQuarter(date) {
+  const d = new Date(date);
+  const m = d.getMinutes();
+  d.setMinutes(m - (m % 15), 0, 0);
+  return d;
+}
+
+/** Çalışan için ileri tarihe plan (ScheduleEvent) — çakışmasız */
+async function seedScheduleForEmployee(emp, stores, plannedBy) {
+  // sonraki 10 gün içinde mevcut planları sil ve yeniden oluştur
+  const from = new Date();
+  const to = new Date();
+  to.setDate(to.getDate() + 10);
+
+  await prisma.scheduleEvent.deleteMany({
+    where: { employeeId: emp.id, AND: [{ start: { gte: from } }, { end: { lte: to } }] },
+  });
+
+  const dayCount = 7;
+  const slotsPerDay = 2; // sabah/öğlen
+  let storeIdx = 0;
+
+  for (let d = 0; d < dayCount; d++) {
+    const baseDay = new Date();
+    baseDay.setDate(baseDay.getDate() + d + 1); // yarından itibaren
+
+    for (let s = 0; s < slotsPerDay; s++) {
+      if (!stores.length) break;
+
+      const store = stores[storeIdx % stores.length];
+      storeIdx++;
+
+      // 10:00-11:30 ya da 13:30-15:00 gibi 90dk slot
+      const startHour = s === 0 ? 10 : 13 + (Math.random() < 0.5 ? 0 : 1);
+      const start = roundToQuarter(new Date(baseDay.setHours(startHour, 0, 0, 0)));
+      const end = new Date(start.getTime() + 90 * 60 * 1000);
+
+      const status = Math.random() < 0.25 ? "COMPLETED" : "PLANNED";
+
+      await prisma.scheduleEvent.create({
+        data: {
+          title: "Planlı Ziyaret",
+          notes: Math.random() < 0.3 ? "Ön temizlik ve risk kontrolü yapılacak." : null,
+          employeeId: emp.id,
+          storeId: store.id,
+          start,
+          end,
+          status,
+          plannedById: plannedBy.id,
+          plannedByRole: plannedBy.role,
+          plannedByName: plannedBy.name,
+        },
+      });
+    }
+  }
+}
+
 /**
  * POST /api/seed/run
  * - Sadece admin
- * - Idempotent (upsert)
+ * - Idempotent (upsert) + yakın dönem kayıtlarını düzenli temizleyip yeniden üretir
  * - Tüm kullanıcı şifreleri: 123456
  */
 router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
@@ -18,14 +233,13 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
     const DEFAULT_PASSWORD = "123456";
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
-    /* -------------------- 1) Admin(ler) -------------------- */
-    const adminsInput = [
+    /* ---------------------- 1) Admin(ler) ---------------------- */
+    const adminsSeed = [
       { fullName: "Sistem Yöneticisi",  email: "yonetim@pest.local" },
       { fullName: "Operasyon Admini",   email: "operasyon@pest.local" },
     ];
-
     const admins = [];
-    for (const a of adminsInput) {
+    for (const a of adminsSeed) {
       const admin = await prisma.admin.upsert({
         where: { email: a.email },
         update: { fullName: a.fullName, password: hashedPassword },
@@ -33,35 +247,28 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
       });
       admins.push(admin);
     }
-    const defaultAdminId = admins[0].id;
+    const plannedBy = { id: admins[0].id, role: "admin", name: admins[0].fullName || admins[0].email };
 
-    /* ------------------- 2) Employee(ler) ------------------ */
-    const employeesInput = [
-      { fullName: "ahmet Karaca", email: "ahmt.karaca@pest.local", jobTitle: "Servis Sorumlusu", gsm: "0554 123 45 67", adminId: defaultAdminId },
-      { fullName: "Emre Çetin",   email: "emre.cetin@pest.local",   jobTitle: "Tekniker",         gsm: "0553 456 78 90", adminId: defaultAdminId },
-      { fullName: "Burak Kılıç",  email: "burak.kilic@pest.local",  jobTitle: "Ekip Lideri",      gsm: "0552 987 65 43", adminId: defaultAdminId },
+    /* -------------------- 2) Employee(ler) --------------------- */
+    const employeesSeed = [
+      { fullName: "Ahmet Karaca", email: "ahmet.karaca@pest.local", jobTitle: "Servis Sorumlusu", gsm: "0554 123 45 67", adminId: admins[0].id },
+      { fullName: "Emre Çetin",   email: "emre.cetin@pest.local",   jobTitle: "Tekniker",         gsm: "0553 456 78 90", adminId: admins[0].id },
+      { fullName: "Burak Kılıç",  email: "burak.kilic@pest.local",  jobTitle: "Ekip Lideri",      gsm: "0552 987 65 43", adminId: admins[0].id },
     ];
-
     const employees = [];
-    for (const e of employeesInput) {
+    for (const e of employeesSeed) {
       const emp = await prisma.employee.upsert({
         where: { email: e.email },
-        update: {
-          fullName: e.fullName, jobTitle: e.jobTitle, gsm: e.gsm,
-          adminId: e.adminId, password: hashedPassword,
-        },
-        create: {
-          fullName: e.fullName, email: e.email, password: hashedPassword,
-          jobTitle: e.jobTitle, gsm: e.gsm, adminId: e.adminId,
-        },
+        update: { fullName: e.fullName, jobTitle: e.jobTitle, gsm: e.gsm, adminId: e.adminId, password: hashedPassword },
+        create: { fullName: e.fullName, email: e.email, jobTitle: e.jobTitle, gsm: e.gsm, adminId: e.adminId, password: hashedPassword },
       });
       employees.push(emp);
     }
-    const pickEmployeeId = (i) => employees[i % employees.length].id;
+    const pickEmployee = (i) => employees[i % employees.length];
 
-    /* --------------- 3) ProviderProfile (tek) -------------- */
+    /* ---------------- 3) ProviderProfile (tek) ----------------- */
     await prisma.providerProfile.upsert({
-      where: { id: 1 }, // tek kayıt
+      where: { id: 1 },
       update: {
         companyName:       "TURA ÇEVRE SAĞLIĞI HİZMETLERİ",
         address:           "Örnek Mah. Servis Sk. No:10, İzmir",
@@ -83,268 +290,303 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
       },
     });
 
-    /* ---------------- 4) Customer(lar) (upsert) ------------ */
-    // DİKKAT: pestType / placeType / areaM2 artık Customer'a yazılmıyor (Store'a)!
-    const customersInput = [
-      {
-        code: "202500001",
-        title: "DEPOOS YEDEK PARÇA",
-        accountingTitle: "DEPOOS YEDEK PARÇA TİC. LTD. ŞTİ.",
-        email: "info@depoos.com",
-        contactFullName: "Mehmet Türe",
-        phone: "0232 321 45 67",
-        gsm: "0532 111 22 33",
-        taxOffice: "İZMİR",
-        taxNumber: "1234567890",
-        address: "Atatürk OSB Mah. 1006 Sk. No:12",
-        city: "İZMİR",
-        showBalance: false,
-        visitPeriod: "AYLIK",
-        employeeId: pickEmployeeId(0),
-
-        // mağaza meta (Store'a yazılacak)
-        storePlaceType: "DEPO",
-        storeAreaM2: 1200,
-      },
-      {
-        code: "202500002",
-        title: "YAKIN İNSAN KAYNAKLARI",
-        accountingTitle: "YAKIN İK DANIŞMANLIK A.Ş.",
-        email: "info@yakindanisman.com.tr",
-        contactFullName: "Pelin Saygın",
-        phone: "0256 444 00 12",
-        gsm: "0544 444 00 12",
-        taxOffice: "AYDIN",
-        taxNumber: "9876543210",
-        address: "Efeler Mah. 158 Sk. No:3",
-        city: "AYDIN",
-        showBalance: true,
-        visitPeriod: "IKIAYLIK",
-        employeeId: pickEmployeeId(1),
-
-        storePlaceType: "OFIS",
-        storeAreaM2: 450,
-      },
-      {
-        code: "202500003",
-        title: "TURA ÇEVRE",
-        accountingTitle: "TURA ÇEVRE HİZMETLERİ LTD.",
-        email: "ankara@turacevre.com",
-        contactFullName: "Tolga Uğur",
-        phone: "0312 555 44 33",
-        gsm: "0533 555 44 33",
-        taxOffice: "ANKARA",
-        taxNumber: "1122334455",
-        address: "Mustafa Kemal Mh. 2159 Cd. No:7",
-        city: "ANKARA",
-        showBalance: false,
-        visitPeriod: "HAFTALIK",
-        employeeId: pickEmployeeId(2),
-
-        storePlaceType: "FABRIKA",
-        storeAreaM2: 900,
-      },
-      {
-        code: "202500004",
-        title: "KARDELEN MARKET",
-        accountingTitle: "KARDELEN GIDA SAN. TİC. LTD.",
-        email: "iletisim@kardelengida.com",
-        contactFullName: "Neslihan Kar",
-        phone: "0212 333 22 11",
-        gsm: "0507 333 22 11",
-        taxOffice: "İSTANBUL",
-        taxNumber: "5566778899",
-        address: "Bağcılar Mh. Güneş Cd. No:21",
-        city: "İSTANBUL",
-        showBalance: true,
-        visitPeriod: "AYLIK",
-        employeeId: pickEmployeeId(0),
-
-        storePlaceType: "MAGAZA",
-        storeAreaM2: 300,
-      },
-      {
-        code: "202500005",
-        title: "EFE TEKSTİL",
-        accountingTitle: "EFE TEKSTİL SANAYİ A.Ş.",
-        email: "info@efetekstil.com",
-        contactFullName: "Cem Efe",
-        phone: "0232 777 66 55",
-        gsm: "0555 777 66 55",
-        taxOffice: "İZMİR",
-        taxNumber: "6677889900",
-        address: "Çiğli OSB 2. Bölge 1202/5 Sk. No:6",
-        city: "İZMİR",
-        showBalance: false,
-        visitPeriod: "UCAYLIK",
-        employeeId: pickEmployeeId(1),
-
-        storePlaceType: "FABRIKA",
-        storeAreaM2: 2500,
-      },
-      {
-        code: "202500006",
-        title: "KUZUCUOĞLU LOJİSTİK",
-        accountingTitle: "KUZUCUOĞLU LOJİSTİK A.Ş.",
-        email: "destek@kuzuculoglu.com",
-        contactFullName: "Hakan Kuzu",
-        phone: "0216 999 11 22",
-        gsm: "0536 999 11 22",
-        taxOffice: "İSTANBUL",
-        taxNumber: "9988776655",
-        address: "Tuzla Aydınlı Mah. 1. Cad. No:4",
-        city: "İSTANBUL",
-        showBalance: false,
-        visitPeriod: "IKIHAFTALIK",
-        employeeId: pickEmployeeId(2),
-
-        storePlaceType: "DEPO",
-        storeAreaM2: 1800,
-      },
-      {
-        code: "202500007",
-        title: "MAVİSU KOZMETİK",
-        accountingTitle: "MAVİSU KOZMETİK LTD.",
-        email: "musteri@mavisu.com",
-        contactFullName: "Seda Mavi",
-        phone: "0232 765 43 21",
-        gsm: "0542 765 43 21",
-        taxOffice: "İZMİR",
-        taxNumber: "3344556677",
-        address: "Karşıyaka Mavişehir Mh. 8459 Sk. No:19",
-        city: "İZMİR",
-        showBalance: true,
-        visitPeriod: "AYLIK",
-        employeeId: pickEmployeeId(1),
-
-        storePlaceType: "OFIS",
-        storeAreaM2: 650,
-      },
-      {
-        code: "202500008",
-        title: "DALGA PLASTİK",
-        accountingTitle: "DALGA PLASTİK SAN. TİC. LTD.",
-        email: "info@dalgaplastik.com",
-        contactFullName: "Levent Dal",
-        phone: "0262 345 67 89",
-        gsm: "0530 345 67 89",
-        taxOffice: "KOCAELİ",
-        taxNumber: "2211334455",
-        address: "Gebze İMES OSB 3. Cd. No:10",
-        city: "KOCAELİ",
-        showBalance: false,
-        visitPeriod: "IKIAYLIK",
-        employeeId: pickEmployeeId(0),
-
-        storePlaceType: "FABRIKA",
-        storeAreaM2: 1400,
-      },
-    ];
-
-    const customers = [];
-    for (const c of customersInput) {
-      // Customer'a yazılmayacak alanları ayır
-      const {
-        storePlaceType,
-        storeAreaM2,
-        ...customerData
-      } = c;
-
-      const cd = await prisma.customer.upsert({
-        where: { code: c.code },
-        update: {
-          ...customerData,
-          password: hashedPassword, // hepsi 123456
-        },
-        create: {
-          ...customerData,
-          password: hashedPassword,
-        },
-      });
-      customers.push({ db: cd, storeMeta: { placeType: storePlaceType, areaM2: storeAreaM2 } });
-    }
-
-    /* --------------- 5) Her müşteri için mağazalar --------- */
-    for (const { db: cdb, storeMeta } of customers) {
-      const samples = [
-        {
-          name: `${cdb.title} Merkez`,
-          code: "MRKZ",
-          city: cdb.city,
-          address: cdb.address,
-          phone: cdb.phone,
-          manager: cdb.contactFullName,
-          isActive: true,
-          placeType: storeMeta.placeType || "BELIRTILMEDI",
-          areaM2: storeMeta.areaM2 ?? null,
-        },
-        {
-          name: `${cdb.title} Şube-1`,
-          code: "S1",
-          city: cdb.city,
-          address: cdb.address,
-          phone: cdb.gsm,
-          manager: cdb.contactFullName,
-          isActive: true,
-          placeType: storeMeta.placeType || "BELIRTILMEDI",
-          areaM2: storeMeta.areaM2 ?? null,
-        },
-      ];
-
-      for (const s of samples) {
-        await prisma.store.upsert({
-          where: { customerId_code: { customerId: cdb.id, code: s.code } },
-          update: {
-            name: s.name,
-            city: s.city,
-            address: s.address,
-            phone: s.phone,
-            manager: s.manager,
-            isActive: s.isActive,
-            placeType: s.placeType,
-            areaM2: s.areaM2,
-          },
-          create: {
-            customerId: cdb.id,
-            name: s.name,
-            code: s.code,
-            city: s.city,
-            address: s.address,
-            phone: s.phone,
-            manager: s.manager,
-            isActive: s.isActive,
-            placeType: s.placeType,
-            areaM2: s.areaM2,
-          },
-        });
-      }
-    }
-
-    /* ----------------- 6) Örnek Biyosidaller ---------------- */
-    const biocideInput = [
+    /* -------------------- 4) Biocidaller ----------------------- */
+    const biocideSeed = [
       { name: "DeltaMax 2.5", activeIngredient: "Deltamethrin", antidote: "Semptomatik", unit: "ML" },
-      { name: "Fipronil Jel",  activeIngredient: "Fipronil",    antidote: "Semptomatik", unit: "GR" },
-      { name: "Brodifacoum",   activeIngredient: "Brodifacoum", antidote: "K Vitamini",  unit: "GR" },
-      { name: "Permex 25",     activeIngredient: "Permethrin",  antidote: "Semptomatik", unit: "ML" },
+      { name: "Fipronil Jel", activeIngredient: "Fipronil",     antidote: "Semptomatik", unit: "GR" },
+      { name: "Brodifacoum",  activeIngredient: "Brodifacoum",  antidote: "K Vitamini",  unit: "GR" },
+      { name: "Permex 25",    activeIngredient: "Permethrin",   antidote: "Semptomatik", unit: "ML" },
     ];
-    for (const b of biocideInput) {
+    for (const b of biocideSeed) {
       await prisma.biocide.upsert({
         where: { name_activeIngredient: { name: b.name, activeIngredient: b.activeIngredient } },
         update: { antidote: b.antidote, unit: b.unit },
         create: b,
       });
     }
+    const allBiocides = await prisma.biocide.findMany();
 
-    /* -------------------- Yanıt / Özet ---------------------- */
+    /* ---------------------- 5) Customers ----------------------- */
+    const customersSeed = [
+      {
+        code: "CUST-0001",
+        title: "Tura Gıda A.Ş.",
+        accountingTitle: "Tura Gıda",
+        email: "tura@customer.local",
+        contactFullName: "Mete Yalçın",
+        phone: "0 (232) 111 11 11",
+        gsm: "0 (555) 111 11 11",
+        taxOffice: "Konak VD",
+        taxNumber: "1234567890",
+        address: "Gıda OSB, No:12",
+        city: "İZMİR",
+        showBalance: true,
+        visitPeriod: pick(VisitPeriods),
+        employeeId: pickEmployee(0).id,
+      },
+      {
+        code: "CUST-0002",
+        title: "Ege Lojistik Ltd.",
+        accountingTitle: "Ege Lojistik",
+        email: "ege@customer.local",
+        contactFullName: "Sevil Er",
+        phone: "0 (232) 222 22 22",
+        gsm: "0 (555) 222 22 22",
+        taxOffice: "Bornova VD",
+        taxNumber: "0987654321",
+        address: "Lojistik Mah., No:5",
+        city: "İZMİR",
+        showBalance: false,
+        visitPeriod: pick(VisitPeriods),
+        employeeId: pickEmployee(1).id,
+      },
+      {
+        code: "CUST-0003",
+        title: "Marmara Tekstil",
+        accountingTitle: "Marmara Tekstil",
+        email: "marmara@customer.local",
+        contactFullName: "Hakan Güler",
+        phone: "0 (262) 333 33 33",
+        gsm: "0 (555) 333 33 33",
+        taxOffice: "İzmit VD",
+        taxNumber: "6677889900",
+        address: "Sanayi Cd., No:3",
+        city: "KOCAELİ",
+        showBalance: false,
+        visitPeriod: pick(VisitPeriods),
+        employeeId: pickEmployee(2).id,
+      },
+    ];
+
+    const customers = [];
+    for (const c of customersSeed) {
+      const cd = await prisma.customer.upsert({
+        where: { code: c.code },
+        update: { ...c, password: hashedPassword },
+        create: { ...c, password: hashedPassword },
+      });
+      customers.push(cd);
+    }
+
+    /* ----------------------- 6) Stores ------------------------- */
+    const stores = [];
+    for (const c of customers) {
+      const base = CITY_COORDS[String(c.city || "").toUpperCase()] || CITY_COORDS[""];
+      const [bLat, bLng] = base;
+
+      const twoStores = [
+        {
+          name: `${c.title} Merkez`,
+          code: "MRKZ",
+          city: c.city,
+          address: c.address,
+          phone: c.phone,
+          manager: c.contactFullName,
+          isActive: true,
+          pestType: pick(PestTypes),
+          placeType: pick(PlaceTypes),
+          areaM2: randInt(500, 6000),
+          ...( (() => { const [lat, lng] = jitterAround(bLat, bLng, 800); return { latitude: lat, longitude: lng }; })() ),
+        },
+        {
+          name: `${c.title} Şube-1`,
+          code: "S1",
+          city: c.city,
+          address: c.address,
+          phone: c.gsm,
+          manager: c.contactFullName,
+          isActive: true,
+          pestType: pick(PestTypes),
+          placeType: pick(PlaceTypes),
+          areaM2: randInt(400, 4000),
+          ...( (() => { const [lat, lng] = jitterAround(bLat, bLng, 1600); return { latitude: lat, longitude: lng }; })() ),
+        },
+      ];
+
+      for (const s of twoStores) {
+        const st = await prisma.store.upsert({
+          where: { customerId_code: { customerId: c.id, code: s.code } },
+          update: { ...s },
+          create: { customerId: c.id, ...s },
+        });
+        stores.push(st);
+      }
+    }
+
+    /* ---------------------- 7) Stations ------------------------ */
+    const stations = [];
+    for (const st of stores) {
+      const count = randInt(5, 9);
+      for (let i = 1; i <= count; i++) {
+        const type = pick(StationTypes);
+        const code = `S-${String(i).padStart(3, "0")}`;
+        const name = `${type.replace(/_/g, " ")} ${i}`;
+
+        const sta = await prisma.station.upsert({
+          where: { storeId_code: { storeId: st.id, code } },
+          update: { type, name, isActive: true },
+          create: { storeId: st.id, type, name, code, isActive: true },
+        });
+        stations.push(sta);
+      }
+    }
+
+    /* ----- 8) Yakın dönem aktivasyonları temizle + yeniden ekle ----- */
+    const cutoffAct = new Date();
+    cutoffAct.setDate(cutoffAct.getDate() - 90);
+
+    await prisma.stationActivation.deleteMany({
+      where: { observedAt: { gte: cutoffAct }, stationId: { in: stations.map(x => x.id) } },
+    });
+
+    for (const sta of stations) {
+      const howMany = randInt(2, 4);
+      for (let k = 0; k < howMany; k++) {
+        const daysAgo = randInt(3, 80);
+        const observedAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+        const payload = makeActivationPayload(sta.type);
+
+        await prisma.stationActivation.create({
+          data: {
+            storeId: sta.storeId,
+            stationId: sta.id,
+            visitId: null,
+            type: sta.type,
+            observedAt,
+            ...payload,
+          },
+        });
+      }
+    }
+
+    /* ----------------------- 9) Visits + EK1 ------------------- */
+    // son 60 gün içindeki bu mağazalara ait ziyaretleri kaldır ve yeniden oluştur
+    const cutoffVisit = new Date();
+    cutoffVisit.setDate(cutoffVisit.getDate() - 60);
+    await prisma.visit.deleteMany({
+      where: { storeId: { in: stores.map(s => s.id) }, date: { gte: cutoffVisit } },
+    });
+
+    const visits = [];
+    for (const st of stores) {
+      const visitCount = randInt(2, 3);
+      for (let i = 0; i < visitCount; i++) {
+        const daysAgo = randInt(1, 45);
+        const date = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+        const visitType = pick(VisitTypes);
+        const staff = [pickEmployee(i), pickEmployee(i + 1)];
+
+        const visit = await prisma.visit.create({
+          data: {
+            storeId: st.id,
+            date,
+            startTime: "09:00",
+            endTime: "11:30",
+            visitType,
+            targetPests: ["Kemirgen", "Uçan", "Haşere"].slice(0, randInt(1, 3)),
+            notes: Math.random() < 0.35 ? "Planlı saha ziyareti yapıldı." : null,
+            employees: staff.map(e => ({ id: e.id, name: e.fullName })),
+            ek1: { create: {} }, // Ek1Report(DRAFT)
+          },
+          include: { ek1: true },
+        });
+
+        // EK1 satırları (1-3 arası)
+        const lineCount = randInt(1, 3);
+        for (let li = 0; li < lineCount; li++) {
+          const bio = pick(allBiocides);
+          const method = pick(AppMethods);
+          const amount = bio.unit === "ML" || bio.unit === "LT"
+            ? randInt(50, 250)
+            : randInt(10, 120);
+
+          await prisma.ek1Line.create({
+            data: {
+              visitId: visit.id,
+              biosidalId: bio.id,
+              method,
+              amount,
+            },
+          });
+        }
+
+        // İlgili istasyonlardan bir kısmını da bu ziyarete bağlayan aktivasyon
+        const stasOfStore = stations.filter(s => s.storeId === st.id);
+        const selected = [...stasOfStore].sort(() => Math.random() - 0.5).slice(0, Math.min(3, stasOfStore.length));
+        for (const sta of selected) {
+          const payload = makeActivationPayload(sta.type);
+          await prisma.stationActivation.create({
+            data: {
+              storeId: st.id,
+              stationId: sta.id,
+              visitId: visit.id,
+              type: sta.type,
+              observedAt: visit.date,
+              ...payload,
+            },
+          });
+        }
+
+        visits.push(visit);
+      }
+    }
+
+    /* -------------------- 10) Nonconformities ------------------ */
+    // son 30 gün içindeki uygunsuzlukları temizleyip yeniden üretelim
+    const cutoffNcr = new Date();
+    cutoffNcr.setDate(cutoffNcr.getDate() - 30);
+    await prisma.nonconformity.deleteMany({
+      where: { storeId: { in: stores.map(s => s.id) }, observedAt: { gte: cutoffNcr } },
+    });
+
+    const NCR_CATS = ["HIJYEN", "DEPOLAMA", "YAPISAL", "DIGER"];
+    for (const st of stores) {
+      if (Math.random() < 0.6) {
+        const observedAt = new Date(Date.now() - randInt(2, 25) * 24 * 60 * 60 * 1000);
+        await prisma.nonconformity.create({
+          data: {
+            storeId: st.id,
+            category: pick(NCR_CATS),
+            title: "Kontrol esnasında tespit edilen uygunsuzluk",
+            notes: "Giderilmesi için bilgilendirme yapıldı.",
+            image: null,
+            observedAt,
+          },
+        });
+      }
+    }
+
+    /* ------------------ 11) Çalışan rotaları ------------------- */
+    for (const emp of employees) {
+      const anyCustomer = await prisma.customer.findFirst({ where: { employeeId: emp.id }, orderBy: { createdAt: "asc" } });
+      const base = CITY_COORDS[String(anyCustomer?.city || "").toUpperCase()] || CITY_COORDS[""];
+      const [bLat, bLng] = base;
+      await seedTracksForEmployee(emp.id, bLat, bLng);
+    }
+
+    /* ------------------ 12) Ziyaret planları ------------------- */
+    // Her çalışan için ilgili mağazalardan bir alt küme seçip 10 gün ileriye plan yap
+    for (const emp of employees) {
+      const storesOfEmpCustomers = stores.filter(st =>
+        customers.some(c => c.id === st.customerId && c.employeeId === emp.id)
+      );
+      const subset = [...storesOfEmpCustomers].sort(() => Math.random() - 0.5).slice(0, Math.min(4, storesOfEmpCustomers.length));
+      await seedScheduleForEmployee(emp, subset, plannedBy);
+    }
+
+    /* --------------------------- Özet -------------------------- */
     res.json({
-      message: "Seed başarıyla tamamlandı (tüm şifreler 123456)",
+      message: "Seed tamamlandı (tüm şifreler 123456)",
       summary: {
-        admins: admins.map(a => ({ id: a.id, fullName: a.fullName, email: a.email })),
-        employees: employees.map(e => ({ id: e.id, fullName: e.fullName, email: e.email })),
-        customers: customers.map(c => ({ id: c.db.id, code: c.db.code, title: c.db.title })),
-        storesPerCustomer: 2,
-        biocides: biocideInput.length,
-        providerProfile: true,
+        admins: admins.map(a => ({ id: a.id, name: a.fullName, email: a.email })),
+        employees: employees.map(e => ({ id: e.id, name: e.fullName, email: e.email })),
+        customers: customers.map(c => ({ id: c.id, code: c.code, title: c.title })),
+        stores: stores.length,
+        stations: stations.length,
+        visits: visits.length,
+        biocides: allBiocides.length,
+        schedulesSeededDays: 10,
+        tracksSeededDays: 7,
       },
     });
   } catch (err) {

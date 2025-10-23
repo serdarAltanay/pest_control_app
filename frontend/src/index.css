@@ -1,1 +1,101 @@
+/* ========= LIGHT ========= */
+:root[data-theme="light"] {
+  /* temel yüzeyler */
+  --bg:            #f5f7fb;   /* sayfa zemini */
+  --surface:       #ffffff;   /* navbar / sheet */
+  --card:          #ffffff;   /* kart ve panel */
+  --card-alt:      #f3f5f8;   /* kart içinde header / table thead */
+  --row-odd:       #fafbfc;   /* zebra-odd */
+  --row-even:      #ffffff;   /* zebra-even */
+  --muted-surface: #eef2f6;
 
+  /* metin ve çizgiler */
+  --text:          #0f172a;   /* slate-900 */
+  --text-muted:    #475569;   /* slate-600 */
+  --border:        rgba(15, 23, 42, 0.12);
+
+  /* aksanlar */
+  --primary:       #0e4aa0;   /* daha doygun mavi */
+  --primary-contrast: #ffffff;
+  --accent:        #00b894;
+  --ring:          rgba(59, 130, 246, .35);
+
+  --shadow:        0 10px 24px rgba(15, 23, 42, .08);
+}
+
+/* ========= DARK ========= */
+:root[data-theme="dark"] {
+  /* temel yüzeyler */
+  --bg:            #0b1220;   /* lacivert siyaha yakın */
+  --surface:       #0f172a;   /* slate-900 */
+  --card:          #101828;   /* koyu kart */
+  --card-alt:      #0b1527;   /* kart header / thead */
+  --row-odd:       #0e1a30;   /* zebra-odd */
+  --row-even:      #101828;   /* zebra-even */
+  --muted-surface: #121b33;
+
+  /* metin ve çizgiler */
+  --text:          #e6edf7;   /* açık metin */
+  --text-muted:    #a8b3cf;   /* soluk */
+  --border:        rgba(255, 255, 255, 0.12);
+
+  /* aksanlar */
+  --primary:       #1c3f91;   /* koyu mavi */
+  --primary-contrast: #e6edf7;
+  --accent:        #22c55e;
+  --ring:          rgba(125, 211, 252, .45);
+
+  --shadow:        0 12px 28px rgba(0,0,0,.55);
+}
+
+/* ========= GENEL UYGULAMA ========= */
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+* {
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+
+/* linkler */
+a { color: var(--primary); }
+a:hover { text-decoration: underline; }
+
+/* formlar */
+input, select, textarea {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  outline: none;
+}
+input:focus, select:focus, textarea:focus {
+  box-shadow: 0 0 0 3px var(--ring);
+  border-color: transparent;
+}
+
+/* kart/panel ortak */
+.card, .panel, .sheet {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+/* tablo & list ortak */
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: var(--card-alt);
+  color: var(--text);
+}
+tbody tr:nth-child(odd)  { background: var(--row-odd); }
+tbody tr:nth-child(even) { background: var(--row-even); }
+th, td {
+  border: 1px solid var(--border);
+}
+
+/* utility */
+.muted { color: var(--text-muted); }
+.surface { background: var(--surface); }

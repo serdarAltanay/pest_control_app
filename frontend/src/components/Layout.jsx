@@ -1,3 +1,4 @@
+// src/components/Layout.jsx
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
@@ -8,8 +9,9 @@ import useHeartbeat from "../hooks/useHeartbeat";
 
 export default function Layout({ children, onCustomerClick }) {
   const { profile } = useContext(ProfileContext);
-  // kullanıcı varsa heartbeat aktif
-  useHeartbeat(!!profile);
+  const role = (profile?.role || "").toLowerCase();
+  // çalışan için konum takibi açık, diğer rollerde sadece pulse
+  useHeartbeat(!!profile, 60_000, role === "employee");
 
   return (
     <div className="layout">

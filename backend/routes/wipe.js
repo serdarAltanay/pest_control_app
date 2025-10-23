@@ -1,4 +1,4 @@
-// backend/routes/wipe.js
+// routes/wipe.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
@@ -8,62 +8,40 @@ import path from "path";
 const router = Router();
 const prisma = new PrismaClient();
 
-/** Güvenli dosya silici (sessiz hata) */
-function safeUnlink(filePath) {
+const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+
+/** Klasör içeriğini (dosyalar + alt klasörler) boşaltır, kök klasörü bırakır */
+function emptyDir(dir) {
   try {
-    if (!filePath) return false;
-    // Göreli path'leri proje köküne göre normalize et
-    const absolute = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(process.cwd(), filePath);
-    if (fs.existsSync(absolute)) {
-      fs.unlinkSync(absolute);
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Bir tablo için: kayıtları çek -> her birini tek tek:
- *  - profil görselini sil (varsa)
- *  - veritabanında delete
- * Sonunda kaç kayıt silindi ve kaç dosya silindi döner.
- */
-async function wipeTableIndividually({ table, select, hasProfileImage }) {
-  // 1) Kayıtları çek
-  const items = await prisma[table].findMany({ select });
-
-  let deletedCount = 0;
-  let removedFiles = 0;
-
-  // 2) Her kayıt için sırayla sil
-  for (const it of items) {
-    try {
-      // a) Dosya sil
-      if (hasProfileImage && it.profileImage) {
-        const ok = safeUnlink(it.profileImage);
-        if (ok) removedFiles += 1;
+    if (!fs.existsSync(dir)) return 0;
+    let removed = 0;
+    for (const entry of fs.readdirSync(dir)) {
+      const p = path.join(dir, entry);
+      try {
+        const stat = fs.lstatSync(p);
+        if (stat.isDirectory()) {
+          removed += emptyDir(p);
+          fs.rmdirSync(p, { recursive: true });
+        } else {
+          fs.unlinkSync(p);
+          removed++;
+        }
+      } catch {
+        // ignore
       }
-
-      // b) DB delete
-      await prisma[table].delete({ where: { id: it.id } });
-      deletedCount += 1;
-    } catch (e) {
-      // tekil bir silme patlarsa diğerlerine devam et
-      // istersen console.error bırakabilirsin
-      // console.error(`delete ${table}#${it.id} error:`, e);
     }
+    return removed;
+  } catch {
+    return 0;
   }
-
-  return { deletedCount, removedFiles };
 }
 
 router.post("/", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
-    // RefreshToken'ları toptan silebiliriz
+    // 1) Dosyalar: uploads içini boşalt
+    const filesRemoved = emptyDir(UPLOAD_ROOT);
+
+    // 2) Refresh tokens
     let refreshTokensDeleted = 0;
     try {
       const rt = await prisma.refreshToken?.deleteMany({});
@@ -72,36 +50,45 @@ router.post("/", auth, roleCheck(["admin"]), async (_req, res) => {
       refreshTokensDeleted = 0;
     }
 
-    // Sıra hassasiyeti olabilecek ilişkiler için (ör: müşteri -> employee -> admin)
-    // önce müşterileri, sonra personelleri, sonra adminleri silmek genelde güvenli olur.
-    const customersResult = await wipeTableIndividually({
-      table: "customer",
-      select: { id: true, profileImage: true }, // profil görseli sütunu varsa
-      hasProfileImage: true,
-    });
+    // 3) FK sırası: çocuklardan ebeveynlere doğru
+    // EK1 -> Visits
+    try { await prisma.ek1?.deleteMany({}); } catch {}
+    try { await prisma.stationActivation.deleteMany({}); } catch {}
+    try { await prisma.nonconformity.deleteMany({}); } catch {}
+    try { await prisma.visit.deleteMany({}); } catch {}
+    try { await prisma.station.deleteMany({}); } catch {}
+    try { await prisma.employeeTrackPoint.deleteMany({}); } catch {}
 
-    const employeesResult = await wipeTableIndividually({
-      table: "employee",
-      select: { id: true, profileImage: true },
-      hasProfileImage: true,
-    });
+    // Store ve Customer
+    try { await prisma.store.deleteMany({}); } catch {}
+    try { await prisma.customer.deleteMany({}); } catch {}
 
-    const adminsResult = await wipeTableIndividually({
-      table: "admin",
-      select: { id: true, profileImage: true },
-      hasProfileImage: true,
-    });
+    // Diğer bağımsız tablolar (opsiyonel)
+    try { await prisma.biocide.deleteMany({}); } catch {}
+    try { await prisma.providerProfile.deleteMany({}); } catch {}
+
+    // Kullanıcılar (employee -> admin)
+    let employeesDeleted = 0, adminsDeleted = 0, customersDeleted = 0;
+    try { const r = await prisma.employee.deleteMany({}); employeesDeleted = r.count; } catch {}
+    try { const r = await prisma.admin.deleteMany({}); adminsDeleted = r.count; } catch {}
+    try { const r = await prisma.customer.deleteMany({}); customersDeleted = r.count; } catch {}
 
     return res.json({
-      message: "Tüm veriler başarıyla silindi!",
+      message: "Tüm veriler ve upload içeriği başarıyla silindi!",
       stats: {
+        uploadsFilesRemoved: filesRemoved,
         refreshTokens: refreshTokensDeleted,
-        customers: customersResult.deletedCount,
-        customersProfileImagesRemoved: customersResult.removedFiles,
-        employees: employeesResult.deletedCount,
-        employeesProfileImagesRemoved: employeesResult.removedFiles,
-        admins: adminsResult.deletedCount,
-        adminsProfileImagesRemoved: adminsResult.removedFiles,
+        stationActivations: "cleared",
+        nonconformities: "cleared",
+        visits: "cleared",
+        stations: "cleared",
+        employeeTrackPoints: "cleared",
+        stores: "cleared",
+        customers: customersDeleted,
+        employees: employeesDeleted,
+        admins: adminsDeleted,
+        biocides: "cleared",
+        providerProfile: "cleared",
       },
     });
   } catch (err) {

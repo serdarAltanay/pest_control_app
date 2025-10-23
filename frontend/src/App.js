@@ -41,6 +41,7 @@ import ReportDetail from "./pages/reports/ReportDetail.jsx";
 import VisitCalendar from "./pages/calendar/VisitCalendar.jsx";
 import VisitDetail from "./pages/calendar/VisitDetail.jsx";
 
+import EmployeeRoutes from "./pages/tracking/EmployeeTracking.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -366,6 +367,14 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin','employee']}>
               <VisitDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/tracking/employees"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <EmployeeRoutes />
             </PrivateRoute>
           }
         />

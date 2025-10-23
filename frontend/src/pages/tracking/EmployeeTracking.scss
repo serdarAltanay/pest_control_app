@@ -1,0 +1,95 @@
+.routes-page {
+  display: flex; flex-direction: column; gap: 12px;
+
+  .card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px 12px;
+  }
+
+  .rp-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+
+    .left { display: flex; flex-direction: column; gap: 8px; }
+    .title { font-weight: 800; font-size: 16px; }
+
+    .days {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      .day {
+        border: 1px solid #e5e7eb; background: #fff; border-radius: 999px; padding: 4px 10px;
+        font-size: 12px; cursor: pointer;
+        &.on { background: #111827; color: #fff; border-color: #111827; }
+      }
+    }
+
+    .right .hint { color: #64748b; font-size: 13px; }
+  }
+
+  .rp-body {
+    display: grid; grid-template-columns: 320px 1fr; gap: 12px;
+    @media (max-width: 960px) { grid-template-columns: 1fr; }
+
+    .rp-legend {
+      .sec-title { font-weight: 700; margin-bottom: 8px; }
+      .emp-list { display: grid; gap: 6px; }
+      .emp {
+        display: flex; align-items: center; gap: 8px;
+        border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; cursor: pointer;
+        input { margin: 0; }
+        .dot { width: 12px; height: 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+        .nm { font-weight: 600; }
+        .cnt { margin-left: auto; color: #64748b; font-size: 12px; }
+        &.on { background: #f8fafc; border-color: #dbeafe; }
+      }
+      .muted { color: #64748b; &.small { font-size: 12px; } }
+    }
+
+    .rp-map { padding: 0; overflow: hidden; }
+  }
+}
+
+
+/* src/pages/tracking/EmployeeTracking.scss */
+.emp-list {
+  display: grid;
+  gap: 6px;
+}
+.emp-list .emp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #fff;
+}
+.emp-list .emp.on { background: #f1f5ff; border-color: #c7d2fe; }
+.emp-list .emp input { pointer-events: auto; } /* emin olmak için */
+.emp-list .dot { width: 12px; height: 12px; border-radius: 999px; }
+.emp-list .nm { font-weight: 600; }
+.emp-list .cnt { margin-left: auto; color: #64748b; font-size: 12px; }
+
+
+/* sol listede isim tıklanabilir görünsün */
+.emp-list .nm.as-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0 6px 0 4px;
+  font: inherit;
+  color: #0ea5e9;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.emp-list .nm.as-link:hover { color: #0369a1; }
+
+/* renkli son-nokta pini */
+.emp-pin-icon .emp-pin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.25);
+}

@@ -252,6 +252,9 @@ function CompletedVisitsTable() {
 
   return (
     <div className="completed-visits">
+      <div className="cv-head">
+        <div className="t">Tamamlanan Görevler</div>
+      </div>
       <div className="toolbar">
         <input
           className="search"
@@ -275,6 +278,7 @@ function CompletedVisitsTable() {
 
       <div className="table-wrap">
         <table className="completed-table">
+        
           <thead>
             <tr>
               <th>Başlık</th>

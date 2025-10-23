@@ -319,6 +319,7 @@
 .vc-modal .store-empty { color: #9ca3af; font-style: italic; padding: 4px 0; }
 .vc-modal .store-loading { color: #6b7280; padding: 4px 0; }
 
+/* (alt kopya: aynı day view değişkenleri; gerekirse bırakılabilir) */
 .vc-day {
   --hours-width: 64px;
   --col-head: 34px;
@@ -366,5 +367,4 @@
       }
     }
   }
-
 }

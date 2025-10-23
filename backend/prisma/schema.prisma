@@ -190,20 +190,21 @@ model Admin {
 }
 
 model Employee {
-  id             Int             @id @default(autoincrement())
+  id             Int                  @id @default(autoincrement())
   fullName       String
-  email          String          @unique
+  email          String               @unique
   password       String
   jobTitle       String
   gsm            String
   profileImage   String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
   lastLoginAt    DateTime?
   lastProfileAt  DateTime?
   lastSeenAt     DateTime?
   adminId        Int?
-  admin          Admin?          @relation(fields: [adminId], references: [id])
+  admin          Admin?               @relation(fields: [adminId], references: [id])
+  employeeTracks EmployeeTrackPoint[]
   scheduleEvents ScheduleEvent[]
   customers      Customer[]
 }
@@ -398,6 +399,26 @@ model ScheduleEvent {
   @@index([storeId])
   @@index([plannedById])
   @@index([status])
+}
+
+model EmployeeTrackPoint {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // Konum (7 ondalık ~ 1cm)
+  lat Decimal @db.Decimal(10, 7)
+  lng Decimal @db.Decimal(10, 7)
+
+  // Opsiyonel telemetri
+  accuracy Int?
+  speed    Float?
+  heading  Float?
+  source   String? // "heartbeat"
+  at       DateTime @default(now())
+
+  @@index([employeeId, at])
+  @@index([at])
 }
 
 model RefreshToken {

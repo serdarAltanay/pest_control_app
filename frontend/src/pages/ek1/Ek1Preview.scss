@@ -1,38 +1,99 @@
+/* src/pages/tracking/Ek1Preview.scss */
 .ek1-print {
+  /* ------- toolbar ------- */
   .toolbar { display:flex; gap:8px; margin:12px 0; }
   .btn { height:36px; padding:0 12px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-weight:700; cursor:pointer; }
   .btn.primary { background:#16a34a; border-color:#16a34a; color:#fff; }
   .btn.warn { background:#f59e0b; border-color:#f59e0b; color:#fff; }
   .btn.ghost { background:#fff; }
 
-  .page.A4 { width: 210mm; min-height: 297mm; margin: 0 auto; background:#fff; padding:14mm; box-shadow:0 0 0.5mm rgba(0,0,0,.1); }
-  .doc-head { display:grid; grid-template-columns: 60px 1fr 60px; align-items:center; margin-bottom:10px;
-    img { width:60px; height:60px; object-fit:contain; }
-    h1 { margin:0; text-align:center; font-size:18px; font-weight:800; }
-    .qr { justify-self:end; }
+  /* ------- page ------- */
+  .page.A4{
+    width:210mm; min-height:297mm; margin:0 auto; background:#fff;
+    padding:14mm; box-shadow:0 0 8px rgba(0,0,0,.08);
+    box-sizing:border-box; color:#111; font-size:13px; line-height:1.34;
+    /* sayfa içinde varsayılan hizayı SOL yap */
+    text-align:left;
   }
 
-  .block { margin-top:12px; }
-  .block-title { font-weight:800; border:1px solid #111; border-bottom:none; padding:6px 8px; }
+  /* ------- header ------- */
+  .doc-head{
+    display:grid; grid-template-columns:60px 1fr 60px; align-items:center; margin-bottom:10px;
+    img{ width:60px; height:60px; object-fit:contain; }
+    h1{ margin:0; text-align:center; font-size:18px; font-weight:800; letter-spacing:.2px; }
+    .qr{ justify-self:end; }
+  }
 
-  table { width:100%; border-collapse:collapse; }
-  .kv th, .kv td { border:1px solid #111; padding:6px 8px; vertical-align:top; }
-  .kv th { width:45%; background:#f9fafb; font-weight:700; }
+  .block{ margin-top:12px; break-inside:avoid; page-break-inside:avoid; }
+  .block-title{
+    font-weight:800; padding:6px 8px; background:#fff;
+    border:1px solid #000;
+  }
 
-  .list thead th { border:1px solid #111; background:#f9fafb; padding:6px 8px; }
-  .list tbody td { border:1px solid #111; padding:6px 8px; }
-  .center { text-align:center; }
+  /* ========= TABLOLAR: pikselli, kilit hizalı ve izole ========= */
+  /* İzole reset: sadece tablo elemanlarının kalıtılan stilini sıfırla */
+  .page.A4 table, .page.A4 thead, .page.A4 tbody, .page.A4 tr, .page.A4 th, .page.A4 td { all: revert; }
 
-  .note { border:1px solid #111; padding:8px; margin-top:10px; font-size:12px; }
+  table{ width:100%;  table-layout:fixed; }
 
-/* Sadece print anında çalışır */
-@media print {
-  .ek1-print .doc-head img {
-    width: 60px !important;
-    height: 60px !important;
-    object-fit: contain;
+  /* Tüm hücreler SOL — ürün tablosu 1. ve 6. sütun istisna */
+  .kv > tbody > tr > th,
+  .kv > tbody > tr > td,
+  .list > thead > tr > th,
+  .list > tbody > tr > td{ 
+    border:1px solid #000; padding:6px 8px; vertical-align:top; line-height:1.25;
+    text-align:left !important;            /* ← kilit */
+    word-break:break-word; overflow-wrap:anywhere; hyphens:auto;
+  }
+
+  /* Başlık hücre arkaplanı */
+  .kv > tbody > tr > th,
+  .list > thead > tr > th{ background:#f9fafb; font-weight:700; border:1px solid #000; }
+
+  /* KV (anahtar-değer) tablolarında 1. kolon sabit genişlik */
+  table.kv col:first-child{ width: 42% !important; }
+  table.kv col:last-child { width: auto !important; }
+
+  /* ÜRÜN LİSTESİ — (# ve Miktar hizaları) */
+  .list > thead > tr > th:nth-child(1),
+  .list > tbody > tr > td:nth-child(1){
+    width:56px; /* ~%6 */
+    
+  }
+  .list > thead > tr > th:nth-child(6),
+  .list > tbody > tr > td:nth-child(6){
+    text-align:right !important; white-space:nowrap;
+    font-variant-numeric: tabular-nums; font-feature-settings:"tnum" 1;
+  }
+
+  .center{ text-align:center; }
+
+  .note{ border:1px solid #000; padding:8px; margin-top:10px; font-size:12px; }
+
+  /* ------- print ------- */
+  @media print{
+    @page{ size:A4; margin:10mm; }
+    html, body{ background:#fff !important; }
+    .page.A4{ box-shadow:none !important;  margin:0 !important; width:auto !important; min-height:auto !important; }
+    .no-print{ display:none !important; }
+    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+    /* başlık tekrar etsin, satırlar bölünmesin */
+    .list thead{ display:table-header-group; }
+    .list tfoot{ display:table-footer-group; }
+    .list tr, .kv tr, .block{ break-inside:avoid; page-break-inside:avoid; }
+
+    /* ekstra kilitler (baskıda olası global CSS'leri ez) */
+    .kv > tbody > tr > th,
+    .kv > tbody > tr > td,
+    .list > thead > tr > th,
+    .list > tbody > tr > td{ text-align:left !important; }
+    .list > thead > tr > th:nth-child(1),
+    .list > tbody > tr > td:nth-child(1){ text-align:center !important; }
+    .list > thead > tr > th:nth-child(6),
+    .list > tbody > tr > td:nth-child(6){ text-align:right !important; }
+
+    /* logo boyutları kilit */
+    .doc-head img{ width:60px !important; height:60px !important; object-fit:contain; }
   }
 }
-
-}
-

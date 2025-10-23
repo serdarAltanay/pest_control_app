@@ -36,8 +36,8 @@ router.get("/search", auth, roleCheck(["admin", "employee"]), async (req, res) =
     const list = await prisma.store.findMany({
       where: {
         OR: [
-          { name: { contains: q } },  // ← mode: "insensitive" KALDIRILDI
-          { code: { contains: q } },  // ← mode: "insensitive" KALDIRILDI
+          { name: { contains: q } },  
+          { code: { contains: q } },  
         ],
       },
       orderBy: { name: "asc" },
@@ -73,6 +73,37 @@ router.get("/customer/:customerId", auth, roleCheck(["admin", "employee"]), asyn
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
+
+// Mağaza min listesi (id, name, lat, lng)
+router.get("/min", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  try {
+    const list = await prisma.store.findMany({
+      select: { id: true, name: true, code: true, latitude: true, longitude: true },
+      orderBy: { id: "asc" },
+    });
+
+    const items = list
+      .filter((s) => s.latitude != null && s.longitude != null) // Decimal olabilir, typeof check yapmayın
+      .map((s) => {
+        const lat = Number(s.latitude);
+        const lng = Number(s.longitude);
+        return {
+          id: s.id,
+          name: s.name || s.code || `Mağaza #${s.id}`,
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+        };
+      })
+      .filter((s) => s.lat != null && s.lng != null);
+
+    return res.json({ ok: true, stores: items });
+  } catch (e) {
+    console.error("GET /stores/min", e);
+    return res.status(500).json({ ok: false, message: "Sunucu hatası" });
+  }
+});
+
+
 
 /** Tek mağaza */
 router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {

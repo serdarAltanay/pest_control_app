@@ -46,6 +46,14 @@ const STATUS_LABEL = {
 const statusLabel = (s) => STATUS_LABEL[s] || "—";
 const statusClass = (s) => `st-${(s || "PLANNED").toLowerCase()}`;
 
+/* ───────── Ziyaret Türleri (Başlık için) ───────── */
+const VISIT_TYPE_TR = {
+  PERIYODIK: "Periyodik Ziyaret",
+  ACIL_CAGRI: "Acil Çağrı",
+  ISTASYON_KURULUM: "İstasyon Kurulum",
+  ILK_ZIYARET: "İlk Ziyaret",
+};
+
 /* ───────── Çakışan etkinlikleri şeritlere dağıt ───────── */
 function assignLanesForDay(list) {
   const evs = [...list].sort((a, b) => a.start - b.start);
@@ -276,7 +284,12 @@ export default function VisitCalendar() {
     const fd = new FormData(form);
     const employeeId = Number(fd.get("employeeId") || 0);
     const pickedStoreId = Number(fd.get("storeId") || selectedStoreId || 0);
-    const title = fd.get("title") || "Ziyaret";
+
+    // ▼▼▼ Yeni: ziyaret türü (başlık buradan türetilir)
+    const visitTypeKey = fd.get("visitType") || "";
+    const title = VISIT_TYPE_TR[visitTypeKey] || "Ziyaret";
+    // ▲▲▲
+
     const notes = fd.get("notes") || "";
 
     if (!employeeId) return toast.error("Personel seçin");
@@ -748,10 +761,17 @@ export default function VisitCalendar() {
                   </div>
                 </div>
 
+                {/* ▼▼▼ Güncellendi: Başlık yerine Ziyaret Türü seçimi */}
                 <div className="field full">
-                  <label>Başlık</label>
-                  <input name="title" type="text" placeholder="Ziyaret adı" defaultValue="Ziyaret" />
+                  <label>Ziyaret Türü</label>
+                  <select name="visitType" defaultValue="PERIYODIK" required>
+                    <option value="PERIYODIK">{VISIT_TYPE_TR.PERIYODIK}</option>
+                    <option value="ACIL_CAGRI">{VISIT_TYPE_TR.ACIL_CAGRI}</option>
+                    <option value="ISTASYON_KURULUM">{VISIT_TYPE_TR.ISTASYON_KURULUM}</option>
+                    <option value="ILK_ZIYARET">{VISIT_TYPE_TR.ILK_ZIYARET}</option>
+                  </select>
                 </div>
+                {/* ▲▲▲ */}
 
                 <div className="field full">
                   <label>Notlar</label>
