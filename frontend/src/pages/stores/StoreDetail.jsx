@@ -37,6 +37,53 @@ const PIE_COLORS = [
   "#14b8a6", "#f97316", "#06b6d4", "#84cc16", "#e11d48",
 ];
 
+// src/pages/stores/StoreDetail.jsx  ➜  alt taraftaki liste bileşeni
+function StoreAccessList({ storeId }) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get(`/access/store/${storeId}`);
+        const list = Array.isArray(data?.grants) ? data.grants : (Array.isArray(data) ? data : []);
+        setRows(list);
+      } catch {}
+    })();
+  }, [storeId]);
+
+  if (!rows.length) return <div className="empty">Bu mağazaya erişebilen yok.</div>;
+
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>Kişi</th>
+          <th>Rol</th>
+          <th>Kapsam</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.id}>
+            <td className="strong">
+              {(r.owner?.firstName || "") + " " + (r.owner?.lastName || "")}
+              {" "}
+              <span className="muted">({r.owner?.email})</span>
+            </td>
+            <td>{r.owner?.role || "—"}</td>
+            <td>
+              {r.scopeType === "CUSTOMER"
+                ? <>Müşteri-Genel <span className="badge">{r.customer?.title || r.customerId}</span></>
+                : <>Mağaza <span className="badge">{r.store?.name || r.storeId}</span></>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+
+
 export default function StoreDetail() {
   const { storeId } = useParams();
   const navigate = useNavigate();
@@ -420,6 +467,16 @@ export default function StoreDetail() {
               ))}
               {Object.keys(metrics).length === 0 && <li>—</li>}
             </ul>
+          </section>
+          <section className="card">
+            <div className="card-title with-actions">
+              <span className="title-text">Erişebilenler</span>
+              <div className="title-actions">
+                <Link className="btn primary" to={`/admin/stores/${storeId}/access`}>Erişimi Yönet</Link>
+              </div>
+            </div>
+
+            <StoreAccessList storeId={storeId} />
           </section>
         </div>
       </div>

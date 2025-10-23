@@ -96,6 +96,58 @@ enum VisitStatus {
   POSTPONED
 }
 
+// --- NEW / UPDATED ACCESS PARTS ---
+
+enum AccessScopeType {
+  STORE
+  CUSTOMER
+}
+
+enum AccessRole {
+  CALISAN
+  MAGAZA_SORUMLUSU
+  MAGAZA_MUDURU
+  GENEL_MUDUR
+  PATRON
+  DIGER
+}
+
+model AccessOwner {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  password     String
+  firstName    String?
+  lastName     String?
+  phone        String?
+  profileImage String?
+  role         AccessRole @default(CALISAN)
+  isActive     Boolean    @default(true)
+
+  grants    AccessGrant[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model AccessGrant {
+  id      Int         @id @default(autoincrement())
+  ownerId Int
+  owner   AccessOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  scopeType  AccessScopeType
+  customerId Int?
+  storeId    Int?
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  store    Store?    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, scopeType, customerId, storeId], map: "unique_access_grant")
+  @@index([ownerId])
+  @@index([scopeType, customerId, storeId])
+}
+
 model StationActivation {
   id Int @id @default(autoincrement())
 
@@ -239,6 +291,8 @@ model Customer {
 
   employeeId Int?
   employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  AccessGrant AccessGrant[]
 }
 
 model Store {
@@ -273,6 +327,7 @@ model Store {
 
   reports        Report[]
   scheduleEvents ScheduleEvent[]
+  AccessGrant    AccessGrant[]
 
   @@unique([customerId, code], map: "store_customer_code_unique")
 }

@@ -1,3 +1,4 @@
+// src/pages/customers/CustomerDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import Layout from "../../components/Layout";
@@ -18,6 +19,55 @@ const PERIOD_TR = {
 const ONLINE_MS = 2 * 60 * 1000;
 const IDLE_MS = 10 * 60 * 1000;
 
+/* --- Erişim listesi (müşteri) --- */
+function CustomerAccessList({ customerId }) {
+  const [rows, setRows] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get(`/access/customer/${customerId}`);
+        const list = Array.isArray(data?.grants) ? data.grants : (Array.isArray(data) ? data : []);
+        setRows(list);
+      } catch {
+        /* sessiz düş */
+      }
+    })();
+  }, [customerId]);
+
+  if (!rows.length) return <div className="empty">Erişim sahibi yok.</div>;
+
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>Kişi</th>
+          <th>Rol</th>
+          <th>Kapsam</th>
+          <th>Detay</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((g) => (
+          <tr key={g.id}>
+            <td className="strong">
+              {(g.owner?.firstName || "") + " " + (g.owner?.lastName || "")}{" "}
+              <span className="muted">({g.owner?.email})</span>
+            </td>
+            <td>{g.owner?.role || "—"}</td>
+            <td>{g.scopeType === "CUSTOMER" ? "Müşteri-Genel" : "Mağaza"}</td>
+            <td>
+              {g.scopeType === "CUSTOMER"
+                ? (g.customer?.title || g.customerId)
+                : (g.store?.name || g.storeId)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,11 +79,11 @@ export default function CustomerDetail() {
   const [query, setQuery] = useState("");
 
   const filteredStores = useMemo(() => {
-  const t = query.trim().toLowerCase();
-  if (!t) return stores;
-  return stores.filter((s) =>
-    [s.name, s.code, s.city, s.phone, s.manager]
-      .some((v) => (v ?? "").toString().toLowerCase().includes(t))
+    const t = query.trim().toLowerCase();
+    if (!t) return stores;
+    return stores.filter((s) =>
+      [s.name, s.code, s.city, s.phone, s.manager]
+        .some((v) => (v ?? "").toString().toLowerCase().includes(t))
     );
   }, [query, stores]);
 
@@ -145,7 +195,6 @@ export default function CustomerDetail() {
     () => Array.from(new Set(stores.map(s => s.placeType).filter(Boolean))),
     [stores]
   );
-  // Eğer Store şemasına pestType eklediysen:
   const pestTypes = useMemo(
    () => Array.from(new Set(stores.map(s => s.pestType).filter(Boolean))),
     [stores]
@@ -230,8 +279,7 @@ export default function CustomerDetail() {
                   <div><b>Toplam Uygulama Alanı (m²)</b><span>{totalArea || "—"}</span></div>
                   <div><b>Uygulama Yeri Tür(leri)</b><span>{placeTypes.length ? placeTypes.join(", ") : "—"}</span></div>
                   <div><b>Bakiye Gösterimi</b><span>{customer.showBalance ? "Evet" : "Hayır"}</span></div>
-                  {/* Eğer Store’a pestType eklediysen: */}
-                   <div><b>Hedef Zararlı Tür(leri)</b><span>{pestTypes.length ? pestTypes.join(", ") : "—"}</span></div> 
+                  <div><b>Hedef Zararlı Tür(leri)</b><span>{pestTypes.length ? pestTypes.join(", ") : "—"}</span></div>
                 </div>
               </section>
 
@@ -246,7 +294,7 @@ export default function CustomerDetail() {
               </section>
             </div>
 
-            {/* Mağazalar */}
+            {/* Mağazalar + Erişim Sahipleri */}
             <div className="bottom-grid">
               <section className="card stores">
                 <div className="card-title">Mağazalar</div>
@@ -279,8 +327,8 @@ export default function CustomerDetail() {
                 {stores.length === 0 ? (
                   <div className="empty">Kayıtlı mağaza yok.</div>
                 ) : filteredStores.length === 0 ? (
-                <div className="empty">Aramanıza uygun mağaza bulunamadı.</div>
-              ):(
+                  <div className="empty">Aramanıza uygun mağaza bulunamadı.</div>
+                ) : (
                   <div className="store-table-wrap">
                     <table className="store-table">
                       <thead>
@@ -356,8 +404,11 @@ export default function CustomerDetail() {
               </section>
 
               <section className="card access">
-                <div className="card-title">Erişim Sahipleri</div>
-                <div className="empty">Mağaza sorumluları & grup yöneticileri burada yönetilecek.</div>
+                <div className="card-title">
+                  Erişim Sahipleri
+                  <Link className="btn" style={{ marginLeft: 8 }} to={`/admin/customers/${id}/access`}>Yönet</Link>
+                </div>
+                <CustomerAccessList customerId={id} />
               </section>
             </div>
           </>

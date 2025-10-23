@@ -35,6 +35,8 @@ import reportsRoutes from "./routes/reports.js";
 
 import scheduleRouter from "./routes/schedule.js";
 
+import accessRouter from "./routes/access.js"
+
 dotenv.config();
 
 const app = express();
@@ -89,6 +91,8 @@ app.use("/api/visit", visitsRouter);
 app.use("/api/visits", visitsRouter);
 
 app.use("/api/schedule", scheduleRouter);
+
+app.use("/api/access", accessRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server ${PORT} portunda açıldı`));

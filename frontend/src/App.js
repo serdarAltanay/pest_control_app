@@ -43,6 +43,12 @@ import VisitDetail from "./pages/calendar/VisitDetail.jsx";
 
 import EmployeeRoutes from "./pages/tracking/EmployeeTracking.jsx";
 
+import AccessOwnersList from "./pages/access/AccessOwnersList.jsx";
+import AccessOwnerDetail from "./pages/access/AccessOwnerDetail";
+import AccessManageStore from "./pages/access/AccessManageStore";
+import AccessManageCustomer from "./pages/access/AccessManageCustomer";
+import AccessNew from "./pages/access/AccessNew.jsx";
+
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
 import 'leaflet/dist/leaflet.css';
@@ -378,6 +384,47 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/admin/access"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AccessOwnersList  />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/access/new"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AccessNew   />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/access/owner/:ownerId"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AccessOwnerDetail   />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/stores/:storeId/access"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AccessManageStore    />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/customers/:customerId/access"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <AccessManageCustomer    />
+            </PrivateRoute>
+          }
+        />
+        
       </Routes>
     </BrowserRouter>
     </ProfileProvider>
