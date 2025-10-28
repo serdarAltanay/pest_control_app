@@ -1,3 +1,4 @@
+// src/pages/ek1/Ek1List.jsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
@@ -21,6 +22,36 @@ const VISIT_TYPE_LABEL = {
   DIGER: "Diğer",
 };
 const visitTypeLabel = (v) => VISIT_TYPE_LABEL[v] || "Diğer";
+
+/* 🔧 PERSONEL İSMİ NORMALİZE EDİCİ */
+function employeesToText(val) {
+  if (!val) return "";
+  if (typeof val === "string") return val;
+  if (Array.isArray(val)) {
+    return val
+      .map((e) => {
+        if (!e) return "";
+        if (typeof e === "string") return e;
+        return (
+          e.fullName ||
+          [e.firstName, e.lastName].filter(Boolean).join(" ") ||
+          e.name ||
+          ""
+        );
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof val === "object") {
+    return (
+      val.fullName ||
+      [val.firstName, val.lastName].filter(Boolean).join(" ") ||
+      val.name ||
+      ""
+    );
+  }
+  return "";
+}
 
 /* ───────── API (fallback'li yollar) ───────── */
 async function getOk(url) { try { const { data } = await api.get(url); return data; } catch { return undefined; } }
@@ -50,16 +81,6 @@ async function signProvider(visitId, signerName) {
   ];
   for (const p of cands) { const d = await postOk(p, body); if (d) return d; }
   throw new Error("Admin onayı (imza) verilemedi");
-}
-async function sendMail(visitId, email) {
-  const body = { email };
-  const cands = [
-    `/api/ek1/${visitId}/send-email`,
-    `/api/admin/ek1/${visitId}/send-email`,
-    `/api/api/ek1/${visitId}/send-email`,
-  ];
-  for (const p of cands) { const d = await postOk(p, body); if (d) return d; }
-  throw new Error("E-posta gönderilemedi");
 }
 async function deleteEk1(visitId) {
   const cands = [
@@ -96,6 +117,13 @@ export default function Ek1List() {
         const createdAt = r.createdAt ? new Date(r.createdAt) : visitDate;
         const updatedAt = r.updatedAt ? new Date(r.updatedAt) : visitDate;
 
+        // 🔧 İlk listede varsa personel bilgisini çek
+        const empText =
+          employeesToText(r.employees) ||
+          employeesToText(r.employeeName) ||
+          employeesToText(r.employeeFullName) ||
+          "";
+
         return {
           visitId,
           storeId: r.storeId ?? null,
@@ -107,12 +135,14 @@ export default function Ek1List() {
           customerSignedAt: r.customerSignedAt ? new Date(r.customerSignedAt) : null,
           pdfUrl: r.pdfUrl || r.fileUrl || null,
           createdAt, updatedAt,
-          employeeName: "-",
-          employeeKey: r.storeId ?? visitId ?? 0,
+          /* 🔧 DOLDUR */
+          employeeName: empText || "-",
+          // renk için anahtar: mümkünse personel metni, yoksa store/visit
+          employeeKey: empText || r.storeId || visitId || 0,
         };
       });
 
-      // İlk yüklemede imza durumlarını bundle ile kesinleştir
+      // İlk yüklemede imza/personel/tarih durumlarını bundle ile kesinleştir
       const bundles = await Promise.allSettled(
         base.filter((r) => !!r.visitId).map((r) => fetchBundle(r.visitId))
       );
@@ -125,12 +155,23 @@ export default function Ek1List() {
           const b = res.value;
           const rep = b.report || {};
           const vis = b.visit || {};
+
+          // 🔧 visit.employees’ten isim çıkar
+          const empTextFromVisit =
+            employeesToText(vis.employees) ||
+            employeesToText(vis.employeeName) ||
+            employeesToText(vis.employeeFullName) ||
+            "";
+
           base[i] = {
             ...r,
             visitType: vis.visitType || r.visitType || "DIGER",
             visitDate: vis.date ? new Date(vis.date) : r.visitDate,
             providerSignedAt: rep.providerSignedAt ? new Date(rep.providerSignedAt) : r.providerSignedAt,
             customerSignedAt: rep.customerSignedAt ? new Date(rep.customerSignedAt) : r.customerSignedAt,
+            /* 🔧 personeli bundle’dan da güncelle */
+            employeeName: empTextFromVisit || r.employeeName || "-",
+            employeeKey: empTextFromVisit || r.employeeKey,
           };
         }
       }
@@ -188,7 +229,7 @@ export default function Ek1List() {
     else { setSortKey(key); setSortDir("asc"); }
   };
 
-  /* Actions */
+  /* Actions (değişmedi) */
   const onView = (row) => {
     if (row.pdfUrl) {
       window.open(row.pdfUrl, "_blank", "noopener,noreferrer");
@@ -219,16 +260,9 @@ export default function Ek1List() {
     }
   };
 
-  const onSendMail = async (row) => {
+  const onMailCompose = (row) => {
     if (!row.visitId) { toast.error("visitId bulunamadı"); return; }
-    const email = window.prompt("E-posta adresi:", "");
-    if (!email) return;
-    try {
-      await sendMail(row.visitId, email);
-      toast.success("E-posta gönderildi");
-    } catch (e) {
-      toast.error(e.message || "E-posta gönderilemedi");
-    }
+    navigate(`/mail/visit/${row.visitId}`);
   };
 
   const onStoreDetail = (row) => {
@@ -336,7 +370,7 @@ export default function Ek1List() {
             <div className="c actions">
               <button className="btn ghost" onClick={() => onView(r)}>Görüntüle</button>
               <button className="btn" onClick={() => onSignAdmin(r)} disabled={!r.visitId || !!r.providerSignedAt}>İmzala (Admin)</button>
-              <button className="btn ghost" onClick={() => onSendMail(r)} disabled={!r.visitId}>Mail Gönder</button>
+              <button className="btn ghost" onClick={() => onMailCompose(r)} disabled={!r.visitId}>Mail Gönder</button>
               <button className="btn link" onClick={() => onStoreDetail(r)} disabled={!r.storeId}>Detay</button>
               <button className="btn danger" onClick={() => onDelete(r)} disabled={!r.visitId}>Sil</button>
             </div>

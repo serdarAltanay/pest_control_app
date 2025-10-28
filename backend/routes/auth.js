@@ -4,14 +4,16 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
-import { cookieOpts } from "../config/cookies.js"; 
+import { cookieOpts } from "../config/cookies.js";
 dotenv.config();
 
 const router = Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// REGISTER (Admin veya Employee)
+/* ---------------------------------------------------
+ * REGISTER (sadece admin/employee eklemek için mevcut)
+ * --------------------------------------------------- */
 router.post("/register", async (req, res) => {
   try {
     const { fullName, email, password, role, assignedTo } = req.body;
@@ -29,6 +31,7 @@ router.post("/register", async (req, res) => {
           email,
           password: hashedPassword,
           lastLoginAt: null,
+          lastSeenAt: null,
           lastProfileAt: null,
         },
       });
@@ -38,8 +41,9 @@ router.post("/register", async (req, res) => {
           fullName,
           email,
           password: hashedPassword,
-          adminId: assignedTo || null, // bağlı admin varsa
+          adminId: assignedTo || null,
           lastLoginAt: null,
+          lastSeenAt: null,
           lastProfileAt: null,
         },
       });
@@ -64,25 +68,30 @@ router.post("/register", async (req, res) => {
   }
 });
 
-
-// LOGIN
+/* ----------------
+ * LOGIN (yeni sistem)
+ * ---------------- */
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     let user = null;
-    let role = null;
+    let userType = null;
 
-    // Admin -> Employee -> Customer sırayla bak
+    // 1) Admin
     user = await prisma.admin.findUnique({ where: { email } });
-    if (user) role = "admin";
+    if (user) userType = "admin";
+
+    // 2) Employee
     if (!user) {
       user = await prisma.employee.findUnique({ where: { email } });
-      if (user) role = "employee";
+      if (user) userType = "employee";
     }
+
+    // 3) AccessOwner (erişim sahibi) -> müşteri rolüyle oturum
     if (!user) {
-      user = await prisma.customer.findUnique({ where: { email } });
-      if (user) role = "customer";
+      user = await prisma.accessOwner.findUnique({ where: { email } });
+      if (user) userType = "accessOwner";
     }
 
     if (!user) return res.status(401).json({ message: "Kullanıcı bulunamadı" });
@@ -91,20 +100,30 @@ router.post("/login", async (req, res) => {
     if (!valid) return res.status(401).json({ message: "Şifre hatalı" });
 
     const now = new Date();
-    if (role === "admin") {
-      await prisma.admin.update({ where: { id: user.id }, data: { lastLoginAt: now } });
-    } else if (role === "employee") {
-      await prisma.employee.update({ where: { id: user.id }, data: { lastLoginAt: now } });
-    } else if (role === "customer") {
-      await prisma.customer.update({ where: { id: user.id }, data: { lastLoginAt: now } });
+    // lastLoginAt / lastSeenAt güncelle
+    if (userType === "admin") {
+      await prisma.admin.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
+    } else if (userType === "employee") {
+      await prisma.employee.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
+    } else if (userType === "accessOwner") {
+      await prisma.accessOwner.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
+    } else if (userType === "customer") {
+      await prisma.customer.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
     }
 
-    const accessToken = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "15m" });
-    const refreshToken = jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: "7d" });
+    // FE yönlendirmesi için: accessOwner da "customer" gibi davransın
+    const jwtRole = userType === "accessOwner" ? "customer" : userType;
+    // RefreshToken tablosunda çakışmayı önlemek için DB'de tutulan rol:
+    const dbRole = userType === "accessOwner" ? "accessOwner" : userType;
 
-    // Bileşik unique: @@unique([userId, role], name: "userId_role_unique")
+    // Access token (15 dk) — FE bu role ile route eder
+    const accessToken = jwt.sign({ id: user.id, role: jwtRole }, JWT_SECRET, { expiresIn: "15m" });
+    // Refresh token (7 gün) — payload role'ü yine jwtRole (customer) olsun ki refresh sonrası da FE aynı kalsın
+    const refreshToken = jwt.sign({ id: user.id, role: jwtRole }, JWT_SECRET, { expiresIn: "7d" });
+
+    // DB'ye kaydet (unique: userId+role) — role için dbRole kullan
     await prisma.refreshToken.upsert({
-      where: { userId_role_unique: { userId: user.id, role } },
+      where: { userId_role_unique: { userId: user.id, role: dbRole } },
       update: {
         token: refreshToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -112,18 +131,29 @@ router.post("/login", async (req, res) => {
       create: {
         token: refreshToken,
         userId: user.id,
-        role,
+        role: dbRole,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
-    // TEK cookie formatı (path: "/")
+    // Cookie olarak refresh token
     res.cookie("refreshToken", refreshToken, cookieOpts);
+
+    // Görünen ad — tabloya göre normalize et
+    let fullName = "";
+    if (userType === "admin" || userType === "employee") {
+      fullName = user.fullName || "";
+    } else if (userType === "accessOwner") {
+      fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+    } else if (userType === "customer") {
+      // şemanıza göre uyarlayın; title ya da contactFullName olabilir
+      fullName = user.fullName || user.title || user.contactFullName || user.email;
+    }
 
     res.json({
       accessToken,
-      role,
-      fullName: user.fullName,
+      role: jwtRole,     // "customer" | "admin" | "employee"
+      fullName,
       email: user.email,
     });
   } catch (err) {
@@ -132,7 +162,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// REFRESH (korumasız olmalı)
+/* -------------
+ * REFRESH TOKEN
+ * ------------- */
 router.post("/refresh", async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
@@ -144,17 +176,12 @@ router.post("/refresh", async (req, res) => {
     jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
       if (err) return res.status(403).json({ message: "Token doğrulanamadı" });
 
-      // Yeni access
+      // Yeni access: refresh içindeki role neyse aynısını veriyoruz (accessOwner da "customer" olarak kalır)
       const newAccessToken = jwt.sign(
         { id: decoded.id, role: decoded.role },
         JWT_SECRET,
         { expiresIn: "15m" }
       );
-
-      // İstersen burada ROTATION ekleyebilirsin
-      // const newRefreshToken = jwt.sign({ id: decoded.id, role: decoded.role }, JWT_SECRET, { expiresIn: "7d" });
-      // await prisma.refreshToken.update({ where: { token: refreshToken }, data: { token: newRefreshToken, expiresAt: new Date(Date.now() + 7*24*60*60*1000) } });
-      // res.cookie("refreshToken", newRefreshToken, cookieOpts);
 
       return res.json({ accessToken: newAccessToken });
     });
@@ -164,11 +191,13 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
+/* -------
+ * LOGOUT
+ * ------- */
 router.post("/logout", async (req, res) => {
   try {
     const rt = req.cookies.refreshToken;
 
-    // Cookie'yi set ederken ne verdiysen AYNISINI clear'da da ver
     res.clearCookie("refreshToken", cookieOpts);
 
     if (rt) {
@@ -181,6 +210,5 @@ router.post("/logout", async (req, res) => {
     return res.status(500).json({ error: "Sunucu hatası" });
   }
 });
-
 
 export default router;

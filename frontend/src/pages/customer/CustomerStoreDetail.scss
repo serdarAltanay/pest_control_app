@@ -1,0 +1,8 @@
+.cust-store-detail .head { display:flex; gap:16px; align-items:flex-end; justify-content:space-between; }
+.cust-store-detail .tabs { display:flex; gap:8px; }
+.cust-store-detail .tab { padding:6px 10px; border:1px solid var(--border); border-radius:8px; }
+.cust-store-detail .kv { display:grid; grid-template-columns: repeat(2,1fr); gap:8px 16px; }
+.cust-store-detail .kv .full { grid-column: 1 / -1; }
+.cust-store-detail .grid { display:grid; grid-template-columns: 1.5fr 1fr; gap:16px; margin-top:16px; }
+.cust-store-detail .counts { margin-top:10px; color:var(--muted); display:grid; gap:4px; }
+@media (max-width: 900px){ .cust-store-detail .grid { grid-template-columns:1fr; } }

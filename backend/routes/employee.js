@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { auth, roleCheck } from "../middleware/auth.js";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-/** Liste */
+/** Liste (sadece admin görsün) */
 router.get("/", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
     const employees = await prisma.employee.findMany({
@@ -17,48 +17,76 @@ router.get("/", auth, roleCheck(["admin"]), async (_req, res) => {
         email: true,
         jobTitle: true,
         gsm: true,
-        adminId: true,
+        profileImage: true,
         createdAt: true,
         updatedAt: true,
         lastLoginAt: true,
-        lastSeenAt: true,
+        lastSeenAt: true, // <<< ÖNEMLİ
+        adminId: true,
       },
     });
     res.json(employees);
-  } catch (err) {
-    console.error("GET /employees error:", err);
+  } catch (e) {
+    console.error("GET /employees", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
 
-/** Ekle */
+/** Tekil detay */
+router.get("/:id", auth, roleCheck(["admin"]), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ message: "Geçersiz id" });
+
+    const emp = await prisma.employee.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        jobTitle: true,
+        gsm: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+        lastSeenAt: true, // <<< ÖNEMLİ
+        adminId: true,
+      },
+    });
+    if (!emp) return res.status(404).json({ message: "Kayıt bulunamadı" });
+    res.json(emp);
+  } catch (e) {
+    console.error("GET /employees/:id", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
+/** Oluştur */
 router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   try {
-    const { fullName, jobTitle, gsm, email, password, adminId } = req.body;
+    const { fullName, jobTitle, gsm, email, password, adminId } = req.body || {};
     if (!fullName || !jobTitle || !gsm || !email || !password) {
-      return res.status(400).json({
-        message: "Ad Soyad, Görev, GSM, E-posta ve Parola zorunludur.",
-      });
+      return res.status(400).json({ message: "Zorunlu alanlar eksik." });
     }
-    const emailNorm = String(email).trim().toLowerCase();
-    const hashed = await bcrypt.hash(String(password), 10);
+    const exists = await prisma.employee.findUnique({ where: { email } });
+    if (exists) return res.status(409).json({ message: "E-posta kullanımda." });
 
-    const emp = await prisma.employee.create({
+    const hashed = await bcrypt.hash(String(password), 10);
+    const created = await prisma.employee.create({
       data: {
         fullName,
         jobTitle,
         gsm,
-        email: emailNorm,
+        email,
         password: hashed,
-        adminId: adminId || null,
+        adminId: adminId ? Number(adminId) : null,
       },
+      select: { id: true },
     });
-    res.json({ message: "Personel eklendi", employee: emp });
+    res.json({ ok: true, id: created.id });
   } catch (e) {
-    if (e.code === "P2002") {
-      return res.status(409).json({ message: "Bu e-posta zaten kayıtlı." });
-    }
-    console.error("POST /employees/create error:", e);
+    console.error("POST /employees/create", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
@@ -69,30 +97,29 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-    const { fullName, jobTitle, gsm, email, password, adminId } = req.body;
-
-    // email uniq
-    if (email) {
-      const emailNorm = String(email).trim().toLowerCase();
-      const other = await prisma.employee.findUnique({ where: { email: emailNorm } });
-      if (other && other.id !== id) {
-        return res.status(409).json({ message: "Bu e-posta başka bir kullanıcıya ait." });
-      }
-    }
-
+    const { fullName, jobTitle, gsm, email, password, adminId } = req.body || {};
     const data = {};
-    if (fullName !== undefined) data.fullName = fullName;
-    if (jobTitle !== undefined) data.jobTitle = jobTitle;
-    if (gsm !== undefined) data.gsm = gsm;
-    if (email !== undefined) data.email = String(email).trim().toLowerCase();
-    if (adminId !== undefined) data.adminId = adminId || null;
+    if (fullName !== undefined) data.fullName = String(fullName);
+    if (jobTitle !== undefined) data.jobTitle = String(jobTitle);
+    if (gsm !== undefined) data.gsm = String(gsm);
+    if (email !== undefined) data.email = String(email);
+    if (typeof adminId !== "undefined") data.adminId = adminId ? Number(adminId) : null;
     if (password) data.password = await bcrypt.hash(String(password), 10);
 
-    const updated = await prisma.employee.update({ where: { id }, data });
-    res.json({ message: "Personel güncellendi", employee: updated });
+    const updated = await prisma.employee.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        updatedAt: true,
+        lastSeenAt: true, // <<< ÖNEMLİ
+      },
+    });
+    res.json({ ok: true, employee: updated });
   } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ message: "Kayıt bulunamadı" });
-    console.error("PUT /employees/:id error:", e);
+    if (e.code === "P2025")
+      return res.status(404).json({ message: "Kayıt bulunamadı" });
+    console.error("PUT /employees/:id", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
@@ -103,10 +130,11 @@ router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
     await prisma.employee.delete({ where: { id } });
-    res.json({ message: "Personel silindi" });
+    res.json({ ok: true });
   } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ message: "Personel bulunamadı" });
-    console.error("DELETE /employees/:id error:", e);
+    if (e.code === "P2025")
+      return res.status(404).json({ message: "Kayıt bulunamadı" });
+    console.error("DELETE /employees/:id", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });

@@ -1,75 +1,150 @@
 // src/pages/login/Login.jsx
-import { useState, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import api from "../../api/axios.js";
+import { toast } from "react-toastify";
 import { parseJwt } from "../../utils/auth.js";
 import { ProfileContext } from "../../context/ProfileContext.jsx";
 import "./Login.scss";
 
+/**
+ * Yeni model notları:
+ * - AccessOwner login olur; backend JWT.role = "customer" döner (FE route mantığı sade).
+ * - "Customer" artık yalnızca kapsam temsil eder; giriş yapan bir varlık değildir.
+ * - Girişten sonra:
+ *    admin/employee  -> /work
+ *    accessOwner(*)  -> /customer     (*JWT.role = "customer")
+ */
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const triedRefreshRef = useRef(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { fetchProfile } = useContext(ProfileContext);
 
-  // Sayfa açılınca cookie'deki refresh token ile sessiz giriş dene
+  // Private route'tan geldiysek geri dönecek rota
+  const from = (location.state && location.state.from) || null;
+
+  // Mount'ta (1 kez) sessiz refresh dene (cookie varsa)
   useEffect(() => {
+    if (triedRefreshRef.current) return;
+    triedRefreshRef.current = true;
+
     (async () => {
       try {
         const { data } = await axios.post("/api/auth/refresh", {}, { withCredentials: true });
         if (data?.accessToken) {
           localStorage.setItem("accessToken", data.accessToken);
+
+          // role FE yönlendirme için hala gerekli
           const payload = parseJwt(data.accessToken);
           if (payload?.role) localStorage.setItem("role", payload.role);
+
           await fetchProfile?.();
-          navigate(payload?.role === "customer" ? "/customer" : "/work", { replace: true });
+
+          // geri dönüş rotası öncelikli
+          if (from) {
+            navigate(from, { replace: true });
+          } else {
+            // accessOwner -> "customer" rolüyle gelir
+            navigate(payload?.role === "customer" ? "/customer" : "/work", { replace: true });
+          }
         }
       } catch {
-        // sessizce geç
+        // cookie yok/expired: login ekranında kal
       }
     })();
-  }, [navigate, fetchProfile]);
+  }, [fetchProfile, navigate, from]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await api.post("/auth/login", { email, password });
+    if (loading) return;
 
-      localStorage.setItem("accessToken", res.data.accessToken);
-      localStorage.setItem("role", res.data.role);
-      localStorage.setItem("fullName", res.data.fullName);
-      localStorage.setItem("name", res.data.fullName); // geri uyumluluk
-      localStorage.setItem("email", res.data.email);
+    setLoading(true);
+    try {
+      const res = await api.post("/auth/login", {
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      const { accessToken, role, fullName, email: serverEmail } = res.data || {};
+
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("role", role); // "admin" | "employee" | "customer"(=AccessOwner)
+      localStorage.setItem("fullName", fullName || "");
+      localStorage.setItem("name", fullName || "");
+      localStorage.setItem("email", serverEmail || email.trim().toLowerCase());
 
       await fetchProfile?.();
-
       toast.success("Giriş başarılı 🎉");
-      navigate(res.data.role === "customer" ? "/customer" : "/work");
+
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        navigate(role === "customer" ? "/customer" : "/work", { replace: true });
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Giriş hatası ❌");
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Giriş hatası ❌";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <form className="login-form" onSubmit={handleSubmit}>
+    <form className="login-form" onSubmit={handleSubmit} noValidate>
       <h2>Giriş Yap</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Şifre"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <button type="submit">Giriş Yap</button>
+
+      <label>
+        <span>E-posta</span>
+        <input
+          type="email"
+          inputMode="email"
+          autoComplete="username"
+          placeholder="mail@ornek.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoFocus
+          disabled={loading}
+        />
+      </label>
+
+      <label>
+        <span>Şifre</span>
+        <div className="password-field">
+          <input
+            type={showPw ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+          />
+          <button
+            type="button"
+            className="toggle-pw"
+            onClick={() => setShowPw((s) => !s)}
+            aria-label={showPw ? "Şifreyi gizle" : "Şifreyi göster"}
+            disabled={loading}
+          >
+            {showPw ? "Gizle" : "Göster"}
+          </button>
+        </div>
+      </label>
+
+      <button type="submit" disabled={loading}>
+        {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+      </button>
     </form>
   );
 }

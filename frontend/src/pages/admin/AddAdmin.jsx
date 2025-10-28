@@ -1,4 +1,3 @@
-// src/pages/admin/AddAdmin.jsx
 import api from "../../api/axios";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
@@ -13,7 +12,6 @@ function EditAdminModal({ admin, onClose, onChanged }) {
   const [password, setPassword] = useState("");
   const [avatarPath, setAvatarPath] = useState(admin?.profileImage ?? null);
 
-  // Modal açıldığında tekil admin’i tazele (özellikle profileImage için)
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -23,27 +21,20 @@ function EditAdminModal({ admin, onClose, onChanged }) {
         setFullName(data.fullName || "");
         setEmail(data.email || "");
         setAvatarPath(data.profileImage || null);
-      } catch {
-        // sessiz geç
-      }
+      } catch {}
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [admin.id]);
 
   const img = useMemo(() => getAvatarUrl(avatarPath, { bust: true }), [avatarPath]);
-  console.log(avatarPath)
-  console.log("Avatar URL:", img);
 
   const handleRemoveAvatar = async () => {
     if (!window.confirm("Bu yöneticinin profil fotoğrafını kaldırmak istiyor musunuz?")) return;
     try {
-      // Doğru endpoint: body ile role/id gönder
       await api.delete("/upload/avatar", { data: { role: "admin", id: admin.id } });
       setAvatarPath(null);
       toast.success("Avatar kaldırıldı");
-      onChanged?.(); // listeyi yenile
+      onChanged?.();
     } catch (err) {
       toast.error(err?.response?.data?.error || "Kaldırılamadı");
     }
@@ -55,7 +46,7 @@ function EditAdminModal({ admin, onClose, onChanged }) {
       await api.put(`/admin/${admin.id}`, {
         fullName,
         email,
-        password: password || undefined, // boşsa dokunma
+        password: password || undefined,
       });
       toast.success("Yönetici güncellendi");
       onChanged?.();
@@ -66,10 +57,7 @@ function EditAdminModal({ admin, onClose, onChanged }) {
   };
 
   return (
-    <div
-      className="mwav-backdrop"
-      onClick={(e) => e.target.classList.contains("mwav-backdrop") && onClose()}
-    >
+    <div className="mwav-backdrop" onClick={(e)=> e.target.classList.contains("mwav-backdrop") && onClose()}>
       <div className="mwav-modal">
         <div className="mwav-header">
           <h3>Yönetici Güncelle</h3>
@@ -85,25 +73,12 @@ function EditAdminModal({ admin, onClose, onChanged }) {
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
 
             <label>Parola (opsiyonel)</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Boş bırakırsan değişmez"
-            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Boş bırakırsan değişmez" />
           </div>
 
           <aside className="mwav-aside">
-            <img
-              src={img}
-              alt="avatar"
-              onError={(e) => {
-                e.currentTarget.src = "/noavatar.jpg";
-              }}
-            />
-            <button type="button" className="mwav-danger" onClick={handleRemoveAvatar}>
-              Profil Fotoğrafını Kaldır
-            </button>
+            <img src={img} alt="avatar" onError={(e) => { e.currentTarget.src = "/noavatar.jpg"; }} />
+            <button type="button" className="mwav-danger" onClick={handleRemoveAvatar}>Profil Fotoğrafını Kaldır</button>
           </aside>
         </form>
 
@@ -118,32 +93,61 @@ function EditAdminModal({ admin, onClose, onChanged }) {
 
 export default function AddAdmin() {
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
 
-  const [admins, setAdmins] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [admins, setAdmins]     = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [editing, setEditing]   = useState(null);
 
-  const [editing, setEditing] = useState(null); // seçili admin
+  // presence (adminId -> lastSeenAt) + reltime ticker
+  const [presenceMap, setPresenceMap] = useState(new Map());
+  const [, setTick] = useState(0);
 
+  // presence helpers
   const ONLINE_MS = 2 * 60 * 1000;
-  const IDLE_MS = 10 * 60 * 1000;
-
+  const IDLE_MS   = 10 * 60 * 1000;
   const getPresence = (lastSeenAt) => {
     if (!lastSeenAt) return { cls: "status-offline", label: "Offline" };
     const diff = Date.now() - new Date(lastSeenAt).getTime();
     if (diff <= ONLINE_MS) return { cls: "status-online", label: "Online" };
-    if (diff <= IDLE_MS) return { cls: "status-idle", label: "Idle" };
+    if (diff <= IDLE_MS)   return { cls: "status-idle", label: "Idle" };
     return { cls: "status-offline", label: "Offline" };
   };
-
+  const relTime = (d) => {
+    if (!d) return "—";
+    const diff = Math.max(0, Date.now() - new Date(d).getTime());
+    const s = Math.floor(diff / 1000);
+    if (s < 30) return "az önce";
+    if (s < 60) return `${s} sn önce`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} dk önce`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} sa önce`;
+    const g = Math.floor(h / 24);
+    if (g < 30) return `${g} gün önce`;
+    const ay = Math.floor(g / 30);
+    if (ay < 12) return `${ay} ay önce`;
+    const y = Math.floor(ay / 12);
+    return `${y} yıl önce`;
+  };
   const fmt = (v) => (v ? new Date(v).toLocaleString("tr-TR") : "—");
 
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/admin/admins");
-      setAdmins(Array.isArray(data) ? data : []);
+      const [listRes, onlineRes] = await Promise.all([
+        api.get("/admin/admins"),
+        api.get("/online/summary").catch(() => ({ data: null })), // admin yetkisi yoksa sorun etme
+      ]);
+      const list = Array.isArray(listRes.data) ? listRes.data : [];
+      setAdmins(list);
+
+      const map = new Map();
+      (onlineRes?.data?.admins || []).forEach(u => {
+        map.set(Number(u.id), u.lastSeenAt || null);
+      });
+      setPresenceMap(map);
     } catch (e) {
       toast.error(e?.response?.data?.message || "Yöneticiler alınamadı");
     } finally {
@@ -151,8 +155,11 @@ export default function AddAdmin() {
     }
   };
 
+  useEffect(() => { fetchAdmins(); }, []);
+  // her 30 sn’de bir re-render ki relTime güncellensin
   useEffect(() => {
-    fetchAdmins();
+    const id = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(id);
   }, []);
 
   const submit = async (e) => {
@@ -160,9 +167,7 @@ export default function AddAdmin() {
     try {
       await api.post("/admin/create", { fullName, email, password });
       toast.success("Yönetici eklendi");
-      setFullName("");
-      setEmail("");
-      setPassword("");
+      setFullName(""); setEmail(""); setPassword("");
       fetchAdmins();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Hata");
@@ -187,18 +192,9 @@ export default function AddAdmin() {
 
         <form className="panel" onSubmit={submit}>
           <div className="row">
-            <div>
-              <label>Ad Soyad *</label>
-              <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-            </div>
-            <div>
-              <label>E-posta *</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div>
-              <label>Parola *</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </div>
+            <div><label>Ad Soyad *</label><input value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
+            <div><label>E-posta *</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+            <div><label>Parola *</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
           </div>
           <button className="primary">Yönetici Ekle</button>
         </form>
@@ -229,23 +225,17 @@ export default function AddAdmin() {
               </thead>
               <tbody>
                 {admins.length === 0 && !loading ? (
-                  <tr className="empty-row">
-                    <td colSpan={8}>Kayıt bulunamadı</td>
-                  </tr>
+                  <tr className="empty-row"><td colSpan={8}>Kayıt bulunamadı</td></tr>
                 ) : (
                   admins.map((a) => {
-                    const p = getPresence(a.lastSeenAt);
+                    const lastSeen = presenceMap.get(a.id) ?? a.lastSeenAt ?? null;
+                    const p = getPresence(lastSeen);
                     const initials = (a.fullName || "")
-                      .split(" ")
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .map((w) => w[0])
-                      .join("")
-                      .toUpperCase();
+                      .split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
                     return (
                       <tr key={a.id}>
-                        <td className={`presence ${p.cls}`}>
+                        <td className={`presence ${p.cls}`} title={lastSeen ? fmt(lastSeen) : "—"}>
                           <span className="dot" />
                           <span className="presence-label">{p.label}</span>
                         </td>
@@ -257,16 +247,12 @@ export default function AddAdmin() {
                         </td>
                         <td className="muted">{a.email || "—"}</td>
                         <td>{fmt(a.lastLoginAt)}</td>
-                        <td>{fmt(a.lastSeenAt)}</td>
+                        <td>{lastSeen ? relTime(lastSeen) : "—"}</td>
                         <td>{fmt(a.updatedAt)}</td>
                         <td>{fmt(a.createdAt)}</td>
                         <td className="actions">
-                          <button className="btn btn-edit" onClick={() => setEditing(a)}>
-                            Düzenle
-                          </button>
-                          <button className="btn btn-delete" onClick={() => handleDelete(a.id)}>
-                            Sil
-                          </button>
+                          <button className="btn btn-edit" onClick={() => setEditing(a)}>Düzenle</button>
+                          <button className="btn btn-delete" onClick={() => handleDelete(a.id)}>Sil</button>
                         </td>
                       </tr>
                     );
@@ -278,11 +264,7 @@ export default function AddAdmin() {
         </div>
 
         {editing && (
-          <EditAdminModal
-            admin={editing}
-            onClose={() => setEditing(null)}
-            onChanged={fetchAdmins}
-          />
+          <EditAdminModal admin={editing} onClose={() => setEditing(null)} onChanged={fetchAdmins} />
         )}
       </div>
     </Layout>

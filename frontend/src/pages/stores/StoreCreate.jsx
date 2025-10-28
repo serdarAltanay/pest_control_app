@@ -9,12 +9,22 @@ import "./StoreForm.scss";
 
 const CITY_CENTER = {
   "İSTANBUL": { lat: 41.015137, lng: 28.97953 },
-  "ANKARA"  : { lat: 39.92077,  lng: 32.85411 },
-  "İZMİR"   : { lat: 38.423733, lng: 27.142826 },
-  "KOCAELİ" : { lat: 40.85327,  lng: 29.88152 },
-  "AYDIN"   : { lat: 37.8444,   lng: 27.8458 },
+  "ANKARA": { lat: 39.92077, lng: 32.85411 },
+  "İZMİR": { lat: 38.423733, lng: 27.142826 },
+  "KOCAELİ": { lat: 40.85327, lng: 29.88152 },
+  "AYDIN": { lat: 37.8444, lng: 27.8458 },
 };
 const TR_FALLBACK = { lat: 39.925533, lng: 32.866287 };
+
+// AccessRole enum değerleri
+const ACCESS_ROLES = [
+  { value: "CALISAN", label: "Çalışan" },
+  { value: "MAGAZA_SORUMLUSU", label: "Mağaza Sorumlusu" },
+  { value: "MAGAZA_MUDURU", label: "Mağaza Müdürü" },
+  { value: "GENEL_MUDUR", label: "Genel Müdür" },
+  { value: "PATRON", label: "Patron" },
+  { value: "DIGER", label: "Diğer" },
+];
 
 export default function StoreCreate() {
   const { customerId } = useParams();
@@ -23,15 +33,42 @@ export default function StoreCreate() {
   const [saving, setSaving] = useState(false);
   const [initialCenter, setInitialCenter] = useState(TR_FALLBACK);
 
+  // Mağaza formu
   const [form, setForm] = useState({
     name: "",
     code: "",
     city: "",
     address: "",
     phone: "",
-    manager: "",
+    managerFirstName: "",
+    managerLastName: "",
     isActive: true,
   });
+
+  // Erişim verme (radyo: Evet/Hayır)
+  const [grantAccess, setGrantAccess] = useState(false);
+  const [owner, setOwner] = useState({
+    email: "",
+    phone: "",
+    role: "MAGAZA_SORUMLUSU",
+    firstName: "",
+    lastName: "",
+  });
+
+  // ⬇️ YENİ: Erişim ver açılınca ve owner ad/soyad boşsa, yetkili ad/soyadıyla AUTOFILL (tek seferlik)
+  useEffect(() => {
+    if (!grantAccess) return;
+    setOwner((s) => {
+      const f = (s.firstName || "").trim();
+      const l = (s.lastName || "").trim();
+      if (f && l) return s; // kullanıcı zaten yazmışsa dokunma
+      return {
+        ...s,
+        firstName: f || (form.managerFirstName || "").trim(),
+        lastName:  l || (form.managerLastName  || "").trim(),
+      };
+    });
+  }, [grantAccess]); // sadece "Evet" yapıldığında çalışsın
 
   // Harita koordinatı controlled: [lat, lng] | null
   const [pos, setPos] = useState(null);
@@ -60,9 +97,15 @@ export default function StoreCreate() {
     setForm((s) => ({ ...s, [name]: type === "checkbox" ? checked : value }));
   };
 
+  const onOwnerChange = (e) => {
+    const { name, value } = e.target;
+    setOwner((s) => ({ ...s, [name]: value }));
+  };
+
   const validate = (v) => {
     if (!v.name?.trim()) return "Mağaza adı zorunludur.";
-    if (v.phone && v.phone.replace(/\D/g, "").length < 10) return "Telefon hatalı görünüyor.";
+    const digits = (v.phone || "").replace(/\D/g, "");
+    if (digits.length > 0 && digits.length < 10) return "Telefon hatalı görünüyor.";
     if (v.code && v.code.length > 12) return "Kod en fazla 12 karakter olmalı.";
     return null;
   };
@@ -71,14 +114,41 @@ export default function StoreCreate() {
     e?.preventDefault?.();
     const err = validate(form);
     if (err) { toast.error(err); return; }
+
+    const managerText = [form.managerFirstName, form.managerLastName]
+      .map((x) => (x || "").trim())
+      .filter(Boolean)
+      .join(" ") || null;
+
+    if (grantAccess && !owner.email.trim()) {
+      toast.error("Erişim vermek için e-posta gerekli.");
+      return;
+    }
+
+    const ownerPayload = {
+      ...owner,
+      firstName: (owner.firstName || form.managerFirstName || "").trim(),
+      lastName:  (owner.lastName  || form.managerLastName  || "").trim(),
+    };
+
     setSaving(true);
     try {
       await api.post("/stores", {
-        ...form,
         customerId: Number(customerId),
-        latitude:  Array.isArray(pos) ? pos[0] : null,
+        name: form.name,
+        code: form.code || null,
+        city: form.city || null,
+        address: form.address || null,
+        phone: form.phone || null,
+        manager: managerText,
+        isActive: !!form.isActive,
+        latitude: Array.isArray(pos) ? pos[0] : null,
         longitude: Array.isArray(pos) ? pos[1] : null,
+
+        grantAccess: !!grantAccess,
+        accessOwner: grantAccess ? ownerPayload : undefined,
       });
+
       toast.success("Mağaza eklendi");
       navigate(`/admin/customers/${customerId}`);
     } catch (e2) {
@@ -86,9 +156,9 @@ export default function StoreCreate() {
     } finally {
       setSaving(false);
     }
-  }, [form, pos, customerId, navigate]);
+  }, [form, pos, customerId, navigate, grantAccess, owner]);
 
-  // Ctrl/Cmd+S kısayolu
+  // Ctrl/Cmd+S kaydet
   useEffect(() => {
     const onKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -135,10 +205,16 @@ export default function StoreCreate() {
               <input name="address" value={form.address} onChange={onChange} />
             </div>
 
+            {/* Yetkili bilgisi ayrı alanlar */}
             <div>
-              <label>Yetkili</label>
-              <input name="manager" value={form.manager} onChange={onChange} />
+              <label>Yetkili Ad</label>
+              <input name="managerFirstName" value={form.managerFirstName} onChange={onChange} />
             </div>
+            <div>
+              <label>Yetkili Soyad</label>
+              <input name="managerLastName" value={form.managerLastName} onChange={onChange} />
+            </div>
+
             <div className="inline">
               <label className="chk">
                 <input
@@ -150,6 +226,97 @@ export default function StoreCreate() {
                 Aktif
               </label>
             </div>
+          </div>
+
+          {/* Erişim verme (radyo: Evet/Hayır) */}
+          <div className="card sub">
+            <div className="sub-title">Yetkiliye Erişim</div>
+
+            <div className="inline access-row">
+              <span className="field-label">Erişim Ver</span>
+              <div className="radio-segment" role="radiogroup" aria-label="Erişim Ver">
+                <label className={`seg ${!grantAccess ? "active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="grantAccess"
+                    value="no"
+                    checked={!grantAccess}
+                    onChange={() => setGrantAccess(false)}
+                  />
+                  Hayır
+                </label>
+                <label className={`seg ${grantAccess ? "active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="grantAccess"
+                    value="yes"
+                    checked={grantAccess}
+                    onChange={() => setGrantAccess(true)}
+                  />
+                  Evet
+                </label>
+              </div>
+            </div>
+
+            {grantAccess && (
+              <>
+                <div className="grid-2" style={{ marginTop: 10 }}>
+                  <div>
+                    <label>E-posta *</label>
+                    <input
+                      name="email"
+                      value={owner.email}
+                      onChange={onOwnerChange}
+                      placeholder="ornek@firma.com"
+                      required={grantAccess}
+                    />
+                  </div>
+                  <div>
+                    <label>Telefon</label>
+                    <input
+                      name="phone"
+                      value={owner.phone}
+                      onChange={onOwnerChange}
+                      placeholder="5xx xxx xx xx"
+                    />
+                  </div>
+                  <div>
+                    <label>Rol</label>
+                    <select name="role" value={owner.role} onChange={onOwnerChange}>
+                      {ACCESS_ROLES.map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div />
+                </div>
+
+                <div className="grid-2" style={{ marginTop: 8 }}>
+                  <div>
+                    <label>Erişim Sahibi Ad (opsiyonel)</label>
+                    <input
+                      name="firstName"
+                      value={owner.firstName}
+                      onChange={onOwnerChange}
+                      placeholder={form.managerFirstName || "Ad"}
+                    />
+                  </div>
+                  <div>
+                    <label>Erişim Sahibi Soyad (opsiyonel)</label>
+                    <input
+                      name="lastName"
+                      value={owner.lastName}
+                      onChange={onOwnerChange}
+                      placeholder={form.managerLastName || "Soyad"}
+                    />
+                  </div>
+                </div>
+
+                <p className="muted" style={{ marginTop: 6 }}>
+                  Not: Şimdilik şifre <b>123456</b> olarak atanır. (Mail motoru eklenince rastgele üretip göndeririz.)
+                </p>
+              </>
+            )}
           </div>
 
           <div className="card sub">

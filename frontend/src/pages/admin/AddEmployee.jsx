@@ -97,6 +97,10 @@ export default function AddEmployee() {
   const [loading, setLoading]     = useState(false);
   const [editing, setEditing]     = useState(null);
 
+  // presence (employeeId -> lastSeenAt) + reltime ticker
+  const [presenceMap, setPresenceMap] = useState(new Map());
+  const [, setTick] = useState(0);
+
   const fmt = (v)=> v ? new Date(v).toLocaleString("tr-TR") : "—";
   const ONLINE_MS = 2 * 60 * 1000, IDLE_MS = 10 * 60 * 1000;
   const presence = (t)=> {
@@ -106,20 +110,51 @@ export default function AddEmployee() {
     if (d<=IDLE_MS)   return { cls:"status-idle",   label:"Idle" };
     return { cls:"status-offline", label:"Offline" };
   };
+  const relTime = (d) => {
+    if (!d) return "—";
+    const diff = Math.max(0, Date.now() - new Date(d).getTime());
+    const s = Math.floor(diff / 1000);
+    if (s < 30) return "az önce";
+    if (s < 60) return `${s} sn önce`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} dk önce`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} sa önce`;
+    const g = Math.floor(h / 24);
+    if (g < 30) return `${g} gün önce`;
+    const ay = Math.floor(g / 30);
+    if (ay < 12) return `${ay} ay önce`;
+    const y = Math.floor(ay / 12);
+    return `${y} yıl önce`;
+  };
 
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const adm = await api.get("/admin/admins");
+      const [adm, emp, online] = await Promise.all([
+        api.get("/admin/admins"),
+        api.get("/employees"),
+        api.get("/online/summary").catch(()=>({ data: null })), // admin değilse dönerse de sorun değil
+      ]);
       setAdmins(adm.data || []);
-      const emp = await api.get("/employees");
-      setEmployees(emp.data || []);
+      const list = Array.isArray(emp.data) ? emp.data : [];
+      setEmployees(list);
+
+      const map = new Map();
+      (online?.data?.employees || []).forEach(u => {
+        map.set(Number(u.id), u.lastSeenAt || null);
+      });
+      setPresenceMap(map);
     } catch (e) {
       toast.error("Veriler alınamadı");
     } finally { setLoading(false); }
   };
 
   useEffect(()=>{ fetchAll(); }, []);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -188,15 +223,18 @@ export default function AddEmployee() {
                 {employees.length===0 && !loading ? (
                   <tr><td colSpan={9} style={{textAlign:"center"}}>Kayıt bulunamadı</td></tr>
                 ) : employees.map(emp=>{
-                  const p = presence(emp.lastSeenAt);
+                  const lastSeen = presenceMap.get(emp.id) ?? emp.lastSeenAt ?? null;
+                  const p = presence(lastSeen);
                   const initials = (emp.fullName||"").split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
                   return (
                     <tr key={emp.id}>
-                      <td className={`presence ${p.cls}`}><span className="dot"/><span className="presence-label">{p.label}</span></td>
+                      <td className={`presence ${p.cls}`} title={lastSeen ? fmt(lastSeen) : "—"}>
+                        <span className="dot"/><span className="presence-label">{p.label}</span>
+                      </td>
                       <td><div className="name"><span className="avatar">{initials||"PE"}</span><span className="full">{emp.fullName||"—"}</span></div></td>
                       <td>{emp.email||"—"}</td>
                       <td>{emp.jobTitle||"—"}</td>
-                      <td>{emp.lastSeenAt ? new Date(emp.lastSeenAt).toLocaleString("tr-TR") : "—"}</td>
+                      <td>{lastSeen ? relTime(lastSeen) : "—"}</td>
                       <td>{fmt(emp.lastLoginAt)}</td>
                       <td>{fmt(emp.createdAt)}</td>
                       <td>{fmt(emp.updatedAt)}</td>
@@ -213,11 +251,7 @@ export default function AddEmployee() {
         </div>
 
         {editing && (
-          <EditEmployeeModal
-            employee={editing}
-            onClose={()=>setEditing(null)}
-            onChanged={fetchAll}
-          />
+          <EditEmployeeModal employee={editing} onClose={()=>setEditing(null)} onChanged={fetchAll} />
         )}
       </div>
     </Layout>

@@ -1,3 +1,4 @@
+// src/pages/dashboard/DashboardCalendar.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
@@ -22,6 +23,14 @@ const STATUS_LABEL = {
 };
 const statusLabel = (s) => STATUS_LABEL[s] || "—";
 const statusClass = (s) => `st-${(s || "PLANNED").toLowerCase()}`;
+
+/* Personel adı soyadı birleştirici (tamamlananlar tablosu için özellikle) */
+const employeeFullNameOf = (ev) => {
+  const bySingle = ev.employeeFullName || ev.employeeName || ev.employee;
+  if (bySingle && String(bySingle).trim()) return bySingle;
+  const byParts = [ev.employeeFirstName, ev.employeeLastName].filter(Boolean).join(" ").trim();
+  return byParts || "—";
+};
 
 /* ───────── API ───────── */
 async function fetchEventsInRange(from, to) {
@@ -50,7 +59,7 @@ function useEvents(from, to, filterFn) {
       norm.sort((a,b)=> a.start - b.start);
       setItems(norm);
     })();
-    // filterFn bilinçli olarak dependency'ye alınmadı
+    // filterFn dependency'ye bilinçli alınmadı
   }, [from, to]);
   return items;
 }
@@ -192,7 +201,7 @@ function CompletedVisitsTable() {
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // UI: arama + sayfa boyutu + sayfa
+  // UI
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
@@ -234,7 +243,7 @@ function CompletedVisitsTable() {
       [
         e.title || "",
         e.storeName || "",
-        e.employeeName || "",
+        employeeFullNameOf(e) || "",
         fmtDT(e.start),
       ].join(" ").toLowerCase().includes(q)
     );
@@ -255,6 +264,7 @@ function CompletedVisitsTable() {
       <div className="cv-head">
         <div className="t">Tamamlanan Görevler</div>
       </div>
+
       <div className="toolbar">
         <input
           className="search"
@@ -262,7 +272,6 @@ function CompletedVisitsTable() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-
         <div className="right-controls">
           <div className="page-size">
             <label>Göster</label>
@@ -278,7 +287,6 @@ function CompletedVisitsTable() {
 
       <div className="table-wrap">
         <table className="completed-table">
-        
           <thead>
             <tr>
               <th>Başlık</th>
@@ -298,7 +306,7 @@ function CompletedVisitsTable() {
                 <tr key={e.id} className="clickable" onClick={() => goDetail(e.id)}>
                   <td className="strong">{e.title}</td>
                   <td>{e.storeName || "—"}</td>
-                  <td>{e.employeeName || "—"}</td>
+                  <td>{employeeFullNameOf(e)}</td> {/* Ad Soyad kesin göster */}
                   <td>{fmtDT(e.start)} – {fmtDT(e.end).slice(11)}</td>
                   <td className="td-status">
                     <span className={`badge ${statusClass(e.status)}`}>{statusLabel(e.status)}</span>
@@ -314,13 +322,10 @@ function CompletedVisitsTable() {
         <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
           Prev
         </button>
-
         <span className="page-indicator">{currentPage}</span>
-
         <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
           Next
         </button>
-
         <div className="count-info">
           {filtered.length === 0
             ? "0"
@@ -331,7 +336,7 @@ function CompletedVisitsTable() {
   );
 }
 
-/* ───────── Exports (tek blok) ───────── */
+/* ───────── Exports ───────── */
 export {
   DashCalToday,
   DashCalTodayCompleted,

@@ -25,8 +25,10 @@
       label { display:block; font-weight:700; margin-bottom:6px; color:#374151; }
       input, textarea, select {
         width: 100%; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; outline:none;
+        height: 38px; line-height: 1.2; box-sizing: border-box;
       }
-      .inline .chk { display:flex; align-items:center; gap:8px; margin-top:28px; }
+      .inline { grid-column: 1 / -1; }
+      .inline .chk { display:flex; align-items:center; gap:8px; margin: 2px 0 0 0; }
     }
 
     .actions {
@@ -54,11 +56,56 @@
     }
 
     /* Pin renkleri */
-    .leaflet-marker-icon.pin-old { filter: hue-rotate(310deg) saturate(2); }  /* kırmızı ton */
-    .leaflet-marker-icon.pin-new { filter: hue-rotate(90deg)  saturate(1.1); } /* yeşil ton */
+    .leaflet-marker-icon.pin-old { filter: hue-rotate(310deg) saturate(2); }
+    .leaflet-marker-icon.pin-new { filter: hue-rotate(90deg)  saturate(1.1); }
   }
 }
 
+/* Erişim radyo grubu – segment buton stili */
+.store-form-page .form .access-row {
+  display: flex; align-items: center; gap: 10px; margin-top: 4px;
+}
+
+.store-form-page .form .access-row .field-label {
+  font-weight: 700; color:#374151; min-width: 110px;
+}
+
+.store-form-page .form .radio-segment {
+  display: inline-flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.store-form-page .form .radio-segment .seg {
+  position: relative;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.store-form-page .form .radio-segment .seg + .seg {
+  border-left: 1px solid #e5e7eb;
+}
+
+.store-form-page .form .radio-segment .seg input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.store-form-page .form .radio-segment .seg.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* Mobil: tek sütuna düş */
 @media (max-width: 720px) {
   .store-form-page .form .grid-2 { grid-template-columns: 1fr; }
+  .store-form-page .form .access-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .store-form-page .form .access-row .field-label { min-width: 0; }
 }

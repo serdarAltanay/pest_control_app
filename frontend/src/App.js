@@ -21,6 +21,7 @@ import Biocides from "./pages/biocides/Biocides.jsx";
 import StoreEk1 from "./pages/ek1/StoreEk1.jsx";
 import VisitEk1 from "./pages/ek1/VisitEk1.jsx";
 import Ek1Preview from "./pages/ek1/Ek1Preview.jsx";
+import SerbestEk1 from "./pages/ek1/SerbestEk1";
 
 import RodentBaitActivation from "./pages/Stations/activations/RodentBaitActivation.jsx";
 import LiveCatchActivation from "./pages/Stations/activations/LiveCatchActivation.jsx";
@@ -48,6 +49,14 @@ import AccessOwnerDetail from "./pages/access/AccessOwnerDetail";
 import AccessManageStore from "./pages/access/AccessManageStore";
 import AccessManageCustomer from "./pages/access/AccessManageCustomer";
 import AccessNew from "./pages/access/AccessNew.jsx";
+
+import VisitMailCompose from "./pages/mailer/VisitMailCompose.jsx";
+
+import CustomerStoreList from "./pages/customer/CustomerStoreList.jsx";
+import CustomerStoreDetail from "./pages/customer/CustomerStoreDetail.jsx";
+import CustomerStoreNonconformities from "./pages/customer/CustomerStoreNonconformities.jsx";
+import CustomerNcrDetail from "./pages/customer/CustomerNcrDetail.jsx";
+
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -214,10 +223,26 @@ function App() {
           }
         />
         <Route
+          path="/ek1/visit/:visitId"
+          element={
+            <PrivateRoute allowedRoles={['admin','employee','customer']}>
+              <Ek1Preview />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/admin/stores/:storeId/visits/:visitId/preview"
           element={
             <PrivateRoute allowedRoles={['admin', 'employee']}>
               <Ek1Preview  />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ek1/serbest"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'employee']}>
+              <SerbestEk1  />
             </PrivateRoute>
           }
         />
@@ -424,7 +449,46 @@ function App() {
             </PrivateRoute>
           }
         />
-        
+        <Route
+          path="/mail/visit/:visitId"
+          element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <VisitMailCompose  />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/stores"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <CustomerStoreList />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/stores/:storeId"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <CustomerStoreDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/stores/:storeId/nonconformities"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <CustomerStoreNonconformities />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/stores/:storeId/nonconformities/:ncrId"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <CustomerNcrDetail />
+            </PrivateRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
     </ProfileProvider>

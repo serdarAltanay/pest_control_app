@@ -37,6 +37,7 @@ $brand: if(global-variable-exists(color-primary), $color-primary, #2563eb);
     height:36px; padding:0 12px; border-radius:8px; border:1px solid $line; background:#fff; cursor:pointer; font-weight:700;
     &.primary { background:$brand; border-color:$brand; color:#fff; }
     &.danger  { background:#ef4444; border-color:#ef4444; color:#fff; }
+    &.selected { background:#10b981; border-color:#10b981; color:#fff; }
   }
 
   .table {
@@ -52,3 +53,74 @@ $brand: if(global-variable-exists(color-primary), $color-primary, #2563eb);
 @media (max-width: 980px) {
   .access-page .grid-3 { grid-template-columns: 1fr; }
 }
+
+/* presence hücresi */
+.access-page .table {
+  .presence {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569; // slate-600
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #94a3b8; // default (offline)
+    }
+    &.status-online .dot { background: #22c55e; } // green-500
+    &.status-idle   .dot { background: #f59e0b; } // amber-500
+    &.status-offline .dot { background: #94a3b8; } // slate-400
+    .presence-label { font-weight: 700; font-size: 12px; }
+  }
+  td.lastseen { color:#64748b; } // muted
+}
+
+/* ---------- PICKER bileşenleri ---------- */
+.picker-card {
+  border:1px solid $line; border-radius:12px; padding:10px;
+
+  .picker-toolbar {
+    display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;
+
+    .search {
+      width:min(420px, 100%);
+      border:1px solid $line; border-radius:8px; padding:8px; background:#fff;
+    }
+    .right-controls { display:flex; align-items:center; gap:12px; }
+    .page-size {
+      display:flex; align-items:center; gap:6px;
+      select { border:1px solid $line; border-radius:8px; padding:6px 8px; }
+    }
+  }
+
+  .table-wrap { overflow:auto; }
+
+  .picker-table {
+    width:100%; border-collapse: collapse; font-size:14px;
+    thead th { text-align:left; background:#f8fafc; padding:10px 12px; border-bottom:1px solid #edf2f7; white-space:nowrap; }
+    tbody td { padding:10px 12px; border-bottom:1px solid #f1f5f9; white-space:nowrap; vertical-align:middle; }
+    tbody tr.is-selected { background:#f0fdf4; } // green-50
+    .email-cell { color:#475569; }
+    .actions { display:flex; gap:8px; }
+  }
+
+  .pagination {
+    display:flex; align-items:center; gap:8px; justify-content:flex-end; margin-top:8px;
+    .page-btn { border:1px solid $line; background:#fff; border-radius:8px; padding:6px 10px; }
+    .page-indicator { font-weight:800; }
+    .count-info { color:$muted; margin-left:6px; }
+  }
+}
+
+.selected-target {
+  display:flex; align-items:center; gap:10px; min-height:36px;
+  .badge { background:#eef2f7; color:#334155; border-radius:999px; padding:2px 8px; font-weight:800; font-size:12px; }
+  .link-clear {
+    background:none; border:none; color:#ef4444; cursor:pointer; font-weight:700; padding:0; margin-left:auto;
+  }
+}
+
+.temp-pass-cell .code-wrap { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.temp-pass-cell .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding:2px 6px; border:1px solid var(--border, #e5e7eb); border-radius:6px; }
+.temp-pass-cell .mono.blurred { filter: blur(4px); }
+.temp-pass-cell .code-actions .btn.sm { padding:4px 8px; font-size:12px; }
+.temp-pass-cell .tiny { font-size: 11px; }
+

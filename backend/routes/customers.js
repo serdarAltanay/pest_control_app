@@ -1,17 +1,19 @@
-// routes/customers.js
+// src/routes/customers.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
 import { auth, roleCheck } from "../middleware/auth.js";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-/** Liste (admin + employee) */
+/**
+ * LIST (admin + employee)
+ * - Employee ise sadece kendi customers
+ * - Presence alanları YOK (customer için presence tutulmuyor)
+ */
 router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
-    const where =
-      req.user.role === "employee" ? { employeeId: req.user.id } : {};
+    const where = req.user.role === "employee" ? { employeeId: req.user.id } : {};
 
     const customers = await prisma.customer.findMany({
       where,
@@ -21,14 +23,12 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         code: true,
         title: true,
         city: true,
-        email: true,
+        email: true,           // sadece iletişim
         visitPeriod: true,
         contactFullName: true,
         phone: true,
         gsm: true,
         address: true,
-        lastLoginAt: true,
-        lastSeenAt: true,
         updatedAt: true,
         createdAt: true,
         employee: { select: { id: true, fullName: true } },
@@ -42,14 +42,17 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   }
 });
 
-/** Detay (admin + employee kendi kaydı) */
+/**
+ * DETAIL (admin + employee kendi kaydı)
+ * - Presence alanları YOK
+ * - Store’lar placeType/areaM2 artık Store’da
+ */
 router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-    const where =
-      req.user.role === "employee" ? { id, employeeId: req.user.id } : { id };
+    const where = req.user.role === "employee" ? { id, employeeId: req.user.id } : { id };
 
     const c = await prisma.customer.findFirst({
       where,
@@ -58,7 +61,7 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         code: true,
         title: true,
         accountingTitle: true,
-        email: true,
+        email: true, // iletişim
         contactFullName: true,
         phone: true,
         gsm: true,
@@ -66,12 +69,9 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         city: true,
         showBalance: true,
         visitPeriod: true,
-        lastLoginAt: true,
-        lastSeenAt: true,
         createdAt: true,
         updatedAt: true,
         employee: { select: { id: true, fullName: true, email: true } },
-        // Mağazalar: placeType / areaM2 artık STORE'da
         stores: {
           select: {
             id: true,
@@ -102,7 +102,10 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   }
 });
 
-/** Ekle (admin) — NOT: pestType/placeType/areaM2 artık Customer'a yazılmıyor */
+/**
+ * CREATE (admin)
+ * - password yok; email sadece iletişim için
+ */
 router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const {
@@ -110,7 +113,6 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
       title,
       accountingTitle,
       email,
-      password,
       contactFullName,
       phone,
       gsm,
@@ -124,9 +126,7 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
     } = req.body;
 
     if (!code || !title) {
-      return res
-        .status(400)
-        .json({ message: "Müşteri Kodu ve Ünvan zorunludur." });
+      return res.status(400).json({ message: "Müşteri Kodu ve Ünvan zorunludur." });
     }
 
     const exists = await prisma.customer.findUnique({ where: { code } });
@@ -134,15 +134,12 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
       return res.status(409).json({ message: "Bu müşteri kodu zaten kayıtlı." });
     }
 
-    const hashed = password ? await bcrypt.hash(String(password), 10) : null;
-
     const c = await prisma.customer.create({
       data: {
         code: String(code),
         title: String(title),
         accountingTitle: accountingTitle || null,
-        email: email || null,
-        password: hashed,
+        email: email || null, // yalnız iletişim
         contactFullName: contactFullName || null,
         phone: phone || null,
         gsm: gsm || null,
@@ -163,7 +160,10 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Güncelle (admin) — NOT: pestType/placeType/areaM2 Customer'da yok */
+/**
+ * UPDATE (admin)
+ * - password yok; presence alanı yok
+ */
 router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -174,7 +174,6 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
       title,
       accountingTitle,
       email,
-      password,
       contactFullName,
       phone,
       gsm,
@@ -187,7 +186,6 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
       employeeId,
     } = req.body;
 
-    // code uniq kontrolü (değiştiriliyorsa)
     if (code) {
       const other = await prisma.customer.findUnique({ where: { code } });
       if (other && other.id !== id) {
@@ -200,7 +198,6 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     if (title !== undefined) data.title = String(title);
     if (accountingTitle !== undefined) data.accountingTitle = accountingTitle || null;
     if (email !== undefined) data.email = email || null;
-    if (password) data.password = await bcrypt.hash(String(password), 10);
     if (contactFullName !== undefined) data.contactFullName = contactFullName || null;
     if (phone !== undefined) data.phone = phone || null;
     if (gsm !== undefined) data.gsm = gsm || null;
@@ -222,7 +219,9 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Sil (admin) */
+/**
+ * DELETE (admin)
+ */
 router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);

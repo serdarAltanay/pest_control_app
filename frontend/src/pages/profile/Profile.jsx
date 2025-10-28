@@ -1,3 +1,4 @@
+// src/pages/profile/Profile.jsx
 import { useEffect, useState, useRef, useContext, useCallback } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios.js";
@@ -8,6 +9,26 @@ import { ProfileContext } from "../../context/ProfileContext";
 import EditNameModal from "../../utils/EditNameModal.jsx";
 import { getAvatarUrl, addCacheBust } from "../../utils/getAssetUrl.js";
 import "./Profile.scss";
+
+/** fullName'i "Ad Soyad" -> {firstName,lastName} ayır */
+function splitFullName(fullName) {
+  const s = String(fullName || "").trim();
+  if (!s) return { firstName: "", lastName: "" };
+  const parts = s.split(/\s+/);
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+  const lastName = parts.pop();
+  return { firstName: parts.join(" "), lastName };
+}
+
+/** AccessOwner iş rolleri: FE rozeti */
+const ACCESS_ROLE_TR = {
+  CALISAN: "Çalışan",
+  MAGAZA_SORUMLUSU: "Mağaza Sorumlusu",
+  MAGAZA_MUDURU: "Mağaza Müdürü",
+  GENEL_MUDUR: "Genel Müdür",
+  PATRON: "Patron",
+  DIGER: "Diğer",
+};
 
 export default function Profile() {
   const { profile, setProfile, fetchProfile } = useContext(ProfileContext);
@@ -31,13 +52,8 @@ export default function Profile() {
     setCameraOpen(false);
   }, []);
 
-  useEffect(() => {
-    if (!profile) fetchProfile();
-  }, [profile, fetchProfile]);
-
-  useEffect(() => {
-    if (!editModalOpen) stopCamera();
-  }, [editModalOpen, stopCamera]);
+  useEffect(() => { if (!profile) fetchProfile(); }, [profile, fetchProfile]);
+  useEffect(() => { if (!editModalOpen) stopCamera(); }, [editModalOpen, stopCamera]);
 
   if (!profile) {
     return (
@@ -49,11 +65,21 @@ export default function Profile() {
     );
   }
 
-  // Görseli tek noktadan oluştur (relative/absolute + fallback + CDN/ORIGIN)
+  // AccessOwner tespiti: JWT role 'customer' + accessOwnerRole alanının varlığı
+  const isAccessOwner = profile.role === "customer" && !!profile.accessOwnerRole;
+
+  // Görünen ad: AccessOwner -> first/last > fullName > contact/title > email
+  const visibleName =
+    [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
+    profile.fullName ||
+    profile.contactFullName ||
+    profile.title ||
+    profile.email ||
+    "—";
+
   const avatarUrl = getAvatarUrl(profile?.profileImage);
 
   const handleAvatarClick = () => setEditModalOpen(true);
-
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -98,9 +124,8 @@ export default function Profile() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // backend { profileImage } döndürüyor (relative olabilir)
       const abs = getAvatarUrl(res.data.profileImage);
-      const nextUrl = addCacheBust(abs); // cache-bust
+      const nextUrl = addCacheBust(abs);
 
       setProfile((prev) => ({
         ...prev,
@@ -121,10 +146,10 @@ export default function Profile() {
   const handleRemoveAvatar = async () => {
     if (!window.confirm("Profil fotoğrafınızı kaldırmak istiyor musunuz?")) return;
     try {
-      await api.delete("/upload/avatar"); // self remove ucu
+      await api.delete("/upload/avatar");
       setProfile((prev) => ({
         ...prev,
-        profileImage: null, // getAvatarUrl fallback gösterecek
+        profileImage: null,
         updatedAt: new Date().toISOString(),
       }));
       localStorage.removeItem("profileImage");
@@ -132,6 +157,29 @@ export default function Profile() {
     } catch (err) {
       console.error("Avatar kaldırma hatası:", err);
       toast.error(err?.response?.data?.error || "Kaldırılamadı");
+    }
+  };
+
+  /** İsim kalıcılığı:
+   *  - AccessOwner ise firstName/lastName güncellenir
+   *  - Aksi halde fullName alanı yazılır
+   */
+  const persistName = async (fullName) => {
+    const wantsSplit = isAccessOwner || "firstName" in profile || "lastName" in profile;
+    const payload = wantsSplit ? splitFullName(fullName) : { fullName };
+
+    try {
+      await api.put("/profile/update-info", payload);
+    } catch (e) {
+      console.warn("Profil adı kaydedilemedi:", e?.response?.data || e?.message);
+      toast.error(e?.response?.data?.message || "Ad güncellenemedi");
+    } finally {
+      setProfile((prev) => ({
+        ...prev,
+        ...payload,
+        fullName: fullName,
+        updatedAt: new Date().toISOString(),
+      }));
     }
   };
 
@@ -146,11 +194,7 @@ export default function Profile() {
               <div className="profile-field">
                 <strong>Ad Soyad:</strong>
                 <span className="name-wrapper">
-                  <span className="name-text">
-                    {profile.role === "customer"
-                      ? profile.contactFullName || profile.title || "—"
-                      : profile.fullName || "—"}
-                  </span>
+                  <span className="name-text">{visibleName}</span>
                   <button className="edit-btn" onClick={() => setEditNameOpen(true)}>
                     Düzenle
                   </button>
@@ -159,15 +203,27 @@ export default function Profile() {
 
               <div className="profile-field">
                 <strong>E-posta:</strong>
-                <span>{profile.email}</span>
+                <span>{profile.email || "—"}</span>
               </div>
 
+              {/* Sistem rolü (JWT rolü) */}
               <div className="profile-field">
-                <strong>Rol:</strong>
-                <span>{profile.role}</span>
+                <strong>Sistem Rolü:</strong>
+                <span className="badge">{profile.role}</span>
               </div>
 
-              {profile.role !== "admin" && (
+              {/* AccessOwner iş rolü */}
+              {isAccessOwner && (
+                <div className="profile-field">
+                  <strong>Erişim Rolü:</strong>
+                  <span className="badge">
+                    {ACCESS_ROLE_TR[profile.accessOwnerRole] || profile.accessOwnerRole}
+                  </span>
+                </div>
+              )}
+
+              {/* (Opsiyonel) şirket alanı vb. sağlanmışsa göster */}
+              {"company" in profile && (
                 <div className="profile-field">
                   <strong>Şirket:</strong>
                   <span>{profile.company || "Belirtilmemiş"}</span>
@@ -176,7 +232,7 @@ export default function Profile() {
             </div>
 
             <div className="profile-avatar-block">
-              <div className="profile-avatar" onClick={handleAvatarClick}>
+              <div className="profile-avatar" onClick={handleAvatarClick} role="button" tabIndex={0}>
                 <img src={avatarUrl} alt="Profil Fotoğrafı" />
                 <div className="avatar-overlay">
                   <span>Düzenle</span>
@@ -202,17 +258,12 @@ export default function Profile() {
 
         {editNameOpen && (
           <EditNameModal
-            currentName={profile.role === "customer" ? (profile.contactFullName || profile.title || "") : (profile.fullName || "")}
+            currentName={visibleName}
             onClose={() => setEditNameOpen(false)}
-            onSave={(u) =>
-              setProfile((prev) => ({
-                ...prev,
-                // customer ise contactFullName’i, değilse fullName’i güncelle
-                ...(profile.role === "customer"
-                  ? { contactFullName: u.fullName }
-                  : { fullName: u.fullName }),
-              }))
-            }
+            onSave={async (u) => {
+              await persistName(u.fullName);
+              setEditNameOpen(false);
+            }}
           />
         )}
 
@@ -223,7 +274,7 @@ export default function Profile() {
 
               {!imageSrc && !cameraOpen && (
                 <>
-                  <button onClick={() => fileInputRef.current.click()}>Yerelden Seç</button>
+                  <button onClick={() => fileInputRef.current?.click()}>Yerelden Seç</button>
                   <button onClick={openCamera}>Kameradan Çek</button>
                   <button onClick={() => setEditModalOpen(false)}>İptal</button>
                 </>

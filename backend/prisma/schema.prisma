@@ -123,6 +123,10 @@ model AccessOwner {
   role         AccessRole @default(CALISAN)
   isActive     Boolean    @default(true)
 
+  lastLoginAt   DateTime?
+  lastProfileAt DateTime?
+  lastSeenAt    DateTime?
+
   grants    AccessGrant[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
@@ -267,7 +271,6 @@ model Customer {
   title           String
   accountingTitle String?
   email           String? @unique
-  password        String?
   contactFullName String?
   phone           String?
   gsm             String?
@@ -280,12 +283,9 @@ model Customer {
   showBalance Boolean     @default(false)
   visitPeriod VisitPeriod @default(BELIRTILMEDI)
 
-  profileImage  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  lastProfileAt DateTime?
-  lastSeenAt    DateTime?
+  profileImage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   stores Store[]
 
@@ -413,6 +413,7 @@ model Ek1Report {
   providerSignerName String?
   customerSignedAt   DateTime?
   customerSignerName String?
+  freeMeta           Json?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 }

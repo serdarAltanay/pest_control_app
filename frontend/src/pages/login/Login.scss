@@ -1,33 +1,181 @@
+/* src/pages/login/Login.scss */
+:root {
+  --bg: #f6f8fb;
+  --card-bg: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e5e7eb;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --focus-ring: 0 0 0 4px rgba(37, 99, 235, .15);
+  --shadow: 0 8px 28px rgba(2, 6, 23, .08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220;
+    --card-bg: #0f172a;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #1f2937;
+    --primary: #60a5fa;
+    --primary-hover: #93c5fd;
+    --focus-ring: 0 0 0 4px rgba(96, 165, 250, .25);
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+
+html, body {
+  background: var(--bg);
+}
+
 .login-form {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 30px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 420px;
+  margin: clamp(24px, 8vh, 80px) auto;
+  padding: 28px;
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+  gap: 14px;
 
   h2 {
     text-align: center;
-    margin-bottom: 20px;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 4px 0 10px;
+    letter-spacing: .2px;
   }
 
-  input, button {
-    margin: 10px 0;
-    padding: 10px;
-    font-size: 16px;
+  /* Label + input grupları */
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    span {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
   }
 
-  button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-    border-radius: 4px;
+  input {
+    appearance: none;
+    width: 100%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .2s ease;
 
     &:hover {
-      background-color: #0056b3;
+      border-color: color-mix(in srgb, var(--border) 70%, var(--text) 30%);
     }
+
+    &:focus {
+      border-color: var(--primary);
+      box-shadow: var(--focus-ring);
+    }
+
+    &:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    /* Chrome autofill */
+    &:-webkit-autofill {
+      -webkit-text-fill-color: var(--text);
+      -webkit-box-shadow: 0 0 0 1000px var(--card-bg) inset;
+      transition: background-color 9999s ease-in-out 0s;
+    }
+  }
+
+  /* Şifre alanı + göz butonu */
+  .password-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    input {
+      padding-right: 90px; /* toggle butonuna yer aç */
+    }
+
+    .toggle-pw {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+
+      &:hover {
+        background: color-mix(in srgb, var(--primary) 10%, transparent);
+        color: var(--text);
+        border-color: color-mix(in srgb, var(--border) 50%, var(--primary) 50%);
+      }
+
+      &:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  /* Submit butonu */
+  button[type="submit"] {
+    margin-top: 6px;
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    background-color: var(--primary);
+    color: #fff;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .05s ease, background-color .15s ease, box-shadow .15s ease;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, .18);
+
+    &:hover {
+      background-color: var(--primary-hover);
+    }
+
+    &:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, .18);
+    }
+
+    &:disabled {
+      opacity: .85;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* Küçük ekran iyileştirmeleri */
+@media (max-width: 480px) {
+  .login-form {
+    margin: 16px auto;
+    padding: 22px;
+
+    h2 { font-size: 20px; }
+    input { font-size: 14px; }
+    button[type="submit"] { font-size: 14px; }
   }
 }

@@ -12,7 +12,6 @@
     width:210mm; min-height:297mm; margin:0 auto; background:#fff;
     padding:14mm; box-shadow:0 0 8px rgba(0,0,0,.08);
     box-sizing:border-box; color:#111; font-size:13px; line-height:1.34;
-    /* sayfa içinde varsayılan hizayı SOL yap */
     text-align:left;
   }
 
@@ -30,70 +29,64 @@
     border:1px solid #000;
   }
 
-  /* ========= TABLOLAR: pikselli, kilit hizalı ve izole ========= */
-  /* İzole reset: sadece tablo elemanlarının kalıtılan stilini sıfırla */
+  /* ========= TABLOLAR ========= */
   .page.A4 table, .page.A4 thead, .page.A4 tbody, .page.A4 tr, .page.A4 th, .page.A4 td { all: revert; }
 
-  table{ width:100%;  table-layout:fixed; }
+  table, .table, table.kv, table.list {
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    margin:0;
+  }
 
-  /* Tüm hücreler SOL — ürün tablosu 1. ve 6. sütun istisna */
+  table th, table td,
+  .table th, .table td,
   .kv > tbody > tr > th,
   .kv > tbody > tr > td,
   .list > thead > tr > th,
-  .list > tbody > tr > td{ 
-    border:1px solid #000; padding:6px 8px; vertical-align:top; line-height:1.25;
-    text-align:left !important;            /* ← kilit */
-    word-break:break-word; overflow-wrap:anywhere; hyphens:auto;
+  .list > tbody > tr > td {
+    border:1px solid #000;
+    padding:6px 8px;
+    text-align:left !important;
+    vertical-align:top;
+    word-break:break-word;
+    overflow-wrap:anywhere;
+    line-height:1.25;
   }
 
-  /* Başlık hücre arkaplanı */
-  .kv > tbody > tr > th,
-  .list > thead > tr > th{ background:#f9fafb; font-weight:700; border:1px solid #000; }
+  .list > thead > tr > th,
+  .kv > tbody > tr > th {
+    background:#f9fafb;
+    font-weight:700;
+  }
 
-  /* KV (anahtar-değer) tablolarında 1. kolon sabit genişlik */
-  table.kv col:first-child{ width: 42% !important; }
-  table.kv col:last-child { width: auto !important; }
+  table.kv col:first-child  { width:42% !important; }
+  table.kv col:last-child   { width:auto  !important; }
 
-  /* ÜRÜN LİSTESİ — (# ve Miktar hizaları) */
   .list > thead > tr > th:nth-child(1),
-  .list > tbody > tr > td:nth-child(1){
-    width:56px; /* ~%6 */
-    
-  }
+  .list > tbody > tr > td:nth-child(1) { width:56px; text-align:center !important; }
   .list > thead > tr > th:nth-child(6),
-  .list > tbody > tr > td:nth-child(6){
-    text-align:right !important; white-space:nowrap;
-    font-variant-numeric: tabular-nums; font-feature-settings:"tnum" 1;
+  .list > tbody > tr > td:nth-child(6) {
+    text-align:right !important;
+    white-space:nowrap;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings:"tnum" 1;
   }
 
   .center{ text-align:center; }
-
   .note{ border:1px solid #000; padding:8px; margin-top:10px; font-size:12px; }
 
   /* ------- print ------- */
   @media print{
     @page{ size:A4; margin:10mm; }
     html, body{ background:#fff !important; }
-    .page.A4{ box-shadow:none !important;  margin:0 !important; width:auto !important; min-height:auto !important; }
+    .page.A4{ box-shadow:none !important; margin:0 !important; width:auto !important; min-height:auto !important; padding:0; }
     .no-print{ display:none !important; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
-    /* başlık tekrar etsin, satırlar bölünmesin */
     .list thead{ display:table-header-group; }
     .list tfoot{ display:table-footer-group; }
-    .list tr, .kv tr, .block{ break-inside:avoid; page-break-inside:avoid; }
-
-    /* ekstra kilitler (baskıda olası global CSS'leri ez) */
-    .kv > tbody > tr > th,
-    .kv > tbody > tr > td,
-    .list > thead > tr > th,
-    .list > tbody > tr > td{ text-align:left !important; }
-    .list > thead > tr > th:nth-child(1),
-    .list > tbody > tr > td:nth-child(1){ text-align:center !important; }
-    .list > thead > tr > th:nth-child(6),
-    .list > tbody > tr > td:nth-child(6){ text-align:right !important; }
-
-    /* logo boyutları kilit */
-    .doc-head img{ width:60px !important; height:60px !important; object-fit:contain; }
+    .list tr, .kv tr, .block,
+    table th, table td { break-inside:avoid; page-break-inside:avoid; }
   }
 }
