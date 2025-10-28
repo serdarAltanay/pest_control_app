@@ -73,8 +73,24 @@ async function ensureAccessOwner({ email, role, firstName, lastName, phone }) {
   return { owner, created };
 }
 
+/**
+ * BUG FIX: AccessOwner login’inde JWT role "customer" ve id doğrudan AccessOwner.id.
+ * Bunu öncelikli olarak kullanıyoruz. Diğer olasılıkları yedek bırakıyoruz.
+ */
 async function resolveOwnerId(req) {
-  if (req.user?.ownerId) return Number(req.user.ownerId);
+  // 1) Müşteri oturumu (AccessOwner) → JWT.id zaten AccessOwner.id
+  if (req.user?.role === "customer") {
+    const n = Number(req.user.id);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+
+  // 2) Bazı gateway’lerde ownerId alanı taşınmış olabilir
+  if (req.user?.ownerId) {
+    const n = Number(req.user.ownerId);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+
+  // 3) Son çare: token’da email varsa AccessOwner’ı lookup et
   if (req.user?.email) {
     const ow = await prisma.accessOwner.findUnique({
       where: { email: String(req.user.email).toLowerCase() },
@@ -82,6 +98,7 @@ async function resolveOwnerId(req) {
     });
     if (ow) return ow.id;
   }
+
   return null;
 }
 
