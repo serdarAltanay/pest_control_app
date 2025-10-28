@@ -1,4 +1,4 @@
-// src/routes/stations.js
+// routes/stations.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
@@ -23,17 +23,50 @@ function pickStationPayload(body) {
   return payload;
 }
 
+/** --- Customer erişim kontrolü (grant) --- */
+async function customerHasStoreAccess(req, storeId) {
+  if (["admin", "employee"].includes(req.user?.role)) return true;
+  if (req.user?.role !== "customer") return false;
+
+  const ownerId = Number(req.user.id);
+  if (!Number.isFinite(ownerId) || ownerId <= 0) return false;
+
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { customerId: true },
+  });
+  if (!store) return false;
+
+  const grant = await prisma.accessGrant.findFirst({
+    where: {
+      ownerId,
+      OR: [
+        { scopeType: "STORE", storeId },
+        { scopeType: "CUSTOMER", customerId: store.customerId },
+      ],
+    },
+    select: { id: true },
+  });
+
+  return !!grant;
+}
+
 /** DÜZ ROUTER (/api/stations) */
 export const stationsRouter = Router();
 
 // GET /api/stations/store/:storeId
 stationsRouter.get(
   "/store/:storeId",
-  auth, roleCheck(["admin", "employee"]),
+  auth, roleCheck(["admin", "employee", "customer"]),
   async (req, res) => {
     try {
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
+
+      if (req.user.role === "customer") {
+        const ok = await customerHasStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Yetkisiz" });
+      }
 
       const items = await prisma.station.findMany({
         where: { storeId },
@@ -50,11 +83,16 @@ stationsRouter.get(
 // GET /api/stations/metrics/store/:storeId
 stationsRouter.get(
   "/metrics/store/:storeId",
-  auth, roleCheck(["admin", "employee"]),
+  auth, roleCheck(["admin", "employee", "customer"]),
   async (req, res) => {
     try {
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
+
+      if (req.user.role === "customer") {
+        const ok = await customerHasStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Yetkisiz" });
+      }
 
       const list = await prisma.station.groupBy({
         by: ["type"],
@@ -74,7 +112,7 @@ stationsRouter.get(
   }
 );
 
-// GET /api/stations/:id
+// GET /api/stations/:id  (customer’a açmıyoruz; ihtiyaç yoksa dar tutalım)
 stationsRouter.get(
   "/:id",
   auth, roleCheck(["admin", "employee"]),
@@ -172,11 +210,17 @@ export const stationsNestedRouter = Router();
 // GET /api/stores/:storeId/stations
 stationsNestedRouter.get(
   "/:storeId/stations",
-  auth, roleCheck(["admin", "employee"]),
+  auth, roleCheck(["admin", "employee", "customer"]),
   async (req, res) => {
     try {
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
+
+      if (req.user.role === "customer") {
+        const ok = await customerHasStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Yetkisiz" });
+      }
+
       const items = await prisma.station.findMany({
         where: { storeId },
         orderBy: { createdAt: "desc" },
@@ -192,11 +236,16 @@ stationsNestedRouter.get(
 // GET /api/stores/:storeId/stations/metrics
 stationsNestedRouter.get(
   "/:storeId/stations/metrics",
-  auth, roleCheck(["admin", "employee"]),
+  auth, roleCheck(["admin", "employee", "customer"]),
   async (req, res) => {
     try {
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
+
+      if (req.user.role === "customer") {
+        const ok = await customerHasStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Yetkisiz" });
+      }
 
       const list = await prisma.station.groupBy({
         by: ["type"],

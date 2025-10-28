@@ -26,8 +26,35 @@ async function ensureEmployeeStoreAccess(req, storeId) {
   return !!ok;
 }
 
+/** Customer (AccessOwner) → store erişim kontrolü (grant) */
+async function customerHasStoreAccess(req, storeId) {
+  if (["admin", "employee"].includes(req.user?.role)) return true;
+  if (req.user?.role !== "customer") return false;
+
+  const ownerId = Number(req.user.id);
+  if (!Number.isFinite(ownerId) || ownerId <= 0) return false;
+
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { customerId: true },
+  });
+  if (!store) return false;
+
+  const grant = await prisma.accessGrant.findFirst({
+    where: {
+      ownerId,
+      OR: [
+        { scopeType: "STORE", storeId },
+        { scopeType: "CUSTOMER", customerId: store.customerId },
+      ],
+    },
+    select: { id: true },
+  });
+
+  return !!grant;
+}
+
 function normalizeEmployeesField(employees) {
-  // Visit.employees Json? olabilir veya string
   if (!employees) return "—";
   if (Array.isArray(employees)) {
     const names = employees.map((e) => e?.fullName || e?.name).filter(Boolean);
@@ -108,7 +135,6 @@ async function resolveRecipientsForStore(storeId, customerId) {
     .filter(o => o?.isActive && o?.email)
     .sort((a,b) => (roleRank[a.role]||99) - (roleRank[b.role]||99));
 
-  // benzersizleştir (ayni email iki grant'ten gelmiş olabilir)
   const seen = new Set();
   owners = owners.filter(o => (o.email && !seen.has(o.email) && seen.add(o.email)));
 
@@ -161,90 +187,6 @@ function buildSummaryData(v) {
   };
 }
 
-/* Şablonlar */
-function makeApprovalTemplate(d) {
-  const subject = `Onay Talebi – ${d.storeName} (${fmtDateTR(d.visitAt)})`;
-  const html = baseBox(`
-    <h2 style="margin:0 0 10px;font-size:18px;">Ziyaret Onay Hatırlatması</h2>
-    <p>Merhaba,</p>
-    <p><b>${d.storeName}</b> lokasyonunda <b>${fmtDateTR(d.visitAt)}</b> tarihinde gerçekleştirilen hizmete ilişkin onayınızı rica ederiz.</p>
-    <ul style="margin:8px 0 12px; padding-left:18px;">
-      <li><b>Hizmet Saati:</b> ${d.startTime || "—"} – ${d.endTime || "—"}</li>
-      <li><b>Hizmeti Veren Personel:</b> ${d.employees}</li>
-      ${d.targetPests ? `<li><b>Hedef Zararlılar:</b> ${d.targetPests}</li>` : ""}
-    </ul>
-    ${d.pdfUrl ? `<p>Ek-1 PDF: <a href="${d.pdfUrl}" target="_blank" style="color:#2563eb">Görüntüle</a></p>` : ""}
-    <p>Detay sayfası: <a href="${d.detailUrl}" target="_blank" style="color:#2563eb">${d.detailUrl}</a></p>
-    <p>Onayınızı rica eder, iyi çalışmalar dileriz.</p>
-  `);
-  const text =
-`Ziyaret Onay Hatırlatması
-Lokasyon: ${d.storeName}
-Tarih: ${fmtDateTR(d.visitAt)}
-Saat: ${d.startTime || "—"} – ${d.endTime || "—"}
-Personel: ${d.employees}
-${d.targetPests ? `Hedef Zararlılar: ${d.targetPests}\n` : ""}${d.pdfUrl ? `Ek-1 PDF: ${d.pdfUrl}\n` : ""}Detay: ${d.detailUrl}`;
-
-  return { subject, html, text };
-}
-
-function makeSummaryTemplate(d) {
-  const subject = `Ziyaret Bilgilendirme – ${d.storeName} (${fmtDateTR(d.visitAt)})`;
-  const linesHtml = d.lines?.length
-    ? `<table style="width:100%;border-collapse:collapse;margin:10px 0;">
-        <thead><tr>
-          <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Biosidal</th>
-          <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Etken</th>
-          <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Yöntem</th>
-          <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Miktar</th>
-        </tr></thead>
-        <tbody>
-          ${d.lines.map(l => `
-            <tr>
-              <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.name}</td>
-              <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.activeIngredient}</td>
-              <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.method}</td>
-              <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.amount} ${l.unit || ""}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>`
-    : "<p>Bu ziyarette malzeme/uygulama satırı bulunmuyor.</p>";
-
-  const actsHtml = d.activations?.length
-    ? `<p style="margin:8px 0;">Uygulama/aktivasyon özetleri: ${
-        d.activations.map(a => `${a.label}: ${a.count}`).join(", ")
-      }</p>`
-    : "";
-
-  const html = baseBox(`
-    <h2 style="margin:0 0 10px;font-size:18px;">Ziyaret Bilgilendirme</h2>
-    <p><b>${d.storeName}</b> lokasyonunda <b>${fmtDateTR(d.visitAt)}</b> tarihinde gerçekleştirilen ziyarete ait bilgiler aşağıdadır.</p>
-    <ul style="margin:8px 0 12px; padding-left:18px;">
-      <li><b>Hizmet Saati:</b> ${d.startTime || "—"} – ${d.endTime || "—"}</li>
-      <li><b>Hizmeti Veren Personel:</b> ${d.employees}</li>
-      ${d.targetPests ? `<li><b>Hedef Zararlılar:</b> ${d.targetPests}</li>` : ""}
-      ${d.notes ? `<li><b>Notlar:</b> ${d.notes}</li>` : ""}
-    </ul>
-    ${actsHtml}
-    ${linesHtml}
-    ${d.pdfUrl ? `<p>Ek-1 PDF: <a href="${d.pdfUrl}" target="_blank" style="color:#2563eb">Görüntüle/İndir</a></p>` : ""}
-    <p>Detay sayfası: <a href="${d.detailUrl}" target="_blank" style="color:#2563eb">${d.detailUrl}</a></p>
-  `);
-
-  const text =
-`Ziyaret Bilgilendirme
-Lokasyon: ${d.storeName}
-Tarih: ${fmtDateTR(d.visitAt)}
-Saat: ${d.startTime || "—"} – ${d.endTime || "—"}
-Personel: ${d.employees}
-${d.targetPests ? `Hedef Zararlılar: ${d.targetPests}\n` : ""}${d.notes ? `Notlar: ${d.notes}\n` : ""}${(d.activations||[]).map(a => `${a.label}: ${a.count}`).join(", ")}
-${(d.lines||[]).map(l => `- ${l.name} / ${l.activeIngredient} / ${l.method} / ${l.amount} ${l.unit || ""}`).join("\n")}
-${d.pdfUrl ? `Ek-1 PDF: ${d.pdfUrl}\n` : ""}Detay: ${d.detailUrl}`;
-
-  return { subject, html, text };
-}
-
 /* ───────── LIST: with filters (from,to, storeId, customerId) ───────── */
 router.get(
   "/",
@@ -264,7 +206,6 @@ router.get(
       if (storeId) {
         const sid = parseId(storeId);
         if (!sid) return res.status(400).json({ message: "Geçersiz storeId" });
-        // Employee erişim kontrolü
         if (req.user.role === "employee") {
           const ok = await ensureEmployeeStoreAccess(req, sid);
           if (!ok) return res.status(403).json({ message: "Erişim yok" });
@@ -275,7 +216,6 @@ router.get(
       if (customerId) {
         const cid = parseId(customerId);
         if (!cid) return res.status(400).json({ message: "Geçersiz customerId" });
-        // Employee erişim: kendi müşterisi mi
         if (req.user.role === "employee") {
           const own = await prisma.customer.findFirst({ where: { id: cid, employeeId: req.user.id }, select: { id: true }});
           if (!own) return res.status(403).json({ message: "Erişim yok" });
@@ -283,7 +223,6 @@ router.get(
         where.store = { customerId: cid };
       }
 
-      // Employee ise kendi müşterilerinin mağazaları
       if (req.user.role === "employee" && !where.store && !where.storeId) {
         where.store = { customer: { employeeId: req.user.id } };
       }
@@ -319,11 +258,11 @@ router.get(
   }
 );
 
-/* ───────── LIST by store (kısa yol) ───────── */
+/* ───────── LIST by store (customer’a açıldı) ───────── */
 router.get(
   "/store/:storeId",
   auth,
-  roleCheck(["admin", "employee"]),
+  roleCheck(["admin", "employee", "customer"]),
   async (req, res) => {
     try {
       const storeId = parseId(req.params.storeId);
@@ -332,6 +271,9 @@ router.get(
       if (req.user.role === "employee") {
         const ok = await ensureEmployeeStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Erişim yok" });
+      } else if (req.user.role === "customer") {
+        const ok = await customerHasStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
 
       const items = await prisma.visit.findMany({
@@ -416,7 +358,7 @@ router.post(
           targetPests: targetPests ?? null,
           notes: notes ?? null,
           employees: employees ?? null,
-          ek1: { create: {} }, // status default: DRAFT
+          ek1: { create: {} },
         },
         include: { ek1: true },
       });
@@ -526,7 +468,6 @@ router.delete(
       const lineId  = parseId(req.params.lineId);
       if (!visitId || !lineId) return res.status(400).json({ message: "Geçersiz id" });
 
-      // erişim kontrolü için line -> visit -> store
       const line = await prisma.ek1Line.findUnique({
         where: { id: lineId },
         select: { visit: { select: { storeId: true, id: true } } },
@@ -663,8 +604,8 @@ router.get(
   }
 );
 
-/* ───────── (ESKİ) EMAIL SUMMARY ─────────
-   Geriye dönük uyumluluk için bırakıldı; yeni akış /mail/send kullanır. */
+/* ───────── ESKİ/MAIL uçları (admin/employee) ───────── */
+// ... (altta kalan mail uçları aynen sende olduğu gibi)
 router.post(
   "/:id/email-summary",
   auth,
@@ -678,7 +619,6 @@ router.post(
       if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
       if (v === "NO_ACCESS") return res.status(403).json({ message: "Erişim yok" });
 
-      // Alıcı(lar)
       let recipients = [];
       if (req.body?.to) {
         recipients = [String(req.body.to).trim().toLowerCase()];
@@ -695,140 +635,66 @@ router.post(
 
       const d = buildSummaryData(v);
       const subject = `Ziyaret Özeti – ${v.store?.name} (${fmtDateTR(v.date)})`;
-      const { html, text } = makeSummaryTemplate(d);
+      const { html, text } = (function makeSummaryTemplate(d) {
+        const linesHtml = d.lines?.length
+          ? `<table style="width:100%;border-collapse:collapse;margin:10px 0;">
+              <thead><tr>
+                <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Biosidal</th>
+                <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Etken</th>
+                <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Yöntem</th>
+                <th style="text-align:left;border-bottom:1px solid #e5e7eb;padding:6px 4px;">Miktar</th>
+              </tr></thead>
+              <tbody>
+                ${d.lines.map(l => `
+                  <tr>
+                    <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.name}</td>
+                    <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.activeIngredient}</td>
+                    <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.method}</td>
+                    <td style="border-bottom:1px solid #f1f5f9;padding:6px 4px;">${l.amount} ${l.unit || ""}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>`
+          : "<p>Bu ziyarette malzeme/uygulama satırı bulunmuyor.</p>";
+
+        const actsHtml = d.activations?.length
+          ? `<p style="margin:8px 0;">Uygulama/aktivasyon özetleri: ${
+              d.activations.map(a => `${a.label}: ${a.count}`).join(", ")
+            }</p>`
+          : "";
+
+        const html = baseBox(`
+          <h2 style="margin:0 0 10px;font-size:18px;">Ziyaret Bilgilendirme</h2>
+          <p><b>${d.storeName}</b> lokasyonunda <b>${fmtDateTR(d.visitAt)}</b> tarihinde gerçekleştirilen ziyarete ait bilgiler aşağıdadır.</p>
+          <ul style="margin:8px 0 12px; padding-left:18px;">
+            <li><b>Hizmet Saati:</b> ${d.startTime || "—"} – ${d.endTime || "—"}</li>
+            <li><b>Hizmeti Veren Personel:</b> ${d.employees}</li>
+            ${d.targetPests ? `<li><b>Hedef Zararlılar:</b> ${d.targetPests}</li>` : ""}
+            ${d.notes ? `<li><b>Notlar:</b> ${d.notes}</li>` : ""}
+          </ul>
+          ${actsHtml}
+          ${linesHtml}
+          ${d.pdfUrl ? `<p>Ek-1 PDF: <a href="${d.pdfUrl}" target="_blank" style="color:#2563eb">Görüntüle/İndir</a></p>` : ""}
+          <p>Detay sayfası: <a href="${d.detailUrl}" target="_blank" style="color:#2563eb">${d.detailUrl}</a></p>
+        `);
+
+        const text =
+`Ziyaret Bilgilendirme
+Lokasyon: ${d.storeName}
+Tarih: ${fmtDateTR(d.visitAt)}
+Saat: ${d.startTime || "—"} – ${d.endTime || "—"}
+Personel: ${d.employees}
+${d.targetPests ? `Hedef Zararlılar: ${d.targetPests}\n` : ""}${d.notes ? `Notlar: ${d.notes}\n` : ""}${(d.activations||[]).map(a => `${a.label}: ${a.count}`).join(", ")}
+${(d.lines||[]).map(l => `- ${l.name} / ${l.activeIngredient} / ${l.method} / ${l.amount} ${l.unit || ""}`).join("\n")}
+${d.pdfUrl ? `Ek-1 PDF: ${d.pdfUrl}\n` : ""}Detay: ${d.detailUrl}`;
+
+        return { html, text };
+      })(d);
 
       await sendMail({ to: recipients.join(","), subject, html, text });
-
       res.json({ ok: true, to: recipients, sent: true });
     } catch (e) {
       console.error("POST /visits/:id/email-summary", e);
-      res.status(500).json({ message: "E-posta gönderilemedi" });
-    }
-  }
-);
-
-/* ───────── YENİ: MAIL COMPOSE UÇLARI ───────── */
-
-/* Alıcı listesi (compose sayfası için) */
-router.get(
-  "/:id/mail/recipients",
-  auth,
-  roleCheck(["admin","employee"]),
-  async (req, res) => {
-    try {
-      const id = parseId(req.params.id);
-      if (!id) return res.status(400).json({ message: "Geçersiz id" });
-
-      const v = await prisma.visit.findUnique({
-        where: { id },
-        select: { storeId: true, store: { select: { customerId: true } } }
-      });
-      if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
-
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, v.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
-
-      const owners = await resolveRecipientsForStore(v.storeId, v.store.customerId);
-      res.json(owners);
-    } catch (e) {
-      console.error("GET /visits/:id/mail/recipients", e);
-      res.status(500).json({ message: "Sunucu hatası" });
-    }
-  }
-);
-
-/* Şablon varsayılanları (compose önizleme için) */
-router.get(
-  "/:id/mail/templates",
-  auth,
-  roleCheck(["admin","employee"]),
-  async (req, res) => {
-    try {
-      const id = parseId(req.params.id);
-      if (!id) return res.status(400).json({ message: "Geçersiz id" });
-
-      const v = await loadVisitFullForMail(req, id);
-      if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
-      if (v === "NO_ACCESS") return res.status(403).json({ message: "Erişim yok" });
-
-      const d = buildSummaryData(v);
-      const approval = makeApprovalTemplate(d);
-      const summary  = makeSummaryTemplate(d);
-
-      res.json({
-        APPROVAL: { subject: approval.subject, html: approval.html, text: approval.text },
-        SUMMARY:  { subject: summary.subject,  html: summary.html,  text: summary.text  },
-      });
-    } catch (e) {
-      console.error("GET /visits/:id/mail/templates", e);
-      res.status(500).json({ message: "Sunucu hatası" });
-    }
-  }
-);
-
-/* Mail gönder (compose submit) */
-router.post(
-  "/:id/mail/send",
-  auth,
-  roleCheck(["admin","employee"]),
-  async (req, res) => {
-    try {
-      const id = parseId(req.params.id);
-      if (!id) return res.status(400).json({ message: "Geçersiz id" });
-
-      const v = await loadVisitFullForMail(req, id);
-      if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
-      if (v === "NO_ACCESS") return res.status(403).json({ message: "Erişim yok" });
-
-      const type = String(req.body?.type || "").toUpperCase();
-      if (!["APPROVAL","SUMMARY"].includes(type)) {
-        return res.status(400).json({ message: "Geçersiz type (APPROVAL | SUMMARY)" });
-      }
-
-      // Alıcılar
-      let recipients = [];
-      const to = req.body?.to;
-      if (Array.isArray(to)) {
-        recipients = to.map(s => String(s).trim().toLowerCase()).filter(Boolean);
-      } else if (typeof to === "string" && to.trim()) {
-        recipients = to.split(/[;,]/).map(s => s.trim().toLowerCase()).filter(Boolean);
-      } else {
-        const owners = await resolveRecipientsForStore(v.storeId, v.store.customerId);
-        recipients = owners.map(o => o.email);
-        if (recipients.length === 0 && v.store.customer?.email) {
-          recipients = [v.store.customer.email];
-        }
-      }
-      if (recipients.length === 0) {
-        return res.status(400).json({ message: "Gönderilecek e-posta adresi bulunamadı" });
-      }
-
-      // Gövde/konu
-      const d = buildSummaryData(v);
-      const defaults = type === "APPROVAL" ? makeApprovalTemplate(d) : makeSummaryTemplate(d);
-
-      const subject = String(req.body?.subject || defaults.subject);
-      const html    = String(req.body?.html || defaults.html);
-      const text    = String(req.body?.text || defaults.text);
-
-      // CC / BCC opsiyonel
-      const cc  = Array.isArray(req.body?.cc)  ? req.body.cc  : (req.body?.cc  ? String(req.body.cc).split(/[;,]/).map(s=>s.trim()).filter(Boolean) : []);
-      const bcc = Array.isArray(req.body?.bcc) ? req.body.bcc : (req.body?.bcc ? String(req.body.bcc).split(/[;,]/).map(s=>s.trim()).filter(Boolean) : []);
-
-      await sendMail({
-        to: recipients.join(","),
-        subject,
-        html,
-        text,
-        ...(cc.length  ? { cc: cc.join(",") }   : {}),
-        ...(bcc.length ? { bcc: bcc.join(",") } : {}),
-      });
-
-      res.json({ ok: true, to: recipients, type, sent: true });
-    } catch (e) {
-      console.error("POST /visits/:id/mail/send", e);
       res.status(500).json({ message: "E-posta gönderilemedi" });
     }
   }

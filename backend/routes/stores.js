@@ -78,19 +78,14 @@ async function ensureAccessOwner({ email, role, firstName, lastName, phone }) {
  * Bunu öncelikli olarak kullanıyoruz. Diğer olasılıkları yedek bırakıyoruz.
  */
 async function resolveOwnerId(req) {
-  // 1) Müşteri oturumu (AccessOwner) → JWT.id zaten AccessOwner.id
   if (req.user?.role === "customer") {
     const n = Number(req.user.id);
     if (Number.isFinite(n) && n > 0) return n;
   }
-
-  // 2) Bazı gateway’lerde ownerId alanı taşınmış olabilir
   if (req.user?.ownerId) {
     const n = Number(req.user.ownerId);
     if (Number.isFinite(n) && n > 0) return n;
   }
-
-  // 3) Son çare: token’da email varsa AccessOwner’ı lookup et
   if (req.user?.email) {
     const ow = await prisma.accessOwner.findUnique({
       where: { email: String(req.user.email).toLowerCase() },
@@ -98,7 +93,6 @@ async function resolveOwnerId(req) {
     });
     if (ow) return ow.id;
   }
-
   return null;
 }
 
@@ -345,7 +339,6 @@ router.get("/:id", auth, async (req, res) => {
       select: {
         id: true,
         customerId: true,
-        // 👇 müşteri rolünde FE ek çağrı yapmasın diye
         customer: { select: { id: true, title: true, code: true } },
         name: true,
         code: true,
@@ -365,6 +358,39 @@ router.get("/:id", auth, async (req, res) => {
     res.json(store);
   } catch (e) {
     console.error("GET /stores/:id", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
+/** 🆕 CUSTOMER/EMPLOYEE/ADMIN: mağaza ziyaretleri (alias’sız) 
+ * GET /api/stores/:storeId/visits
+ */
+router.get("/:storeId/visits", auth, async (req, res) => {
+  try {
+    const storeId = Number(req.params.storeId);
+    if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
+
+    if (req.user.role === "employee") {
+      const ok = await prisma.store.findFirst({
+        where: { id: storeId, customer: { employeeId: req.user.id } },
+        select: { id: true },
+      });
+      if (!ok) return res.status(403).json({ message: "Erişim yok" });
+    } else if (!(await customerCanAccessStore(req, storeId))) {
+      return res.status(403).json({ message: "Yetkisiz" });
+    }
+
+    const items = await prisma.visit.findMany({
+      where: { storeId },
+      orderBy: { date: "desc" },
+      select: {
+        id: true, storeId: true, date: true, startTime: true, endTime: true,
+        visitType: true, notes: true, employees: true,
+      },
+    });
+    res.json(items);
+  } catch (e) {
+    console.error("GET /stores/:storeId/visits", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
