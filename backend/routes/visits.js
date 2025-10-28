@@ -56,11 +56,39 @@ async function customerHasStoreAccess(req, storeId) {
 
 function normalizeEmployeesField(employees) {
   if (!employees) return "—";
+  if (typeof employees === "string") return employees.trim() || "—";
+
+  // Tekil nesne gelirse
+  if (typeof employees === "object" && !Array.isArray(employees)) {
+    const o = employees || {};
+    const s =
+      o.fullName ||
+      o.name ||
+      [o.firstName, o.lastName].filter(Boolean).join(" ") ||
+      o.email ||
+      "";
+    return s || "—";
+  }
+
+  // Dizi gelirse (karışık tipler olabilir)
   if (Array.isArray(employees)) {
-    const names = employees.map((e) => e?.fullName || e?.name).filter(Boolean);
+    const names = employees
+      .map((e) => {
+        if (!e) return "";
+        if (typeof e === "string") return e;
+        const o = e || {};
+        return (
+          o.fullName ||
+          o.name ||
+          [o.firstName, o.lastName].filter(Boolean).join(" ") ||
+          o.email ||
+          ""
+        );
+      })
+      .filter(Boolean);
     return names.length ? names.join(", ") : "—";
   }
-  if (typeof employees === "string") return employees;
+
   return "—";
 }
 function normalizeTargetPestsField(targetPests) {
@@ -229,7 +257,7 @@ router.get(
 
       const rows = await prisma.visit.findMany({
         where,
-        orderBy: { date: "desc" },
+        orderBy: { date: "asc" }, // (liste sayfalarında istersen desc yap)
         select: {
           id: true, storeId: true, date: true, startTime: true, endTime: true,
           visitType: true, notes: true, employees: true,
@@ -258,7 +286,7 @@ router.get(
   }
 );
 
-/* ───────── LIST by store (customer’a açıldı) ───────── */
+/* ───────── LIST by store (customer’a da açık) ───────── */
 router.get(
   "/store/:storeId",
   auth,
@@ -284,7 +312,14 @@ router.get(
           visitType: true, notes: true, employees: true,
         },
       });
-      res.json(items);
+
+      // 👇 FE’de [object Object] sorununu kökten bitir
+      const data = items.map(v => ({
+        ...v,
+        employees: normalizeEmployeesField(v.employees),
+      }));
+
+      res.json(data);
     } catch (e) {
       console.error("GET /visits/store/:storeId", e);
       res.status(500).json({ message: "Sunucu hatası" });
@@ -358,7 +393,7 @@ router.post(
           targetPests: targetPests ?? null,
           notes: notes ?? null,
           employees: employees ?? null,
-          ek1: { create: {} },
+          ek1: { create: {} }, // status default: DRAFT
         },
         include: { ek1: true },
       });
@@ -605,7 +640,6 @@ router.get(
 );
 
 /* ───────── ESKİ/MAIL uçları (admin/employee) ───────── */
-// ... (altta kalan mail uçları aynen sende olduğu gibi)
 router.post(
   "/:id/email-summary",
   auth,

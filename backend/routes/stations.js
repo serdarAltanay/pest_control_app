@@ -11,19 +11,17 @@ function parseId(val) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// Artık latitude/longitude yok
-function pickStationPayload(body) {
-  const payload = {};
-  if ("type" in body)        payload.type = String(body.type);
-  if ("name" in body)        payload.name = String(body.name).trim();
-  if ("code" in body)        payload.code = String(body.code).trim();
-  if ("isActive" in body)    payload.isActive = !!body.isActive;
-  if ("zone" in body)        payload.zone = body.zone ? String(body.zone).trim() : null;
-  if ("description" in body) payload.description = body.description ? String(body.description).trim() : null;
-  return payload;
+// Çalışan erişim kontrolü (kendi müşterileri)
+async function ensureEmployeeStoreAccess(req, storeId) {
+  if (req.user?.role !== "employee") return true;
+  const ok = await prisma.store.findFirst({
+    where: { id: storeId, customer: { employeeId: req.user.id } },
+    select: { id: true },
+  });
+  return !!ok;
 }
 
-/** --- Customer erişim kontrolü (grant) --- */
+// Customer (AccessOwner) grant kontrolü
 async function customerHasStoreAccess(req, storeId) {
   if (["admin", "employee"].includes(req.user?.role)) return true;
   if (req.user?.role !== "customer") return false;
@@ -51,10 +49,22 @@ async function customerHasStoreAccess(req, storeId) {
   return !!grant;
 }
 
+// Artık latitude/longitude yok
+function pickStationPayload(body) {
+  const payload = {};
+  if ("type" in body)        payload.type = String(body.type);
+  if ("name" in body)        payload.name = String(body.name).trim();
+  if ("code" in body)        payload.code = String(body.code).trim();
+  if ("isActive" in body)    payload.isActive = !!body.isActive;
+  if ("zone" in body)        payload.zone = body.zone ? String(body.zone).trim() : null;
+  if ("description" in body) payload.description = body.description ? String(body.description).trim() : null;
+  return payload;
+}
+
 /** DÜZ ROUTER (/api/stations) */
 export const stationsRouter = Router();
 
-// GET /api/stations/store/:storeId
+// GET /api/stations/store/:storeId  (müşteriye read-only)
 stationsRouter.get(
   "/store/:storeId",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -63,7 +73,10 @@ stationsRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "customer") {
+      if (req.user.role === "employee") {
+        const ok = await ensureEmployeeStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Erişim yok" });
+      } else if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -80,7 +93,7 @@ stationsRouter.get(
   }
 );
 
-// GET /api/stations/metrics/store/:storeId
+// GET /api/stations/metrics/store/:storeId  (müşteriye açık)
 stationsRouter.get(
   "/metrics/store/:storeId",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -89,7 +102,10 @@ stationsRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "customer") {
+      if (req.user.role === "employee") {
+        const ok = await ensureEmployeeStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Erişim yok" });
+      } else if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -112,7 +128,7 @@ stationsRouter.get(
   }
 );
 
-// GET /api/stations/:id  (customer’a açmıyoruz; ihtiyaç yoksa dar tutalım)
+// GET /api/stations/:id
 stationsRouter.get(
   "/:id",
   auth, roleCheck(["admin", "employee"]),
@@ -193,7 +209,7 @@ stationsRouter.delete(
       const id = parseId(req.params.id);
       if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-      await prisma.station.delete({ where: { id } });
+      await prisma.station.delete({ where: { id: id } });
       res.json({ message: "İstasyon silindi" });
     } catch (e) {
       if (e.code === "P2025") return res.status(404).json({ message: "İstasyon bulunamadı" });
@@ -203,11 +219,10 @@ stationsRouter.delete(
   }
 );
 
-
 /** NESTED ROUTER (/api/stores/:storeId/stations ...) */
 export const stationsNestedRouter = Router();
 
-// GET /api/stores/:storeId/stations
+// GET /api/stores/:storeId/stations  (müşteriye read-only)
 stationsNestedRouter.get(
   "/:storeId/stations",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -216,7 +231,10 @@ stationsNestedRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "customer") {
+      if (req.user.role === "employee") {
+        const ok = await ensureEmployeeStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Erişim yok" });
+      } else if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -233,7 +251,7 @@ stationsNestedRouter.get(
   }
 );
 
-// GET /api/stores/:storeId/stations/metrics
+// GET /api/stores/:storeId/stations/metrics  (müşteriye açık)
 stationsNestedRouter.get(
   "/:storeId/stations/metrics",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -242,7 +260,10 @@ stationsNestedRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "customer") {
+      if (req.user.role === "employee") {
+        const ok = await ensureEmployeeStoreAccess(req, storeId);
+        if (!ok) return res.status(403).json({ message: "Erişim yok" });
+      } else if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -265,7 +286,7 @@ stationsNestedRouter.get(
   }
 );
 
-// POST /api/stores/:storeId/stations
+// POST /api/stores/:storeId/stations (admin)
 stationsNestedRouter.post(
   "/:storeId/stations",
   auth, roleCheck(["admin"]),
@@ -297,7 +318,7 @@ stationsNestedRouter.post(
   }
 );
 
-// PUT /api/stores/:storeId/stations/:stationId
+// PUT /api/stores/:storeId/stations/:stationId (admin)
 stationsNestedRouter.put(
   "/:storeId/stations/:stationId",
   auth, roleCheck(["admin"]),
@@ -321,7 +342,7 @@ stationsNestedRouter.put(
   }
 );
 
-// DELETE /api/stores/:storeId/stations/:stationId
+// DELETE /api/stores/:storeId/stations/:stationId (admin)
 stationsNestedRouter.delete(
   "/:storeId/stations/:stationId",
   auth, roleCheck(["admin"]),
