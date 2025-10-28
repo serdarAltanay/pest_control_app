@@ -10,18 +10,35 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+const APP_URL = (process.env.APP_URL || "http://localhost:5000").replace(/\/+$/, "");
 
-// path helpers
+// ---- helpers ----
 const rel = (abs) => path.relative(process.cwd(), abs).split(path.sep).join("/");
 const absFromRel = (p) =>
   path.resolve(process.cwd(), String(p || "").replace(/^\/+/, "").replace(/\\/g, "/"));
-
 const slugify = (s = "") =>
   s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+const parseId = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+const toPublicUrl = (p) => {
+  if (!p) return null;
+  const clean = String(p).replace(/^\/+/, "");
+  return `${APP_URL}/${clean}`;
+};
 
-// access helpers (stores ile aynı mantık)
+// ---- access helpers (stores.js ile aynı mantık) ----
 async function resolveOwnerId(req) {
-  if (req.user?.ownerId) return Number(req.user.ownerId);
+  // ✅ AccessOwner login'inde role="customer" ve id doğrudan AccessOwner.id
+  if (req.user?.role === "customer") {
+    const n = Number(req.user.id);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  if (req.user?.ownerId) {
+    const n = Number(req.user.ownerId);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
   if (req.user?.email) {
     const ow = await prisma.accessOwner.findUnique({
       where: { email: String(req.user.email).toLowerCase() },
@@ -67,7 +84,7 @@ async function customerCanAccessStore(req, storeId) {
   return false;
 }
 
-// upload/multer
+// ---- upload/multer ----
 async function ensureStoreNcrDir(storeId) {
   const sid = Number(storeId);
   const store = await prisma.store.findUnique({ where: { id: sid } });
@@ -86,7 +103,8 @@ const onlyImages = (_req, file, cb) => {
 const storage = multer.diskStorage({
   destination: async (req, _file, cb) => {
     try {
-      cb(null, await ensureStoreNcrDir(req.params.storeId));
+      const dir = await ensureStoreNcrDir(req.params.storeId);
+      cb(null, dir);
     } catch (e) {
       cb(e);
     }
@@ -103,12 +121,11 @@ const upload = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
 });
 
-/* ===== LIST ===== */
+// ===== LIST =====
 router.get("/store/:storeId", auth, async (req, res) => {
   try {
-    const storeId = Number(req.params.storeId);
-    if (!Number.isInteger(storeId) || storeId <= 0)
-      return res.status(400).json({ error: "Geçersiz mağaza id" });
+    const storeId = parseId(req.params.storeId);
+    if (!storeId) return res.status(400).json({ error: "Geçersiz mağaza id" });
 
     if (!(await customerCanAccessStore(req, storeId))) {
       return res.status(403).json({ error: "Yetkisiz" });
@@ -118,19 +135,25 @@ router.get("/store/:storeId", auth, async (req, res) => {
       where: { storeId },
       orderBy: [{ observedAt: "desc" }, { createdAt: "desc" }],
     });
-    res.json(items);
+
+    // Opsiyonel kolaylık: public URL
+    const data = items.map((it) => ({
+      ...it,
+      imageUrl: it.image ? toPublicUrl(it.image) : null,
+    }));
+
+    res.json(data);
   } catch (e) {
     console.error("GET /nonconformities/store/:storeId error:", e);
     res.status(500).json({ error: "Liste alınamadı" });
   }
 });
 
-/* ===== DETAIL ===== */
+// ===== DETAIL =====
 router.get("/:id", auth, async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0)
-      return res.status(400).json({ error: "Geçersiz id" });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Geçersiz id" });
 
     const item = await prisma.nonconformity.findUnique({ where: { id } });
     if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
@@ -139,14 +162,14 @@ router.get("/:id", auth, async (req, res) => {
       return res.status(403).json({ error: "Yetkisiz" });
     }
 
-    res.json(item);
+    res.json({ ...item, imageUrl: item.image ? toPublicUrl(item.image) : null });
   } catch (e) {
     console.error("GET /nonconformities/:id error:", e);
     res.status(500).json({ error: "Kayıt getirilemedi" });
   }
 });
 
-/* ===== CREATE (admin/employee) ===== */
+// ===== CREATE (admin/employee) =====
 router.post(
   "/store/:storeId",
   auth,
@@ -154,9 +177,8 @@ router.post(
   upload.single("image"),
   async (req, res) => {
     try {
-      const storeId = Number(req.params.storeId);
-      if (!Number.isInteger(storeId) || storeId <= 0)
-        return res.status(400).json({ error: "Geçersiz mağaza id" });
+      const storeId = parseId(req.params.storeId);
+      if (!storeId) return res.status(400).json({ error: "Geçersiz mağaza id" });
 
       const store = await prisma.store.findUnique({
         where: { id: storeId },
@@ -179,7 +201,7 @@ router.post(
           observedAt: observedAt ? new Date(observedAt) : new Date(),
         },
       });
-      res.json(created);
+      res.json({ ...created, imageUrl: created.image ? toPublicUrl(created.image) : null });
     } catch (e) {
       console.error("POST /nonconformities/store/:storeId error:", e);
       res.status(500).json({ error: "Kaydedilemedi" });
@@ -187,10 +209,12 @@ router.post(
   }
 );
 
-/* ===== TOGGLE (admin/employee) ===== */
+// ===== TOGGLE (admin/employee) =====
 router.patch("/:id/toggle", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
-    const id = Number(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Geçersiz id" });
+
     const current = await prisma.nonconformity.findUnique({ where: { id } });
     if (!current) return res.status(404).json({ error: "Kayıt bulunamadı" });
 
@@ -199,17 +223,19 @@ router.patch("/:id/toggle", auth, roleCheck(["admin", "employee"]), async (req, 
       where: { id },
       data: { resolved: next, resolvedAt: next ? new Date() : null },
     });
-    res.json(updated);
+    res.json({ ...updated, imageUrl: updated.image ? toPublicUrl(updated.image) : null });
   } catch (e) {
     console.error("PATCH /nonconformities/:id/toggle error:", e);
     res.status(500).json({ error: "Güncellenemedi" });
   }
 });
 
-/* ===== DELETE (admin/employee) ===== */
+// ===== DELETE (admin/employee) =====
 router.delete("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
-    const id = Number(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: "Geçersiz id" });
+
     const item = await prisma.nonconformity.findUnique({ where: { id } });
     if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
 

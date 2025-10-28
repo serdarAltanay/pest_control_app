@@ -10,52 +10,77 @@ const API_BASE = `${String(API_ORIGIN).replace(/\/+$/, "")}/api`;
 
 const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: true,
+  withCredentials: true, // refresh cookie için şart
 });
 
+// ---- Access token'ı isteğe ekle
 api.interceptors.request.use((config) => {
   const t = localStorage.getItem("accessToken");
   if (t) config.headers.Authorization = `Bearer ${t}`;
   return config;
 });
 
+// ---- 401 refresh kuyruğu
+let isRefreshing = false;
+let waiters = [];
+
+function enqueueWaiter() {
+  return new Promise((resolve, reject) => waiters.push({ resolve, reject }));
+}
+function flushWaiters(err) {
+  if (err) waiters.forEach(w => w.reject(err));
+  else     waiters.forEach(w => w.resolve());
+  waiters = [];
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    const originalRequest = error.config || {};
+    const original = error.config || {};
     const status = error.response?.status;
 
-    // ——— SESSİZ İSTEK TESPİTİ ———
     const isSilent =
-      originalRequest._isHeartbeat === true ||
-      originalRequest.headers?.["x-silent"] === "1" ||
-      /\/presence\/heartbeat$/.test(originalRequest.url || "");
+      original._isHeartbeat === true ||
+      original.headers?.["x-silent"] === "1" ||
+      /\/presence\/heartbeat$/.test(original.url || "");
 
-    // Sessiz istekler 401/403’te hiç bir şey yapmadan hatayı fırlatsın
-    if (isSilent && (status === 401 || status === 403)) {
-      return Promise.reject(error);
-    }
+    // --- 403: sessiz isteklerde aynen ilet; (refresh de işe yaramaz)
+    if (status === 403) return Promise.reject(error);
 
-    // Normal refresh akışı
-    if (status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    // --- 401: her durumda refresh dene (sessizde de!)
+    if (status === 401 && !original._retry) {
+      original._retry = true;
+
       try {
-        const r = await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
-        const token = r.data?.accessToken;
-        if (!token) throw new Error("No accessToken from refresh");
-        localStorage.setItem("accessToken", token);
-        api.defaults.headers.common.Authorization = `Bearer ${token}`;
-        originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${token}`;
-        return api(originalRequest);
+        if (isRefreshing) {
+          await enqueueWaiter();
+        } else {
+          isRefreshing = true;
+          const r = await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
+          const token = r.data?.accessToken;
+          if (!token) throw new Error("No accessToken from refresh");
+          localStorage.setItem("accessToken", token);
+          api.defaults.headers.common.Authorization = `Bearer ${token}`;
+          isRefreshing = false;
+          flushWaiters();
+        }
+
+        // yenilenmiş token ile orijinal isteği tekrar dene
+        original.headers = original.headers || {};
+        const t = localStorage.getItem("accessToken");
+        if (t) original.headers.Authorization = `Bearer ${t}`;
+        return api(original);
       } catch (e) {
-        // Sessiz değilse redirect; sessizse sadece hata
+        isRefreshing = false;
+        flushWaiters(e);
+
+        // Sessiz çağrılarda view değişimi yapma; normal çağrılarda login'e yönlendir
         if (!isSilent) {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("role");
           localStorage.removeItem("name");
           localStorage.removeItem("email");
-          window.location.assign("/login");
+          try { window.location.assign("/login"); } catch {}
         }
         return Promise.reject(e);
       }
