@@ -377,6 +377,14 @@ function App() {
           }
         />
         <Route
+          path="/customer/stores/:storeId/analytics"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <TrendAnalysis />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/admin/stores/:storeId/reports/:reportId"
           element={
             <PrivateRoute allowedRoles={['admin','employee']}>

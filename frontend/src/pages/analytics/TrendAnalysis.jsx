@@ -1,5 +1,5 @@
 // src/pages/reports/TrendAnalysis.jsx
-// Route örneği: <Route path="/admin/stores/:storeId/trend" element={<TrendAnalysis />} />
+// Müşteri rotası örneği: <Route path="/customer/stores/:storeId/trend" element={<TrendAnalysis />} />
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -239,7 +239,7 @@ export default function TrendAnalysis() {
     return byType;
   }, [activations, months]);
 
-  // --- Uygunsuzluk grafiği (aylık bildirilen vs çözülen) ---
+  // --- Uygunsuzluk grafiği (Aylık) ---
   const ncrMonthly = useMemo(() => {
     return months.map(({ label, start, end }) => {
       const reported = noncons.filter(n => inRange(n.observedAt || n.createdAt, start, end)).length;
@@ -248,8 +248,7 @@ export default function TrendAnalysis() {
     });
   }, [months, noncons]);
 
-  // --- Uygunsuzluk: Kategori Bazlı Toplamlar (X ekseninde TÜM kategoriler) ---
-  // Öncelik sırası: MASTER (bu dosyada sabit) → window.__NCR_CATEGORIES__ → veriden gelenler
+  // --- Uygunsuzluk: Kategori Bazlı Toplamlar (tüm kategoriler X ekseninde) ---
   const ALL_NCR_CATEGORIES = useMemo(() => {
     const fromMaster = Array.isArray(MASTER_NCR_CATEGORIES) ? MASTER_NCR_CATEGORIES : [];
     const fromGlobal = (typeof window !== "undefined" &&
@@ -257,14 +256,12 @@ export default function TrendAnalysis() {
     const fromData = Array.from(new Set(
       noncons.map(n => n.category).filter(Boolean)
     ));
-    // Hepsini birleştir, tekrarları at
     const merged = Array.from(new Set([...fromMaster, ...fromGlobal, ...fromData]));
     return merged.sort((a,b) => a.localeCompare(b, "tr"));
   }, [noncons]);
 
   const ncrByCategory = useMemo(() => {
     if (!ALL_NCR_CATEGORIES.length) return [];
-    // Her kategori eksende olsun, veri yoksa 0 olarak görünsün
     return ALL_NCR_CATEGORIES.map(cat => {
       const reported = noncons.filter(n => (n.category || "") === cat).length;
       const resolved = noncons.filter(n => (n.category || "") === cat && n.resolved).length;
@@ -412,7 +409,7 @@ export default function TrendAnalysis() {
                 )}
               </section>
 
-              {/* Uygunsuzluk: Kategori Bazlı Toplamlar (tüm kategoriler X ekseninde) */}
+              {/* Uygunsuzluk: Kategori Bazlı Toplamlar */}
               <section className="ta-card chart wide">
                 <div className="ta-card-title">Uygunsuzluk: Kategori Bazlı Toplamlar</div>
                 {Recharts && ncrByCategory.length > 0 ? (
@@ -507,7 +504,8 @@ export default function TrendAnalysis() {
             <div className="ta-bottom-actions print-hide">
               <button className="btn ghost" onClick={resetRange}>Tarih Aralığını Değiştir</button>
               <button className="btn" onClick={()=>window.print()}>Yazdır</button>
-              <Link className="btn primary" to={`/admin/stores/${storeId}`}>Mağazaya Dön</Link>
+              {/* ▼ Müşteri sayfasına geri dönüş */}
+              <Link className="btn primary" to={`/customer/stores/${storeId}`}>Mağazaya Dön</Link>
             </div>
           </>
         )}

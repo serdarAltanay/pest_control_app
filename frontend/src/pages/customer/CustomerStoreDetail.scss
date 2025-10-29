@@ -1,8 +1,261 @@
-.cust-store-detail .head { display:flex; gap:16px; align-items:flex-end; justify-content:space-between; }
-.cust-store-detail .tabs { display:flex; gap:8px; }
-.cust-store-detail .tab { padding:6px 10px; border:1px solid var(--border); border-radius:8px; }
-.cust-store-detail .kv { display:grid; grid-template-columns: repeat(2,1fr); gap:8px 16px; }
-.cust-store-detail .kv .full { grid-column: 1 / -1; }
-.cust-store-detail .grid { display:grid; grid-template-columns: 1.5fr 1fr; gap:16px; margin-top:16px; }
-.cust-store-detail .counts { margin-top:10px; color:var(--muted); display:grid; gap:4px; }
-@media (max-width: 900px){ .cust-store-detail .grid { grid-template-columns:1fr; } }
+/* src/pages/customer/CustomerStoreDetail.scss */
+@import "../../styles/variables";
+
+/* ---------- Tema (fallback) ---------- */
+$brand: if(global-variable-exists(color-primary), $color-primary, #2563eb);
+$ink:   #0f172a;
+$muted: #64748b;
+$line:  #e5e7eb;
+$bg:    #ffffff;
+
+/* ---------- Sayfa kökü ---------- */
+.cust-store-detail {
+  padding: 16px;
+
+  /* link alt-çizgi kapatma (sadece bu sayfada) */
+  a, .btn, .tab { text-decoration: none !important; }
+
+  /* ---------- Başlık & Sekmeler ---------- */
+  .head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+
+    .title {
+      min-width: 0;
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+        color: $ink;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sub {
+        margin-top: 4px;
+        color: $muted;
+        font-size: 13px;
+        b { color: #111; }
+      }
+    }
+
+    /* admin'deki "big-tabs" hissi */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+
+      .tab {
+        display: inline-flex;
+        align-items: center;
+        height: 42px;
+        padding: 0 14px;
+        border-radius: 10px;
+        border: 1px solid $line;
+        background: #fff;
+        font-weight: 800;
+        font-size: 13px;
+        color: #111;
+        transition: transform .06s, box-shadow .15s, background .15s, border-color .15s;
+
+        &:hover { box-shadow: 0 8px 18px rgba(0,0,0,.08); }
+        &:active { transform: translateY(1px); }
+      }
+
+      /* yumuşak renkli varyantlar (ilk 3 sekme renklensin) */
+      .tab:nth-child(1){ border-color:#e0e7ff; background:#eef2ff; color:#1e1b4b; }
+      .tab:nth-child(2){ border-color:#d1fae5; background:#ecfdf5; color:#064e3b; }
+      .tab:nth-child(3){ border-color:#fee2e2; background:#fef2f2; color:#7f1d1d; }
+    }
+  }
+
+  /* ---------- Kart ortak ---------- */
+  .card {
+    background: $bg;
+    border: 1px solid $line;
+    border-radius: 12px;
+    padding: 14px;
+
+    .card-title {
+      font-weight: 800;
+      color: rgba($ink, .92);
+      border-left: 3px solid $brand;
+      padding-left: 8px;
+      margin-bottom: 16px;
+
+      &.right {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      /* başlık içinde butonlar kullanacaksan */
+      &.with-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .title-text { font-weight: 800; color: rgba($ink, .92); }
+        .title-actions { margin-left: auto; display: inline-flex; gap: 10px; }
+      }
+
+      .btn {
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1px solid $line;
+        background: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform .06s, box-shadow .15s;
+
+        &.primary { background: $brand; border-color: $brand; color: #fff; }
+        &.ghost   { background: #fff; }
+        &.small   { height: 26px; padding: 0 8px; font-size: 12.5px; }
+
+        &:hover  { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+        &:active { transform: translateY(1px); }
+        &:disabled { opacity: .6; cursor: not-allowed; }
+      }
+    }
+
+    .empty {
+      padding: 12px;
+      border: 1px dashed $line;
+      border-radius: 10px;
+      background: #fafafa;
+      color: $muted;
+      font-size: 13px;
+    }
+  }
+
+  /* ---------- Bilgi kartı (KV) ---------- */
+  .kv {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr; /* admin gibi 3 sütun */
+    gap: 12px;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      background: #fafafa;
+      border: 1px solid #edf2f7;
+      border-radius: 10px;
+
+      b   { color: #64748b; font-weight: 700; font-size: 13px; line-height: 1.35; }
+      span{ color: #111;    font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+
+      &.full { grid-column: 1 / -1; }
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+
+      &.ok { background: #10b981; }
+      &.no { background: #9ca3af; }
+      &.warn { background: #f59e0b; }
+    }
+  }
+
+  /* ---------- Alt grid: Ziyaretler + Grafik ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* admin hissi */
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  /* ---------- Tablo ---------- */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin-top: 6px;
+
+    thead th {
+      text-align: left;
+      background: #f9fafb;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
+      color: #0f172a;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    /* tıklanabilir satır */
+    .click-row { cursor: pointer; }
+    .click-row td { transition: background-color .15s ease; }
+    .click-row:hover td { background: #f8fafc; }
+
+    /* tablo içindeki butonlar */
+    .btn {
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid $line;
+      background: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .06s, box-shadow .15s;
+
+      &.primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+      &.ghost   { background: #fff; border-color: $line; color: #111; }
+
+      &:hover  { box-shadow: 0 6px 12px rgba(0,0,0,.08); }
+      &:active { transform: translateY(1px); }
+      &:disabled { opacity: .6; cursor: not-allowed; }
+    }
+  }
+
+  /* ---------- Grafik kartı ---------- */
+  .chart-card {
+    .counts {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+
+      li { color: #1f2937; font-size: 14px; }
+    }
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1080px) {
+  .cust-store-detail {
+    .grid { grid-template-columns: 1fr; }
+    .head { grid-template-columns: 1fr; }
+    .head .tabs { justify-content: flex-start; overflow: auto; padding-bottom: 4px; }
+    .head .tabs .tab { flex: 0 0 auto; }
+
+    .kv { grid-template-columns: 1fr; }
+  }
+}
+
+@media (max-width: 720px) {
+  .cust-store-detail .table {
+    /* geniş buton düzenleri dar ekranda sadeleşsin */
+    .btn { height: 34px; }
+  }
+}

@@ -170,8 +170,8 @@ export default function CustomerStoreDetail() {
   const goVisit = (v) => {
     const raw = v?.scheduleEventId ?? v?.eventId ?? v?.calendarEventId;
     const evId = Number(raw);
-    if (Number.isFinite(evId)) return navigate(`/calendar/visit/${evId}`); // müşteri & admin ortak rota alias’ı
-    return navigate(`/ek1/visit/${v.id}`); // yedek
+    if (Number.isFinite(evId)) return navigate(`/calendar/visit/${evId}`);
+    return navigate(`/ek1/visit/${v.id}`);
   };
 
   return (
@@ -188,6 +188,8 @@ export default function CustomerStoreDetail() {
           <div className="tabs">
             <Link className="tab" to={`/customer/stores/${storeId}/nonconformities`}>Uygunsuzluklar</Link>
             <Link className="tab" to={`/customer/files?storeId=${storeId}`}>Raporlar</Link>
+            {/* ▼ Yeni: Trend Analizi sekmesi */}
+            <Link className="tab" to={`/customer/stores/${storeId}/analytics`}>Trend Analizi</Link>
           </div>
         </div>
 
