@@ -109,7 +109,6 @@ function makeActivationPayload(type) {
     });
   }
 
-  // otomatik aktivite tahmini
   if (base.aktiviteVar === undefined) {
     const anyCount =
       (base.karasinek || 0) + (base.sivrisinek || 0) + (base.diger || 0) +
@@ -127,7 +126,6 @@ async function seedTracksForEmployee(empId, baseLat, baseLng) {
   start.setDate(start.getDate() - 7);
   const end = new Date();
 
-  // sadece son 7 günü temizle
   await prisma.employeeTrackPoint.deleteMany({
     where: { employeeId: empId, at: { gte: start, lte: end } },
   });
@@ -136,10 +134,10 @@ async function seedTracksForEmployee(empId, baseLat, baseLng) {
   for (let d = 0; d < 7; d++) {
     const day = new Date();
     day.setDate(day.getDate() - d);
-    day.setHours(9, 0, 0, 0); // 09:00 başlangıç
+    day.setHours(9, 0, 0, 0);
 
     let [lat, lng] = jitterAround(baseLat, baseLng, 500);
-    const steps = randInt(18, 30); // ~3-5 saat aktivite
+    const steps = randInt(18, 30);
     for (let i = 0; i < steps; i++) {
       day.setMinutes(day.getMinutes() + 10);
       const dx = randInt(120, 420) * (Math.random() > 0.5 ? 1 : -1);
@@ -162,9 +160,6 @@ async function seedTracksForEmployee(empId, baseLat, baseLng) {
 }
 
 /** 15 dakikalık grid kontrolü */
-function isQuarter(date) {
-  return date.getMinutes() % 15 === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0;
-}
 function roundToQuarter(date) {
   const d = new Date(date);
   const m = d.getMinutes();
@@ -174,7 +169,6 @@ function roundToQuarter(date) {
 
 /** Çalışan için ileri tarihe plan (ScheduleEvent) — çakışmasız */
 async function seedScheduleForEmployee(emp, stores, plannedBy) {
-  // sonraki 10 gün içinde mevcut planları sil ve yeniden oluştur
   const from = new Date();
   const to = new Date();
   to.setDate(to.getDate() + 10);
@@ -184,12 +178,12 @@ async function seedScheduleForEmployee(emp, stores, plannedBy) {
   });
 
   const dayCount = 7;
-  const slotsPerDay = 2; // sabah/öğlen
+  const slotsPerDay = 2;
   let storeIdx = 0;
 
   for (let d = 0; d < dayCount; d++) {
     const baseDay = new Date();
-    baseDay.setDate(baseDay.getDate() + d + 1); // yarından itibaren
+    baseDay.setDate(baseDay.getDate() + d + 1);
 
     for (let s = 0; s < slotsPerDay; s++) {
       if (!stores.length) break;
@@ -197,7 +191,6 @@ async function seedScheduleForEmployee(emp, stores, plannedBy) {
       const store = stores[storeIdx % stores.length];
       storeIdx++;
 
-      // 10:00-11:30 ya da 13:30-15:00 gibi 90dk slot
       const startHour = s === 0 ? 10 : 13 + (Math.random() < 0.5 ? 0 : 1);
       const start = roundToQuarter(new Date(baseDay.setHours(startHour, 0, 0, 0)));
       const end = new Date(start.getTime() + 90 * 60 * 1000);
@@ -225,8 +218,8 @@ async function seedScheduleForEmployee(emp, stores, plannedBy) {
 /**
  * POST /api/seed/run
  * - Sadece admin
- * - Idempotent (upsert) + yakın dönem kayıtlarını düzenli temizleyip yeniden üretir
- * - Tüm kullanıcı şifreleri: 123456
+ * - Idempotent (upsert)
+ * - Admin/Employee şifreleri: 123456
  */
 router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
@@ -321,8 +314,8 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         address: "Gıda OSB, No:12",
         city: "İZMİR",
         showBalance: true,
-        visitPeriod: pick(VisitPeriods),
-        employeeId: pickEmployee(0).id,
+        visitPeriod: "IKIAYLIK",
+        employeeId: pickEmployee(0).id, // seed içi yardımcı alan
       },
       {
         code: "CUST-0002",
@@ -358,14 +351,23 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
       },
     ];
 
+    // Müşteri -> çalışan eşleşmesi (seed içi)
+    const custEmpMap = new Map();
+
     const customers = [];
     for (const c of customersSeed) {
+      const { employeeId, ...rest } = c; // Prisma'ya employeeId göndermiyoruz
+      const rel = employeeId ? { employee: { connect: { id: employeeId } } } : {};
+      const dataBase = { ...rest }; // <-- Customer'da password yok!
+
       const cd = await prisma.customer.upsert({
         where: { code: c.code },
-        update: { ...c, password: hashedPassword },
-        create: { ...c, password: hashedPassword },
+        update: { ...dataBase, ...rel },
+        create: { ...dataBase, ...rel },
       });
+
       customers.push(cd);
+      if (employeeId) custEmpMap.set(cd.id, employeeId);
     }
 
     /* ----------------------- 6) Stores ------------------------- */
@@ -460,7 +462,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
     }
 
     /* ----------------------- 9) Visits + EK1 ------------------- */
-    // son 60 gün içindeki bu mağazalara ait ziyaretleri kaldır ve yeniden oluştur
     const cutoffVisit = new Date();
     cutoffVisit.setDate(cutoffVisit.getDate() - 60);
     await prisma.visit.deleteMany({
@@ -486,19 +487,16 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
             targetPests: ["Kemirgen", "Uçan", "Haşere"].slice(0, randInt(1, 3)),
             notes: Math.random() < 0.35 ? "Planlı saha ziyareti yapıldı." : null,
             employees: staff.map(e => ({ id: e.id, name: e.fullName })),
-            ek1: { create: {} }, // Ek1Report(DRAFT)
+            ek1: { create: {} },
           },
           include: { ek1: true },
         });
 
-        // EK1 satırları (1-3 arası)
         const lineCount = randInt(1, 3);
         for (let li = 0; li < lineCount; li++) {
           const bio = pick(allBiocides);
           const method = pick(AppMethods);
-          const amount = bio.unit === "ML" || bio.unit === "LT"
-            ? randInt(50, 250)
-            : randInt(10, 120);
+          const amount = (bio.unit === "ML" || bio.unit === "LT") ? randInt(50, 250) : randInt(10, 120);
 
           await prisma.ek1Line.create({
             data: {
@@ -510,7 +508,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
           });
         }
 
-        // İlgili istasyonlardan bir kısmını da bu ziyarete bağlayan aktivasyon
         const stasOfStore = stations.filter(s => s.storeId === st.id);
         const selected = [...stasOfStore].sort(() => Math.random() - 0.5).slice(0, Math.min(3, stasOfStore.length));
         for (const sta of selected) {
@@ -532,7 +529,6 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
     }
 
     /* -------------------- 10) Nonconformities ------------------ */
-    // son 30 gün içindeki uygunsuzlukları temizleyip yeniden üretelim
     const cutoffNcr = new Date();
     cutoffNcr.setDate(cutoffNcr.getDate() - 30);
     await prisma.nonconformity.deleteMany({
@@ -558,25 +554,25 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
 
     /* ------------------ 11) Çalışan rotaları ------------------- */
     for (const emp of employees) {
-      const anyCustomer = await prisma.customer.findFirst({ where: { employeeId: emp.id }, orderBy: { createdAt: "asc" } });
+      const anyCustomer = await prisma.customer.findFirst({
+        where: { employee: { is: { id: emp.id } } },
+        orderBy: { createdAt: "asc" },
+      });
       const base = CITY_COORDS[String(anyCustomer?.city || "").toUpperCase()] || CITY_COORDS[""];
       const [bLat, bLng] = base;
       await seedTracksForEmployee(emp.id, bLat, bLng);
     }
 
     /* ------------------ 12) Ziyaret planları ------------------- */
-    // Her çalışan için ilgili mağazalardan bir alt küme seçip 10 gün ileriye plan yap
     for (const emp of employees) {
-      const storesOfEmpCustomers = stores.filter(st =>
-        customers.some(c => c.id === st.customerId && c.employeeId === emp.id)
-      );
+      const storesOfEmpCustomers = stores.filter(st => custEmpMap.get(st.customerId) === emp.id);
       const subset = [...storesOfEmpCustomers].sort(() => Math.random() - 0.5).slice(0, Math.min(4, storesOfEmpCustomers.length));
       await seedScheduleForEmployee(emp, subset, plannedBy);
     }
 
     /* --------------------------- Özet -------------------------- */
     res.json({
-      message: "Seed tamamlandı (tüm şifreler 123456)",
+      message: "Seed tamamlandı (Admin/Employee şifreleri 123456 — Customer için şifre alanı yok)",
       summary: {
         admins: admins.map(a => ({ id: a.id, name: a.fullName, email: a.email })),
         employees: employees.map(e => ({ id: e.id, name: e.fullName, email: e.email })),

@@ -27,7 +27,7 @@ import onlineRoutes from "./routes/online.js";
 import presenceRouter from "./routes/presence.js";
 
 import storesRouter from "./routes/stores.js";
-import { stationsRouter, stationsNestedRouter } from "./routes/stations.js";
+import { stationsRouter,stationsNestedRouter } from "./routes/stations.js";
 
 import biocidesRouter from "./routes/Biocides.js";
 import visitsRouter from "./routes/visits.js";
@@ -46,10 +46,26 @@ const app = express();
 app.set("trust proxy", 1);
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
+
+// FE için izinli origin’ler (dev & prod)
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  // gerekiyorsa intranet ya da IP:
+  // "http://192.168.1.100:5173",
+]);
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
-    credentials: true,
+    origin: (origin, cb) => {
+      // Postman / server-to-server gibi Origin gelmeyebilir → izin ver
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.has(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    credentials: true, // refresh cookie için şart
   })
 );
 
@@ -57,7 +73,7 @@ app.use(
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 /* ------------ Aliases / Legacy Endpoints ------------ */
-// FE legacy: /api/customer/stores → /api/stores/mine (redirect yok, chain içinde)
+// FE legacy: /api/customer/stores → /api/stores/mine
 app.get("/api/customer/stores", auth, (req, res, next) => {
   req.url = "/mine";
   return storesRouter(req, res, next);
@@ -80,7 +96,7 @@ app.use("/api/admin/ek1", ek1Router);
 
 app.use("/api/customers", customerRoutes);
 
-// ÖNCE stores, sonra nested stations (önemli)
+// ÖNCE stores, sonra nested stations
 app.use("/api/stores", storesRouter);
 app.use("/api/stores", stationsNestedRouter);
 

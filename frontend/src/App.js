@@ -100,7 +100,14 @@ function App() {
             </PrivateRoute>
           }
         />
-
+        <Route
+          path="/customer/calendar/visit/:id"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <VisitDetail />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/admin/customers/new"
           element={

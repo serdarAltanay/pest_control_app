@@ -1,4 +1,3 @@
-// src/api/axios.js
 import axios from "axios";
 
 /** ───────────────────── Base URL ───────────────────── */
@@ -10,26 +9,47 @@ const API_ORIGIN =
 
 const API_BASE = `${String(API_ORIGIN).replace(/\/+$/, "")}/api`;
 
-/** ───────────────────── Instance ───────────────────── */
+/** ───────────────────── Helpers ───────────────────── */
+const isAuthPath = (u = "") =>
+  /\/auth\/(login|refresh|logout)(?:[/?#]|$)/.test(String(u));
+
+/** ───────────────────── Instances ───────────────────── */
+// Normal istekler (interceptor’lü)
 const api = axios.create({
   baseURL: API_BASE,
   withCredentials: true, // refresh cookie için şart
 });
 
+// Interceptor’suz “çıplak” instance (sadece REFRESH ve özel durumlar için)
+const apiBare = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+});
+
+/** Dışarı açılan: Bearer eklemeyen & refresh denemeyen tek-seferlik yardımcı */
+export function apiNoRefresh(cfg = {}) {
+  const headers = { ...(cfg.headers || {}), Authorization: "" };
+  return apiBare({ ...cfg, headers });
+}
+
 /** ───────────────────── Request ───────────────────── */
 api.interceptors.request.use((config) => {
+  const url = String(config.url || "");
   const t = localStorage.getItem("accessToken");
-  if (t) {
+
+  // login/refresh/logout'a Bearer ekleme (401 zincirini tetiklemeyelim)
+  if (!isAuthPath(url) && t) {
     config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${t}`;
+    if (!config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${t}`;
+    }
   }
   return config;
 });
 
-/** ───────────────────── Refresh Kuyruğu ───────────────────── */
+/** ───────────────────── Response (401 refresh) ───────────────────── */
 let isRefreshing = false;
 let waiters = [];
-
 function enqueueWaiter() {
   return new Promise((resolve, reject) => waiters.push({ resolve, reject }));
 }
@@ -39,10 +59,6 @@ function flushWaiters(err, token) {
   waiters = [];
 }
 
-const isAuthPath = (u = "") =>
-  /\/auth\/(login|refresh|logout)(\?|$)/.test(u);
-
-/** ───────────────────── Response ───────────────────── */
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -50,22 +66,16 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = String(original.url || "");
 
-    // heartbeat isteklerinde refresh denemesi yapma (sessiz kalsın)
+    // Heartbeat gibi isteklerde refresh denemesi yapma
     const suppressRefresh =
       original._isHeartbeat === true || /\/presence\/heartbeat$/.test(url);
 
-    // x-silent: refresh başarısızsa redirect yapma
-    const noRedirect =
-      original._isHeartbeat === true || original.headers?.["x-silent"] === "1";
+    // 403: yetki yok → guard karar versin
+    if (status === 403) return Promise.reject(error);
 
-    // 403: yetki yok → refresh işe yaramaz, direkt düş
-    if (status === 403) {
-      return Promise.reject(error);
-    }
-
-    // 401: access süresi dolmuş olabilir
+    // 401 → access süresi dolmuş olabilir
     if (status === 401) {
-      // auth rotaları / login / refresh tekrar denenmesin
+      // auth rotası / zaten bir kez denenmiş / suppress ise bırak
       if (suppressRefresh || original._retry || isAuthPath(url)) {
         return Promise.reject(error);
       }
@@ -74,17 +84,19 @@ api.interceptors.response.use(
 
       try {
         if (isRefreshing) {
-          // Diğer refresh bitene kadar bekle; yeni token'ı al
+          // Devam eden refresh’i bekle
           const newToken = await enqueueWaiter();
-          const t = newToken || localStorage.getItem("accessToken");
-          original.headers = original.headers || {};
-          if (t) original.headers.Authorization = `Bearer ${t}`;
+          if (newToken) {
+            original.headers = original.headers || {};
+            original.headers.Authorization = `Bearer ${newToken}`;
+          }
           return api(original);
         }
 
-        // İlk biz girdik: refresh yap
         isRefreshing = true;
-        const r = await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
+
+        // REFRESH'i interceptor’suz ve BEARER’sız yap
+        const r = await apiBare.post("/auth/refresh", {}, { headers: { Authorization: "" } });
         const token = r.data?.accessToken;
         if (!token) throw new Error("No accessToken from refresh");
 
@@ -94,7 +106,7 @@ api.interceptors.response.use(
         isRefreshing = false;
         flushWaiters(null, token);
 
-        // orijinal isteği yeni token ile tekrar dene
+        // Orijinal isteği yeni token ile tekrar et
         original.headers = original.headers || {};
         original.headers.Authorization = `Bearer ${token}`;
         return api(original);
@@ -102,17 +114,17 @@ api.interceptors.response.use(
         isRefreshing = false;
         flushWaiters(e, null);
 
-        // Oturumu temizle ve (sessiz değilse) login'e yönlendir
+        // Sert redirect yok, sadece temizlik
         try {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("role");
+          localStorage.removeItem("fullName");
           localStorage.removeItem("name");
           localStorage.removeItem("email");
           localStorage.removeItem("profileImage");
+          localStorage.removeItem("accessOwnerRole");
         } catch {}
-        if (!noRedirect) {
-          try { window.location.assign("/login"); } catch {}
-        }
+
         return Promise.reject(e);
       }
     }
@@ -120,21 +132,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-/** ───────────────────── Yardımcılar ───────────────────── */
-// Sessiz istek göndermek istersen:
-//   apiSilent.get("/ek1?scope=mine")
-export function apiSilent(cfg = {}) {
-  return api({
-    ...cfg,
-    headers: { ...(cfg.headers || {}), "x-silent": "1" },
-  });
-}
-
-// Heartbeat gibi “refresh deneme” istemediğin çağrılar için:
-//   apiHeartbeat({ method: "post", url: "/presence/heartbeat", data: {...} })
-export function apiHeartbeat(cfg = {}) {
-  return api({ ...cfg, _isHeartbeat: true });
-}
 
 export default api;

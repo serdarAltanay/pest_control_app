@@ -1,20 +1,17 @@
-// src/pages/login/Login.jsx
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
-import api from "../../api/axios.js";
+import api, { apiNoRefresh } from "../../api/axios.js";
 import { toast } from "react-toastify";
-import { parseJwt } from "../../utils/auth.js";
+import { parseJwt, isExpired } from "../../utils/auth.js";
 import { ProfileContext } from "../../context/ProfileContext.jsx";
 import "./Login.scss";
 
 /**
- * Yeni model notları:
- * - AccessOwner login olur; backend JWT.role = "customer" döner (FE route mantığı sade).
- * - "Customer" artık yalnızca kapsam temsil eder; giriş yapan bir varlık değildir.
- * - Girişten sonra:
- *    admin/employee  -> /work
- *    accessOwner(*)  -> /customer     (*JWT.role = "customer")
+ * Kalıcı akış:
+ * - Mount’ta yalnızca 1 kez sessiz refresh dene (apiNoRefresh)
+ * - LocalStorage’da geçerli token varsa direkt role’e göre geç
+ * - from değeri yalnızca role’ün yetkisine uygunsa kullan
+ * - Aynı path’e navigate etme (loop kır)
  */
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -22,44 +19,69 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const triedRefreshRef = useRef(false);
+  const triedOnce = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { fetchProfile } = useContext(ProfileContext);
 
-  // Private route'tan geldiysek geri dönecek rota
   const from = (location.state && location.state.from) || null;
+  const LOGIN_PATH = "/";
 
-  // Mount'ta (1 kez) sessiz refresh dene (cookie varsa)
+  const safeNavigate = (target) => {
+    if (!target) return;
+    if (location.pathname !== target) navigate(target, { replace: true });
+  };
+
+  const isAllowedForRole = (path, role) => {
+    if (!path) return false;
+    const r = String(role || "").toLowerCase();
+    if (r === "customer") {
+      return path.startsWith("/customer") || /^\/ek1\/visit\/[^/]+/i.test(path);
+    }
+    if (r === "admin" || r === "employee") {
+      return !path.startsWith("/customer");
+    }
+    return false;
+  };
+
+  const pickTarget = (role) => {
+    const roleTarget = role === "customer" ? "/customer" : "/work";
+    if (from && from !== LOGIN_PATH && isAllowedForRole(from, role)) return from;
+    return roleTarget;
+  };
+
   useEffect(() => {
-    if (triedRefreshRef.current) return;
-    triedRefreshRef.current = true;
+    if (triedOnce.current) return;
+    triedOnce.current = true;
 
+    // 0) LocalStorage’da geçerli token varsa direkt geç
+    const t = localStorage.getItem("accessToken");
+    const r = localStorage.getItem("role");
+    if (t && !isExpired(t) && r) {
+      safeNavigate(pickTarget(r));
+      return;
+    }
+
+    // 1) Cookie varsa sessiz refresh (BEARER’sız, interceptor’suz)
     (async () => {
       try {
-        const { data } = await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+        const { data } = await apiNoRefresh({
+          method: "post",
+          url: "/auth/refresh",
+        });
         if (data?.accessToken) {
           localStorage.setItem("accessToken", data.accessToken);
-
-          // role FE yönlendirme için hala gerekli
           const payload = parseJwt(data.accessToken);
           if (payload?.role) localStorage.setItem("role", payload.role);
-
-          await fetchProfile?.();
-
-          // geri dönüş rotası öncelikli
-          if (from) {
-            navigate(from, { replace: true });
-          } else {
-            // accessOwner -> "customer" rolüyle gelir
-            navigate(payload?.role === "customer" ? "/customer" : "/work", { replace: true });
-          }
+          try { await fetchProfile?.(); } catch {}
+          safeNavigate(pickTarget(payload?.role));
         }
       } catch {
-        // cookie yok/expired: login ekranında kal
+        // cookie yok/expired → login’de kal
       }
     })();
-  }, [fetchProfile, navigate, from]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,21 +95,16 @@ export default function Login() {
       });
 
       const { accessToken, role, fullName, email: serverEmail } = res.data || {};
-
       localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("role", role); // "admin" | "employee" | "customer"(=AccessOwner)
+      localStorage.setItem("role", role);
       localStorage.setItem("fullName", fullName || "");
       localStorage.setItem("name", fullName || "");
       localStorage.setItem("email", serverEmail || email.trim().toLowerCase());
 
-      await fetchProfile?.();
-      toast.success("Giriş başarılı 🎉");
+      try { await fetchProfile?.(); } catch {}
 
-      if (from) {
-        navigate(from, { replace: true });
-      } else {
-        navigate(role === "customer" ? "/customer" : "/work", { replace: true });
-      }
+      toast.success("Giriş başarılı 🎉");
+      safeNavigate(pickTarget(role));
     } catch (err) {
       const msg =
         err?.response?.data?.message ||

@@ -1,6 +1,5 @@
-// src/context/ProfileContext.jsx
 import { createContext, useState, useEffect, useRef } from "react";
-import api from "../api/axios.js";
+import api, { apiNoRefresh } from "../api/axios.js";
 import { toast } from "react-toastify";
 import { getAvatarUrl } from "../utils/getAssetUrl";
 
@@ -11,7 +10,7 @@ export function ProfileProvider({ children }) {
   const hbTimerRef = useRef(null);
   const mountedOnceRef = useRef(false);
 
-  const redirectToLogin = () => {
+  const clearSession = () => {
     try {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("role");
@@ -21,12 +20,14 @@ export function ProfileProvider({ children }) {
       localStorage.removeItem("profileImage");
       localStorage.removeItem("accessOwnerRole");
     } catch {}
-    try { window.location.assign("/login"); } catch {}
   };
 
   const attemptRefresh = async () => {
     try {
-      const r = await api.post("/auth/refresh", {}); // withCredentials zaten açık
+      const r = await apiNoRefresh({
+        method: "post",
+        url: "/auth/refresh",
+      });
       const t = r?.data?.accessToken;
       if (t) {
         localStorage.setItem("accessToken", t);
@@ -63,16 +64,20 @@ export function ProfileProvider({ children }) {
 
   const fetchProfile = async () => {
     try {
-      // 1) Token yoksa önce sessiz refresh dene
+      // Token yoksa önce sessiz refresh dene
       if (!localStorage.getItem("accessToken")) {
         const ok = await attemptRefresh();
-        if (!ok) return redirectToLogin();
+        if (!ok) {
+          clearSession();
+          setProfile(null);
+          return;
+        }
       }
 
-      // 2) Profil isteği
+      // Profil isteği
       await readProfile();
     } catch (err) {
-      // 3) 401 ise bir kez daha refresh dene ve tekrar iste
+      // 401 ise bir kez daha refresh dene ve tekrar iste
       if (err?.response?.status === 401) {
         const ok = await attemptRefresh();
         if (ok) {
@@ -81,21 +86,23 @@ export function ProfileProvider({ children }) {
             return;
           } catch {}
         }
-        return redirectToLogin();
+        clearSession();
+        setProfile(null);
+        return;
       }
 
       console.error("Profil yükleme hatası:", err);
       toast.error(
         err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Profil bilgisi alınamadı ❌"
+          err?.response?.data?.error ||
+          "Profil bilgisi alınamadı ❌"
       );
       setProfile(null);
     }
   };
 
   useEffect(() => {
-    if (mountedOnceRef.current) return; // Strict Mode çift çağrıyı kes
+    if (mountedOnceRef.current) return; // Strict Mode’u tek çağrıya indir
     mountedOnceRef.current = true;
     fetchProfile();
   }, []);
@@ -118,7 +125,10 @@ export function ProfileProvider({ children }) {
 
     beat();
     hbTimerRef.current = setInterval(beat, 60_000);
-    return () => { clearInterval(hbTimerRef.current); hbTimerRef.current = null; };
+    return () => {
+      clearInterval(hbTimerRef.current);
+      hbTimerRef.current = null;
+    };
   }, [profile]);
 
   return (
