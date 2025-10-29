@@ -56,6 +56,7 @@ import CustomerStoreList from "./pages/customer/CustomerStoreList.jsx";
 import CustomerStoreDetail from "./pages/customer/CustomerStoreDetail.jsx";
 import CustomerStoreNonconformities from "./pages/customer/CustomerStoreNonconformities.jsx";
 import CustomerNcrDetail from "./pages/customer/CustomerNcrDetail.jsx";
+import CustomerStationDetail from "./pages/customer/CustomerStationDetail.jsx";
 
 
 import "react-toastify/dist/ReactToastify.css";
@@ -486,6 +487,14 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['customer']}>
               <CustomerNcrDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/stations/:stationId"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <CustomerStationDetail />
             </PrivateRoute>
           }
         />

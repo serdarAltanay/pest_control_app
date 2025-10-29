@@ -57,7 +57,8 @@ export default function Sidebar() {
           {/* MÜŞTERİ İŞLERİ */}
           {role === "customer" && (
             <>
-              <li className="section-title">Müşteri İşleri</li>
+              <li className="section-title">Müşteri</li>
+              <li className="sidebar-item" onClick={() => navigate("/customer")}>Anasayfa</li>
               <li className="sidebar-item" onClick={goMyStore}>{labelMyStore}</li>
               <li className="sidebar-item" onClick={() => navigate("/customer/files")}>Dosyalar</li>
             </>

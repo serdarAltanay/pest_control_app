@@ -1,6 +1,5 @@
 // src/context/ProfileContext.jsx
 import { createContext, useState, useEffect, useRef } from "react";
-import axios from "axios";
 import api from "../api/axios.js";
 import { toast } from "react-toastify";
 import { getAvatarUrl } from "../utils/getAssetUrl";
@@ -10,11 +9,24 @@ export const ProfileContext = createContext();
 export function ProfileProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const hbTimerRef = useRef(null);
+  const mountedOnceRef = useRef(false);
 
-  // Sessiz refresh (cookie varsa)
+  const redirectToLogin = () => {
+    try {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("role");
+      localStorage.removeItem("fullName");
+      localStorage.removeItem("name");
+      localStorage.removeItem("email");
+      localStorage.removeItem("profileImage");
+      localStorage.removeItem("accessOwnerRole");
+    } catch {}
+    try { window.location.assign("/login"); } catch {}
+  };
+
   const attemptRefresh = async () => {
     try {
-      const r = await axios.post("/api/auth/refresh", {}, { withCredentials: true });
+      const r = await api.post("/auth/refresh", {}); // withCredentials zaten açık
       const t = r?.data?.accessToken;
       if (t) {
         localStorage.setItem("accessToken", t);
@@ -24,54 +36,71 @@ export function ProfileProvider({ children }) {
     return false;
   };
 
-  // Profil çekme
+  const readProfile = async () => {
+    const { data } = await api.get("/profile");
+    setProfile(data);
+
+    const role = data?.role || "customer";
+    localStorage.setItem("role", role);
+
+    const fullName =
+      data?.fullName ||
+      [data?.firstName, data?.lastName].filter(Boolean).join(" ") ||
+      data?.email || "";
+    localStorage.setItem("fullName", fullName);
+    localStorage.setItem("name", fullName);
+    localStorage.setItem("email", data?.email || "");
+
+    if (data?.accessOwnerRole) {
+      localStorage.setItem("accessOwnerRole", data.accessOwnerRole);
+    } else {
+      localStorage.removeItem("accessOwnerRole");
+    }
+
+    const absUrl = getAvatarUrl?.(data?.profileImage, { bust: true }) || "/noavatar.jpg";
+    localStorage.setItem("profileImage", absUrl);
+  };
+
   const fetchProfile = async () => {
     try {
+      // 1) Token yoksa önce sessiz refresh dene
       if (!localStorage.getItem("accessToken")) {
         const ok = await attemptRefresh();
-        if (!ok) { setProfile(null); return; }
+        if (!ok) return redirectToLogin();
       }
 
-      const { data } = await api.get("/profile", { headers: { "x-silent": "1" } });
-      setProfile(data);
-
-      // FE yönlendirme/durum için role + görsel bilgiler localStorage'a yazılsın
-      const role = data?.role || "customer"; // AccessOwner ise "customer"
-      localStorage.setItem("role", role);
-
-      const fullName =
-        data?.fullName ||
-        [data?.firstName, data?.lastName].filter(Boolean).join(" ") ||
-        data?.email || "";
-      localStorage.setItem("fullName", fullName);
-      localStorage.setItem("name", fullName);
-      localStorage.setItem("email", data?.email || "");
-
-      // AccessOwner iş rolü varsa cache’le
-      if (data?.accessOwnerRole) {
-        localStorage.setItem("accessOwnerRole", data.accessOwnerRole);
-      } else {
-        localStorage.removeItem("accessOwnerRole");
-      }
-
-      const absUrl = getAvatarUrl(data?.profileImage, { bust: true });
-      localStorage.setItem("profileImage", absUrl);
+      // 2) Profil isteği
+      await readProfile();
     } catch (err) {
-      if (err?.response?.status !== 401) {
-        console.error("Profil yükleme hatası:", err);
-        toast.error(
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Profil bilgisi alınamadı ❌"
-        );
+      // 3) 401 ise bir kez daha refresh dene ve tekrar iste
+      if (err?.response?.status === 401) {
+        const ok = await attemptRefresh();
+        if (ok) {
+          try {
+            await readProfile();
+            return;
+          } catch {}
+        }
+        return redirectToLogin();
       }
+
+      console.error("Profil yükleme hatası:", err);
+      toast.error(
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Profil bilgisi alınamadı ❌"
+      );
       setProfile(null);
     }
   };
 
-  useEffect(() => { fetchProfile(); }, []);
+  useEffect(() => {
+    if (mountedOnceRef.current) return; // Strict Mode çift çağrıyı kes
+    mountedOnceRef.current = true;
+    fetchProfile();
+  }, []);
 
-  // Heartbeat (presence) — mevcut route'ların değişmediğini varsayıyoruz
+  // Heartbeat (presence)
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token || !profile) return;
@@ -80,11 +109,11 @@ export function ProfileProvider({ children }) {
 
     const beat = async () => {
       try {
-        // Not: backend’de presence/heartbeat varsa onu kullan, yoksa heartbeat/pulse'a çevir.
-        await api.post("/presence/heartbeat", null, { headers: { "x-silent": "1" }, _isHeartbeat: true });
-      } catch {
-        // sessiz geç
-      }
+        await api.post("/presence/heartbeat", null, {
+          headers: { "x-silent": "1" },
+          _isHeartbeat: true,
+        });
+      } catch {}
     };
 
     beat();

@@ -28,11 +28,13 @@ export default function CustomerStoreDetail() {
   const [store, setStore] = useState(null);
   const [metrics, setMetrics] = useState({});
   const [visits, setVisits] = useState([]);
+  const [stations, setStations] = useState([]);        // ← YENİ
   const [loading, setLoading] = useState(true);
 
   const fmtD = (d) => (d ? new Date(d).toLocaleDateString("tr-TR") : "—");
   const fmtT = (a, b) => `${a || "—"} / ${b || "—"}`;
 
+  // Mağaza
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -49,6 +51,7 @@ export default function CustomerStoreDetail() {
     return () => ctrl.abort();
   }, [storeId]);
 
+  // İstasyon metrikleri
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -67,6 +70,7 @@ export default function CustomerStoreDetail() {
     return () => ctrl.abort();
   }, [storeId]);
 
+  // Ziyaretler
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -83,6 +87,25 @@ export default function CustomerStoreDetail() {
           ? [...list].sort((a, b) => new Date(b.date) - new Date(a.date))
           : [];
         setVisits(list);
+      } catch {}
+    })();
+    return () => ctrl.abort();
+  }, [storeId]);
+
+  // ← YENİ: İstasyon listesi
+  useEffect(() => {
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        let list = [];
+        try {
+          const { data } = await api.get(`/stations/store/${storeId}`, { signal: ctrl.signal });
+          list = data;
+        } catch {
+          const { data } = await api.get(`/stores/${storeId}/stations`, { signal: ctrl.signal });
+          list = data;
+        }
+        setStations(Array.isArray(list) ? list : []);
       } catch {}
     })();
     return () => ctrl.abort();
@@ -183,6 +206,49 @@ export default function CustomerStoreDetail() {
                 </ul>
               </section>
             </div>
+
+            {/* ─────────────── YENİ BÖLÜM: Mağazada Kurulu İstasyonlar ─────────────── */}
+            <section className="card">
+              <div className="card-title">
+                Kurulu İstasyonlar {stations.length ? `(${stations.length})` : ""}
+              </div>
+
+              {stations.length === 0 ? (
+                <div className="empty">Bu mağazada henüz istasyon yok.</div>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Kod</th>
+                      <th>Ad</th>
+                      <th>Tür</th>
+                      <th>Durum</th>
+                      <th>İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stations.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.code || "—"}</td>
+                        <td className="strong">{s.name || "—"}</td>
+                        <td>{TYPE_TR[s.type] || s.type || "—"}</td>
+                        <td>
+                          <span className={`badge ${s.isActive ? "ok" : "no"}`}>
+                            {s.isActive ? "Aktif" : "Pasif"}
+                          </span>
+                        </td>
+                        <td>
+                          <Link className="btn primary" to={`/customer/stations/${s.id}`}>
+                            Detay
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+            {/* ─────────────────────────────────────────────────────────────────────── */}
           </>
         )}
       </div>

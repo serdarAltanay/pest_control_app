@@ -5,14 +5,16 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./Ek1List.scss";
 
-/* ───────── Helpers ───────── */
+/* ───────── helpers ───────── */
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
-const fmtDT = (d) =>
-  `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const fmtDT = (d) => {
+  if (!(d instanceof Date)) d = d ? new Date(d) : null;
+  if (!d || isNaN(d)) return "—";
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
 
 const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
-const colorFromId = (id) =>
-  COLORS[(String(id ?? "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COLORS.length];
+const colorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
 
 const VISIT_TYPE_LABEL = {
   PERIYODIK: "Periyodik",
@@ -23,170 +25,125 @@ const VISIT_TYPE_LABEL = {
 };
 const visitTypeLabel = (v) => VISIT_TYPE_LABEL[v] || "Diğer";
 
-/* 🔧 PERSONEL İSMİ NORMALİZE EDİCİ */
-function employeesToText(val) {
-  if (!val) return "";
-  if (typeof val === "string") return val;
-  if (Array.isArray(val)) {
-    return val
-      .map((e) => {
-        if (!e) return "";
-        if (typeof e === "string") return e;
-        return (
-          e.fullName ||
-          [e.firstName, e.lastName].filter(Boolean).join(" ") ||
-          e.name ||
-          ""
-        );
-      })
-      .filter(Boolean)
-      .join(", ");
-  }
-  if (typeof val === "object") {
-    return (
-      val.fullName ||
-      [val.firstName, val.lastName].filter(Boolean).join(" ") ||
-      val.name ||
-      ""
-    );
-  }
-  return "";
-}
+const role = (localStorage.getItem("role") || "").toLowerCase();
+const isCustomer = role === "customer";
 
-/* ───────── API (fallback'li yollar) ───────── */
-async function getOk(url) { try { const { data } = await api.get(url); return data; } catch { return undefined; } }
-async function postOk(url, body) { try { const { data } = await api.post(url, body); return data; } catch { return undefined; } }
-async function delOk(url) { try { const { data } = await api.delete(url); return data; } catch { return undefined; } }
-
-async function fetchEk1List() {
-  const candidates = ["/api/ek1", "/api/admin/ek1", "/api/api/ek1"];
-  for (const p of candidates) { const d = await getOk(p); if (Array.isArray(d)) return d; }
-  return [];
+/* ───────── api helpers (Sadece DOĞRU kök: /ek1) ───────── */
+async function listEk1() {
+  // DİKKAT: '/api/ek1' DEĞİL! baseURL zaten .../api
+  const { data } = await api.get("/ek1", { params: { scope: "mine" } });
+  if (!Array.isArray(data)) return [];
+  return data;
 }
-async function fetchBundle(visitId) {
-  const cands = [
-    `/api/ek1/visit/${visitId}`,
-    `/api/admin/ek1/visit/${visitId}`,
-    `/api/api/ek1/visit/${visitId}`,
-  ];
-  for (const p of cands) { const d = await getOk(p); if (d && d.visit) return d; }
-  throw new Error("Ziyaret paketi getirilemedi");
+async function getBundle(visitId) {
+  const { data } = await api.get(`/ek1/visit/${visitId}`);
+  return data;
 }
-async function signProvider(visitId, signerName) {
-  const body = signerName ? { name: signerName } : {};
-  const cands = [
-    `/api/ek1/visit/${visitId}/sign/provider`,
-    `/api/admin/ek1/visit/${visitId}/sign/provider`,
-    `/api/api/ek1/visit/${visitId}/sign/provider`,
-  ];
-  for (const p of cands) { const d = await postOk(p, body); if (d) return d; }
-  throw new Error("Admin onayı (imza) verilemedi");
+async function signProvider(visitId, name) {
+  const { data } = await api.post(`/ek1/visit/${visitId}/sign/provider`, name ? { name } : {});
+  return data;
+}
+async function signCustomer(visitId, name) {
+  const { data } = await api.post(`/ek1/visit/${visitId}/sign/customer`, name ? { name } : {});
+  return data;
 }
 async function deleteEk1(visitId) {
-  const cands = [
-    `/api/ek1/visit/${visitId}`,
-    `/api/visits/${visitId}`,
-  ];
-  for (const p of cands) { const d = await delOk(p); if (d) return d; }
-  throw new Error("Silme işlemi başarısız");
+  // server’da /api/ek1/visit/:visitId DELETE yoksa /api/visits/:id DELETE’i kullan
+  try {
+    const { data } = await api.delete(`/visits/${visitId}`);
+    return data;
+  } catch (e) {
+    throw new Error(e?.response?.data?.message || "Silinemedi");
+  }
 }
 
-/* ───────── Component ───────── */
+/* ───────── component ───────── */
 export default function Ek1List() {
   const navigate = useNavigate();
-
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
 
-  // ► SAYFALAMA
+  // sıralama & sayfalama
+  const [sortKey, setSortKey] = useState("updatedAt");
+  const [sortDir, setSortDir] = useState("desc");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
-
-  const [sortKey, setSortKey] = useState("updatedAt");
-  const [sortDir, setSortDir] = useState("desc"); // yeni → eski
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const raw = await fetchEk1List();
+      const base = await listEk1();
 
-      const base = raw.map((r) => {
-        const visitId = r.visitId ?? r.id ?? null;
-        const visitDate = r.start ? new Date(r.start) : new Date(r.updatedAt || r.createdAt || Date.now());
-        const createdAt = r.createdAt ? new Date(r.createdAt) : visitDate;
-        const updatedAt = r.updatedAt ? new Date(r.updatedAt) : visitDate;
+      // Ziyaret bundle’ından eksik alanları tamamla (opsiyonel, varsa)
+      const withVisit = await Promise.all(
+        base.map(async (r) => {
+          const visitId = r.visitId ?? r.id ?? r?.visit?.id ?? null;
+          let createdAt = r.createdAt || r?.visit?.createdAt || null;
+          let start = r.start || r?.visit?.date || null;
+          let providerSignedAt = r.providerSignedAt || r?.report?.providerSignedAt || null;
+          let customerSignedAt = r.customerSignedAt || r?.report?.customerSignedAt || null;
+          let visitType = r.visitType || r?.visit?.visitType || "DIGER";
+          let employeeName = r.employeeName || "";
 
-        // 🔧 İlk listede varsa personel bilgisini çek
-        const empText =
-          employeesToText(r.employees) ||
-          employeesToText(r.employeeName) ||
-          employeesToText(r.employeeFullName) ||
-          "";
+          if (visitId) {
+            try {
+              const b = await getBundle(visitId);
+              const rep = b?.report || {};
+              const vis = b?.visit || {};
+              if (vis?.date) start = vis.date;
+              if (vis?.createdAt) createdAt = vis.createdAt;
+              if (vis?.visitType) visitType = vis.visitType;
+              if (!employeeName) {
+                const emp = vis?.employees;
+                if (Array.isArray(emp)) employeeName = emp.join(", ");
+                else if (typeof emp === "string") employeeName = emp;
+              }
+              providerSignedAt = providerSignedAt || rep.providerSignedAt || null;
+              customerSignedAt = customerSignedAt || rep.customerSignedAt || null;
+            } catch {}
+          }
 
-        return {
-          visitId,
-          storeId: r.storeId ?? null,
-          storeName: r.storeName ?? (r.storeId ? `Mağaza #${r.storeId}` : "-"),
-          customerName: r.customerName ?? "-",
-          visitType: r.visitType || "DIGER",
-          visitDate,
-          providerSignedAt: r.providerSignedAt ? new Date(r.providerSignedAt) : null,
-          customerSignedAt: r.customerSignedAt ? new Date(r.customerSignedAt) : null,
-          pdfUrl: r.pdfUrl || r.fileUrl || null,
-          createdAt, updatedAt,
-          /* 🔧 DOLDUR */
-          employeeName: empText || "-",
-          // renk için anahtar: mümkünse personel metni, yoksa store/visit
-          employeeKey: empText || r.storeId || visitId || 0,
-        };
-      });
+          const updatedAt =
+            r.updatedAt ||
+            r?.visit?.updatedAt ||
+            providerSignedAt ||
+            customerSignedAt ||
+            createdAt ||
+            start ||
+            null;
 
-      // İlk yüklemede imza/personel/tarih durumlarını bundle ile kesinleştir
-      const bundles = await Promise.allSettled(
-        base.filter((r) => !!r.visitId).map((r) => fetchBundle(r.visitId))
-      );
-      let idx = 0;
-      for (let i = 0; i < base.length; i++) {
-        const r = base[i];
-        if (!r.visitId) continue;
-        const res = bundles[idx++];
-        if (res.status === "fulfilled") {
-          const b = res.value;
-          const rep = b.report || {};
-          const vis = b.visit || {};
-
-          // 🔧 visit.employees’ten isim çıkar
-          const empTextFromVisit =
-            employeesToText(vis.employees) ||
-            employeesToText(vis.employeeName) ||
-            employeesToText(vis.employeeFullName) ||
-            "";
-
-          base[i] = {
-            ...r,
-            visitType: vis.visitType || r.visitType || "DIGER",
-            visitDate: vis.date ? new Date(vis.date) : r.visitDate,
-            providerSignedAt: rep.providerSignedAt ? new Date(rep.providerSignedAt) : r.providerSignedAt,
-            customerSignedAt: rep.customerSignedAt ? new Date(rep.customerSignedAt) : r.customerSignedAt,
-            /* 🔧 personeli bundle’dan da güncelle */
-            employeeName: empTextFromVisit || r.employeeName || "-",
-            employeeKey: empTextFromVisit || r.employeeKey,
+          return {
+            visitId,
+            storeId: r.storeId ?? r?.visit?.storeId ?? null,
+            storeName: r.storeName ?? r?.visit?.store?.name ?? (r.storeId ? `Mağaza #${r.storeId}` : "-"),
+            customerName: r.customerName ?? r?.visit?.store?.customer?.title ?? "-",
+            visitType,
+            visitDate: start ? new Date(start) : null,
+            createdAt: createdAt ? new Date(createdAt) : null,
+            updatedAt: updatedAt ? new Date(updatedAt) : null,
+            pdfUrl: r.pdfUrl || r.fileUrl || null,
+            providerSignedAt: providerSignedAt ? new Date(providerSignedAt) : null,
+            customerSignedAt: customerSignedAt ? new Date(customerSignedAt) : null,
+            employeeName: employeeName || "-",
+            employeeKey: employeeName || r.storeId || r.visitId || 0,
           };
-        }
-      }
+        })
+      );
 
-      base.sort((a, b) => {
+      // default: yeni → eski
+      withVisit.sort((a, b) => {
         const A = a.updatedAt?.getTime?.() ?? a.visitDate?.getTime?.() ?? 0;
         const B = b.updatedAt?.getTime?.() ?? b.visitDate?.getTime?.() ?? 0;
         return B - A;
       });
 
-      setRows(base);
-      setPage(1); // yeni veri geldiğinde sayfayı başa al
-    } catch {
+      setRows(withVisit);
+      setPage(1);
+    } catch (e) {
+      // 401 ise interceptor zaten refresh deneyecek; refresh yoksa /login’a yönlendirir
+      toast.error(e?.response?.data?.message || "EK-1 listesi yüklenemedi");
       setRows([]);
-      toast.error("Ek-1 listesi yüklenemedi");
     } finally {
       setLoading(false);
     }
@@ -194,7 +151,7 @@ export default function Ek1List() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Arama + sıralama
+  // filtre + sıralama
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let list = rows;
@@ -215,13 +172,12 @@ export default function Ek1List() {
     return sorted;
   }, [rows, q, sortKey, sortDir]);
 
-  // ► SAYFALAMA hesapları
+  // sayfalama
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * pageSize;
   const pageItems = filtered.slice(startIdx, startIdx + pageSize);
 
-  // arama ya da sayfa boyutu değiştiğinde sayfayı 1'e çek
   useEffect(() => { setPage(1); }, [q, pageSize]);
 
   const toggleSort = (key) => {
@@ -229,68 +185,41 @@ export default function Ek1List() {
     else { setSortKey(key); setSortDir("asc"); }
   };
 
-  /* Actions (değişmedi) */
+  // actions
   const onView = (row) => {
-    if (row.pdfUrl) {
-      window.open(row.pdfUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-    if (row.storeId && row.visitId) {
-      navigate(`/admin/stores/${row.storeId}/visits/${row.visitId}/preview`);
-    } else if (row.storeId) {
-      navigate(`/admin/stores/${row.storeId}/ek1`);
-    } else {
-      toast.info("Önizleme için mağaza/ziyaret bilgisi eksik");
-    }
+    if (row.pdfUrl) return window.open(row.pdfUrl, "_blank", "noopener,noreferrer");
+    if (row.storeId && row.visitId) return navigate(`/admin/stores/${row.storeId}/visits/${row.visitId}/preview`);
+    toast.info("Önizleme için mağaza/ziyaret bilgisi eksik");
   };
-
   const onSignAdmin = async (row) => {
-    if (!row.visitId) { toast.error("visitId bulunamadı"); return; }
-    const signer = window.prompt("İmzalayan isim (opsiyonel):", "");
-    try {
-      await signProvider(row.visitId, signer || undefined);
-      toast.success("Admin onayı verildi");
-      setRows((prev) =>
-        prev.map((r) =>
-          r.visitId === row.visitId ? { ...r, providerSignedAt: new Date() } : r
-        )
-      );
-    } catch (e) {
-      toast.error(e.message || "Onay verilemedi");
-    }
+    if (!row.visitId) return toast.error("visitId yok");
+    const name = window.prompt("İmzalayan isim (opsiyonel):", "") || undefined;
+    await signProvider(row.visitId, name);
+    toast.success("Admin onayı verildi");
+    setRows((prev) => prev.map((r) => (r.visitId === row.visitId ? { ...r, providerSignedAt: new Date() } : r)));
   };
-
-  const onMailCompose = (row) => {
-    if (!row.visitId) { toast.error("visitId bulunamadı"); return; }
-    navigate(`/mail/visit/${row.visitId}`);
+  const onSignCustomer = async (row) => {
+    if (!row.visitId) return toast.error("visitId yok");
+    const name = window.prompt("İmzalayan isim (opsiyonel):", "") || undefined;
+    await signCustomer(row.visitId, name);
+    toast.success("Müşteri onayı verildi");
+    setRows((prev) => prev.map((r) => (r.visitId === row.visitId ? { ...r, customerSignedAt: new Date() } : r)));
   };
-
-  const onStoreDetail = (row) => {
-    if (!row.storeId) return toast.info("Mağaza bilgisi yok");
-    navigate(`/admin/stores/${row.storeId}`);
-  };
-
   const onDelete = async (row) => {
-    if (!row.visitId) { toast.error("visitId bulunamadı"); return; }
-    const ok = window.confirm("Bu Ek-1 kaydını silmek istediğinize emin misiniz?");
-    if (!ok) return;
-    try {
-      await deleteEk1(row.visitId);
-      toast.success("Kayıt silindi");
-      setRows((prev) => prev.filter((r) => r.visitId !== row.visitId));
-    } catch (e) {
-      toast.error(e.message || "Silme işlemi başarısız");
-    }
+    if (!row.visitId) return toast.error("visitId yok");
+    if (!window.confirm("Bu EK-1 kaydını silmek istiyor musunuz?")) return;
+    await deleteEk1(row.visitId);
+    toast.success("Kayıt silindi");
+    setRows((prev) => prev.filter((r) => r.visitId !== row.visitId));
   };
 
-  const Badge = ({ ok, textOk = "Onaylandı", textNo = "Onaylanmadı" }) => (
-    <span className={`appr-badge ${ok ? "ok" : "pending"}`}>{ok ? textOk : textNo}</span>
-  );
+  const Badge = ({ ok, textOk = "Onaylandı", textNo = "Onaylanmadı" }) =>
+    <span className={`appr-badge ${ok ? "ok" : "pending"}`}>{ok ? textOk : textNo}</span>;
 
   return (
     <div className="ek1-list card">
       <div className="ek1-head">
-        <div className="title">Ziyaret Kayıtları (Ek-1)</div>
+        <div className="title">Ziyaret Kayıtları (EK-1)</div>
         <div className="controls">
           <input
             className="search"
@@ -302,10 +231,7 @@ export default function Ek1List() {
           <div className="page-size">
             <label>Göster</label>
             <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
+              {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <button className="refresh" onClick={load} disabled={loading}>
@@ -346,58 +272,42 @@ export default function Ek1List() {
               <div className="dt-main">{fmtDT(r.visitDate)}</div>
               <div className="dt-sub">Güncelleme: {fmtDT(r.updatedAt)}</div>
             </div>
-
-            <div className="c vtype">
-              <div className="title-main">{visitTypeLabel(r.visitType)}</div>
-            </div>
-
+            <div className="c vtype"><div className="title-main">{visitTypeLabel(r.visitType)}</div></div>
             <div className="c customer">{r.customerName}</div>
             <div className="c store">{r.storeName}</div>
-
             <div className="c emp">
               <span className="dot" style={{ background: colorFromId(r.employeeKey) }} />
               {r.employeeName || "-"}
             </div>
-
-            <div className="c appr">
-              <Badge ok={!!r.customerSignedAt} />
-            </div>
-
-            <div className="c appr">
-              <Badge ok={!!r.providerSignedAt} />
-            </div>
-
+            <div className="c appr"><Badge ok={!!r.customerSignedAt} /></div>
+            <div className="c appr"><Badge ok={!!r.providerSignedAt} /></div>
             <div className="c actions">
               <button className="btn ghost" onClick={() => onView(r)}>Görüntüle</button>
-              <button className="btn" onClick={() => onSignAdmin(r)} disabled={!r.visitId || !!r.providerSignedAt}>İmzala (Admin)</button>
-              <button className="btn ghost" onClick={() => onMailCompose(r)} disabled={!r.visitId}>Mail Gönder</button>
-              <button className="btn link" onClick={() => onStoreDetail(r)} disabled={!r.storeId}>Detay</button>
-              <button className="btn danger" onClick={() => onDelete(r)} disabled={!r.visitId}>Sil</button>
+              {isCustomer ? (
+                <button className="btn" onClick={() => onSignCustomer(r)} disabled={!r.visitId || !!r.customerSignedAt}>
+                  İmzala (Müşteri)
+                </button>
+              ) : (
+                <>
+                  <button className="btn" onClick={() => onSignAdmin(r)} disabled={!r.visitId || !!r.providerSignedAt}>
+                    İmzala (Admin)
+                  </button>
+                  <button className="btn danger" onClick={() => onDelete(r)} disabled={!r.visitId}>Sil</button>
+                </>
+              )}
             </div>
           </div>
         ))
       )}
 
-      {/* ► SAYFALAMA KONTROLLERİ */}
       <div className="ek1-pagination">
-        <button
-          className="page-btn"
-          disabled={currentPage <= 1}
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-        >
+        <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
           Prev
         </button>
-
         <span className="page-indicator">{currentPage}</span>
-
-        <button
-          className="page-btn"
-          disabled={currentPage >= totalPages}
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-        >
+        <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
           Next
         </button>
-
         <div className="count-info">
           {filtered.length === 0
             ? "0"

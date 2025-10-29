@@ -1,3 +1,4 @@
+// routes/schedule.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
@@ -17,14 +18,98 @@ const asStatus = (val) => {
   return ALLOWED_STATUSES.includes(s) ? s : null;
 };
 
+// ───────── ACCESS SCOPE (müşteri hangi mağazalara erişir?) ─────────
+// GÜNCEL ve SAĞLAM: AccessOwner → AccessGrant önceliklendirilmiş + backward-compat.
+async function getAccessibleStoreIdsForCustomer(prisma, user) {
+  const storeIds = new Set();
+
+  // 0) NEW PATH: AccessOwner → AccessGrant
+  //   ownerId çıkarımı: accessOwnerId → ownerId → (role==='customer' ? id : null)
+  let ownerId = Number(
+    user?.accessOwnerId ??
+    user?.ownerId ??
+    ((user?.role || "").toLowerCase() === "customer" ? user?.id : null)
+  );
+
+  if ((!Number.isFinite(ownerId) || ownerId <= 0) && prisma.accessOwner?.findUnique) {
+    const email = (user?.email || "").trim().toLowerCase();
+    if (email) {
+      const owner = await prisma.accessOwner.findUnique({ where: { email }, select: { id: true } });
+      if (owner?.id) ownerId = owner.id;
+    }
+  }
+
+  if (Number.isFinite(ownerId) && ownerId > 0 && prisma.accessGrant?.findMany) {
+    const grants = await prisma.accessGrant.findMany({
+      where: { ownerId },
+      select: { scopeType: true, customerId: true, storeId: true },
+    });
+    if (grants.length) {
+      const customerIds = [];
+      for (const g of grants) {
+        if (g.scopeType === "STORE" && g.storeId) storeIds.add(g.storeId);
+        if (g.scopeType === "CUSTOMER" && g.customerId) customerIds.push(g.customerId);
+      }
+      if (customerIds.length) {
+        const stores = await prisma.store.findMany({ where: { customerId: { in: customerIds } }, select: { id: true } });
+        stores.forEach(s => storeIds.add(s.id));
+      }
+    }
+  }
+
+  // 1) BACK-COMPAT: customerMembership
+  const uid = Number(user?.id ?? user?.userId);
+  if (prisma.customerMembership?.findMany && Number.isFinite(uid)) {
+    const mems = await prisma.customerMembership.findMany({
+      where: { userId: uid, isEnabled: true },
+      select: { storeId: true, customerId: true },
+    });
+    const orgCustomerIds = mems.filter(m => !m.storeId && m.customerId).map(m => m.customerId);
+    const explicitStoreIds = mems.filter(m => m.storeId).map(m => m.storeId);
+    explicitStoreIds.forEach(id => storeIds.add(id));
+    if (orgCustomerIds.length) {
+      const stores = await prisma.store.findMany({ where: { customerId: { in: orgCustomerIds } }, select: { id: true } });
+      stores.forEach(s => storeIds.add(s.id));
+    }
+  }
+
+  // 2) BACK-COMPAT: customerUser
+  if (prisma.customerUser?.findUnique && Number.isFinite(uid)) {
+    const cu = await prisma.customerUser.findUnique({
+      where: { id: uid },
+      select: { customerId: true, storeId: true },
+    });
+    if (cu?.storeId) storeIds.add(cu.storeId);
+    if (cu?.customerId) {
+      const stores = await prisma.store.findMany({
+        where: { customerId: cu.customerId },
+        select: { id: true },
+      });
+      stores.forEach(s => storeIds.add(s.id));
+    }
+  }
+
+  // 3) BACK-COMPAT: token içeriği
+  if (Array.isArray(user?.storeIds)) {
+    user.storeIds.forEach((x) => Number.isFinite(Number(x)) && storeIds.add(Number(x)));
+  }
+  if (user?.customerId && !storeIds.size) {
+    const stores = await prisma.store.findMany({
+      where: { customerId: Number(user.customerId) },
+      select: { id: true },
+    });
+    stores.forEach(s => storeIds.add(s.id));
+  }
+
+  return Array.from(storeIds);
+}
+
 async function resolvePlannerName(prisma, role, id, u) {
-  // 1) Token'dan gelenler
   if (u?.fullName || u?.name || u?.email || u?.username) {
     return u.fullName || u.name || u.email || u.username;
   }
   if (!role || !id) return null;
 
-  // 2) Employee
   if (role === "employee") {
     const emp = await prisma.employee.findUnique({
       where: { id: Number(id) },
@@ -33,7 +118,6 @@ async function resolvePlannerName(prisma, role, id, u) {
     return emp?.fullName || emp?.email || null;
   }
 
-  // 3) Admin (yalnız mevcut alanlar)
   if (prisma.admin?.findUnique) {
     const a = await prisma.admin.findUnique({
       where: { id: Number(id) },
@@ -42,7 +126,6 @@ async function resolvePlannerName(prisma, role, id, u) {
     if (a) return a.fullName || a.email || null;
   }
 
-  // 4) (Varsa) User modeli
   if (prisma.user?.findUnique) {
     const urec = await prisma.user.findUnique({
       where: { id: Number(id) },
@@ -56,7 +139,7 @@ async function resolvePlannerName(prisma, role, id, u) {
 /* ---------- GET /api/schedule/events ---------- */
 router.get(
   "/events",
-  auth, roleCheck(["admin", "employee"]),
+  auth, roleCheck(["admin", "employee", "customer"]),
   async (req, res) => {
     try {
       const from = parseISO(req.query.from);
@@ -64,17 +147,36 @@ router.get(
       if (!from || !to) return res.status(400).json({ error: "from/to zorunludur (ISO tarih)" });
       if (to <= from)  return res.status(400).json({ error: "to, from'dan büyük olmalı" });
 
-      const employeeId = req.query.employeeId ? parseId(req.query.employeeId) : null;
-      const storeId    = req.query.storeId ? parseId(req.query.storeId) : null;
+      const employeeIdQ = req.query.employeeId ? parseId(req.query.employeeId) : null;
+      const storeIdQ    = req.query.storeId ? parseId(req.query.storeId) : null;
+      const scope       = String(req.query.scope || "").toLowerCase(); // "mine" destekli
 
-      const where = {
-        AND: [
-          { start: { lt: to } },
-          { end:   { gt: from } },
-          ...(employeeId ? [{ employeeId }] : []),
-          ...(storeId ? [{ storeId }] : []),
-        ],
-      };
+      const role = (req.user?.role || "").toLowerCase();
+
+      // ── WHERE temeli (tarih aralığı çakışması)
+      const whereAND = [{ start: { lt: to } }, { end: { gt: from } }];
+
+      // ── MÜŞTERİ rolü: erişebildiği mağazalarla sınırla (zorunlu)
+      if (role === "customer") {
+        const allowedStoreIds = await getAccessibleStoreIdsForCustomer(prisma, req.user);
+        if (!allowedStoreIds.length) return res.json([]); // erişimi yoksa boş liste
+        if (storeIdQ && !allowedStoreIds.includes(storeIdQ)) {
+          return res.json([]); // talep edilen store erişimde değilse boş dön
+        }
+        whereAND.push({ storeId: { in: allowedStoreIds } });
+      }
+
+      // ── Çalışan: scope=mine ise sadece kendi görevleri
+      if (role === "employee" && scope === "mine") {
+        const eid = Number(req.user?.id ?? req.user?.userId);
+        if (Number.isFinite(eid)) whereAND.push({ employeeId: eid });
+      }
+
+      // ── Serbest filtreler
+      if (employeeIdQ) whereAND.push({ employeeId: employeeIdQ });
+      if (storeIdQ)    whereAND.push({ storeId: storeIdQ });
+
+      const where = { AND: whereAND };
 
       const list = await prisma.scheduleEvent.findMany({
         where,
@@ -82,8 +184,8 @@ router.get(
       });
 
       // isim haritaları
-      const empIds   = Array.from(new Set(list.map(x => x.employeeId)));
-      const storeIds = Array.from(new Set(list.map(x => x.storeId)));
+      const empIds   = Array.from(new Set(list.map(x => x.employeeId).filter(Boolean)));
+      const storeIds = Array.from(new Set(list.map(x => x.storeId).filter(Boolean)));
 
       let empMap = {};
       if (empIds.length) {
@@ -117,7 +219,7 @@ router.get(
         storeId: ev.storeId,
         employeeName: empMap[ev.employeeId] || null,
         storeName: storeMap[ev.storeId] || null,
-        status: ev.status, // ← şemadaki enum
+        status: ev.status,
         plannedById: ev.plannedById ?? null,
         plannedByRole: ev.plannedByRole ?? null,
         plannedByName: ev.plannedByName ?? null,
@@ -145,7 +247,7 @@ router.post(
       const storeId    = Number(req.body?.storeId) || null;
       const start = req.body?.start ? new Date(req.body.start) : null;
       const end   = req.body?.end ? new Date(req.body.end) : null;
-      const status = req.body?.status ? asStatus(req.body.status) : null; // opsiyonel
+      const status = req.body?.status ? asStatus(req.body.status) : null;
 
       if (!employeeId) return res.status(400).json({ error: "employeeId zorunludur" });
       if (!storeId)    return res.status(400).json({ error: "storeId zorunludur" });
@@ -155,7 +257,6 @@ router.post(
       if (!isQuarter(start) || !isQuarter(end))
         return res.status(400).json({ error: "Saatler 15 dakikalık aralıklara oturmalı (örn. 09:00, 09:15…)" });
 
-      // ÇAKIŞMA
       const conflict = await prisma.scheduleEvent.findFirst({
         where: { employeeId, AND: [{ start: { lt: end } }, { end: { gt: start } }] },
       });
@@ -163,7 +264,6 @@ router.post(
         return res.status(409).json({ error: "Personelin aynı zamanda başka bir ziyareti var." });
       }
 
-      // Planlayan
       const u = req.user ?? {};
       const plannedById   = Number(u.id ?? u.userId) || null;
       const plannedByRole = u.role ?? null;
@@ -173,7 +273,7 @@ router.post(
         data: {
           title, notes, employeeId, storeId, start, end,
           plannedById, plannedByRole, plannedByName,
-          ...(status ? { status } : {}), // verilirse kullan; yoksa DB default: PLANNED
+          ...(status ? { status } : {}),
         },
       });
 
@@ -199,7 +299,6 @@ router.put(
 
       const role = (req.user?.role || "").toLowerCase();
 
-      /* ÇALIŞAN: sadece status güncelleyebilir */
       if (role === "employee") {
         if (!("status" in req.body)) {
           return res.status(403).json({ error: "Çalışan sadece durum (status) güncelleyebilir." });
@@ -210,7 +309,6 @@ router.put(
         return res.json({ message: "Durum güncellendi", event: updated });
       }
 
-      /* ADMIN: tüm alanlar */
       const data = {};
       if ("title" in req.body) data.title = String(req.body.title || "").trim() || "Ziyaret";
       if ("notes" in req.body) data.notes = req.body.notes ? String(req.body.notes) : null;
@@ -268,7 +366,7 @@ router.put(
 /* ---------- GET /api/schedule/events/:id ---------- */
 router.get(
   "/events/:id",
-  auth, roleCheck(["admin", "employee"]),
+  auth, roleCheck(["admin", "employee", "customer"]),
   async (req, res) => {
     try {
       const id = parseId(req.params.id);
@@ -277,7 +375,12 @@ router.get(
       const ev = await prisma.scheduleEvent.findUnique({ where: { id } });
       if (!ev) return res.status(404).json({ error: "Bulunamadı" });
 
-      // Personel adı
+      const role = (req.user?.role || "").toLowerCase();
+      if (role === "customer") {
+        const allowed = await getAccessibleStoreIdsForCustomer(prisma, req.user);
+        if (!allowed.includes(ev.storeId)) return res.status(403).json({ error: "Yetkiniz yok" });
+      }
+
       let employeeName = null;
       if (ev.employeeId) {
         const emp = await prisma.employee.findUnique({
@@ -287,7 +390,6 @@ router.get(
         if (emp) employeeName = emp.fullName || emp.email || `Personel #${emp.id}`;
       }
 
-      // Mağaza
       let storeName = null;
       let store = null;
       if (ev.storeId) {
@@ -295,7 +397,6 @@ router.get(
         if (store) storeName = store.code ? `${store.code} – ${store.name}` : store.name;
       }
 
-      // Planlayan: isim zaten event üzerinde
       const plannedByName =
         ev.plannedByName ??
         (ev.plannedByRole === "admin" && ev.plannedById ? `Admin #${ev.plannedById}` :
@@ -312,11 +413,10 @@ router.get(
         employeeName,
         storeName,
         store,
-
-        status: ev.status, // ← enum
+        status: ev.status,
         plannedById: ev.plannedById,
         plannedByRole: ev.plannedByRole,
-        plannedByName: ev.plannedByName,
+        plannedByName,
         plannedAt: ev.plannedAt,
       });
     } catch (e) {

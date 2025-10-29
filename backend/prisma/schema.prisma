@@ -8,8 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// prisma/schema.prisma
-
 enum VisitPeriod {
   HAFTALIK
   IKIHAFTALIK
@@ -95,8 +93,6 @@ enum VisitStatus {
   CANCELLED
   POSTPONED
 }
-
-// --- NEW / UPDATED ACCESS PARTS ---
 
 enum AccessScopeType {
   STORE

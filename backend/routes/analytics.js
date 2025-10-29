@@ -1,158 +1,212 @@
 // src/routes/analytics.js
 import { Router } from "express";
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
 
 const prisma = new PrismaClient();
 const router = Router();
 
+/** ---- helpers ---- */
 const parseId = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
 const parseISO = (v) => { if (!v) return null; const d = new Date(v); return Number.isFinite(+d) ? d : null; };
 
-// MySQL bucket expr
-function bucketExpr(bucket){
-  switch (bucket) {
-    case "day":   return Prisma.sql`DATE(observedAt)`;
-    case "week":  return Prisma.sql`STR_TO_DATE(CONCAT(YEARWEEK(observedAt, 3), ' Monday'), '%X%V %W')`;
-    case "month": return Prisma.sql`DATE_FORMAT(observedAt, '%Y-%m-01')`;
-    default:      return Prisma.sql`DATE(observedAt)`;
-  }
+function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function ym(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function isoWeekKey(d){
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7; // 1..7 (Mon..Sun)
+  date.setUTCDate(date.getUTCDate() + (4 - dayNum));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+}
+function bucketKey(d, bucket){
+  if (bucket === "month") return ym(d);
+  if (bucket === "week") return isoWeekKey(d);
+  return ymd(d);
 }
 
-/** TREND: /api/analytics/stores/:storeId/trend?from&to&bucket=day|week|month&type=&risk= */
-router.get(
-  "/stores/:storeId/trend",
-  auth, roleCheck(["admin","employee"]),
-  async (req,res)=>{
-    try{
-      const storeId = parseId(req.params.storeId);
-      if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
+// Çalışan erişim kontrolü (kendi müşterileri)
+async function ensureEmployeeStoreAccess(req, storeId) {
+  if (req.user?.role !== "employee") return true;
+  const ok = await prisma.store.findFirst({
+    where: { id: storeId, customer: { employeeId: req.user.id } },
+    select: { id: true },
+  });
+  return !!ok;
+}
 
-      const from = parseISO(req.query.from) || new Date(Date.now()-1000*60*60*24*30);
-      const to   = parseISO(req.query.to)   || new Date();
-      const bucket = ["day","week","month"].includes(String(req.query.bucket)) ? String(req.query.bucket) : "day";
-      const type = req.query.type ? String(req.query.type) : null;
-      const risk = req.query.risk ? String(req.query.risk) : null;
+// Customer (AccessOwner) grant kontrolü
+async function customerHasStoreAccess(req, storeId) {
+  if (["admin", "employee"].includes(req.user?.role)) return true;
+  if (req.user?.role !== "customer") return false;
 
-      const bexpr = bucketExpr(bucket);
-      const where = Prisma.sql`
-        storeId = ${storeId}
-        AND observedAt >= ${from} AND observedAt <= ${to}
-        ${type ? Prisma.sql` AND type = ${type}` : Prisma.empty}
-        ${risk ? Prisma.sql` AND risk = ${risk}` : Prisma.empty}
-      `;
+  const ownerId = Number(req.user.id);
+  if (!Number.isFinite(ownerId) || ownerId <= 0) return false;
 
-      const rows = await prisma.$queryRaw`
-        SELECT 
-          ${bexpr} AS bucket,
-          COUNT(*) AS count,
-          SUM(CASE WHEN aktiviteVar = true THEN 1 ELSE 0 END) AS activityCount
-        FROM StationActivation
-        WHERE ${where}
-        GROUP BY bucket
-        ORDER BY bucket ASC
-      `;
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { customerId: true },
+  });
+  if (!store) return false;
 
-      res.json(rows.map(r=>({
-        bucket: typeof r.bucket === "string" ? r.bucket : new Date(r.bucket).toISOString().slice(0,10),
-        count: Number(r.count||0),
-        activityCount: Number(r.activityCount||0),
-      })));
-    }catch(e){
-      console.error("GET /analytics/stores/:storeId/trend", e);
-      res.status(500).json({message:"Sunucu hatası"});
+  const grant = await prisma.accessGrant.findFirst({
+    where: {
+      ownerId,
+      OR: [
+        { scopeType: "STORE", storeId },
+        { scopeType: "CUSTOMER", customerId: store.customerId },
+      ],
+    },
+    select: { id: true },
+  });
+  return !!grant;
+}
+
+/** ---------------- STORE-BAZLI TREND ----------------
+ * GET /api/analytics/stores/:storeId/trend?from&to&bucket=day|week|month&type=&risk=
+ * admin/employee/customer → read-only (grant/assign kontrolü)
+ */
+router.get("/stores/:storeId/trend", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
+  try{
+    const storeId = parseId(req.params.storeId);
+    if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
+
+    if (req.user.role === "employee") {
+      const ok = await ensureEmployeeStoreAccess(req, storeId);
+      if (!ok) return res.status(403).json({ message: "Erişim yok" });
+    } else if (req.user.role === "customer") {
+      const ok = await customerHasStoreAccess(req, storeId);
+      if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
-  }
-);
 
-/** SUMMARY: /api/analytics/stores/:storeId/summary?from&to&type= */
-router.get(
-  "/stores/:storeId/summary",
-  auth, roleCheck(["admin","employee"]),
-  async (req,res)=>{
-    try{
-      const storeId = parseId(req.params.storeId);
-      if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
+    const now = new Date();
+    const to = parseISO(req.query.to) || now;
+    const from = parseISO(req.query.from) || new Date(now.getFullYear(), now.getMonth()-5, 1);
+    const bucket = ["day","week","month"].includes(String(req.query.bucket)) ? String(req.query.bucket) : "day";
+    const type = req.query.type ? String(req.query.type) : undefined;
+    const risk = req.query.risk ? String(req.query.risk) : undefined;
 
-      const from = parseISO(req.query.from) || new Date(Date.now()-1000*60*60*24*30);
-      const to   = parseISO(req.query.to)   || new Date();
-      const type = req.query.type ? String(req.query.type) : null;
+    const items = await prisma.stationActivation.findMany({
+      where: {
+        storeId,
+        observedAt: { gte: from, lte: to },
+        ...(type ? { type } : {}),
+        ...(risk ? { risk } : {}),
+      },
+      select: { observedAt:true, aktiviteVar:true },
+      orderBy: { observedAt: "asc" },
+    });
 
-      const where = Prisma.sql`
-        storeId = ${storeId}
-        AND observedAt >= ${from} AND observedAt <= ${to}
-        ${type ? Prisma.sql` AND type = ${type}` : Prisma.empty}
-      `;
-
-      const byType = await prisma.$queryRaw`
-        SELECT type, COUNT(*) as cnt
-        FROM StationActivation WHERE ${where}
-        GROUP BY type
-      `;
-      const byRisk = await prisma.$queryRaw`
-        SELECT risk, COUNT(*) as cnt
-        FROM StationActivation WHERE ${where}
-        GROUP BY risk
-      `;
-      const totals = await prisma.$queryRaw`
-        SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN aktiviteVar = true THEN 1 ELSE 0 END) as activeCnt
-        FROM StationActivation WHERE ${where}
-      `;
-
-      const total = Number(totals?.[0]?.total || 0);
-      const activeCnt = Number(totals?.[0]?.activeCnt || 0);
-
-      res.json({
-        byType: Object.fromEntries(byType.map(r => [r.type, Number(r.cnt)])),
-        byRisk: Object.fromEntries(byRisk.map(r => [r.risk, Number(r.cnt)])),
-        activityRate: total ? (activeCnt/total) : 0,
-        range: { from, to }
-      });
-    }catch(e){
-      console.error("GET /analytics/stores/:storeId/summary", e);
-      res.status(500).json({message:"Sunucu hatası"});
+    const map = {};
+    for (const it of items) {
+      const d = new Date(it.observedAt);
+      const key = bucketKey(d, bucket);
+      if (!map[key]) map[key] = { bucket: key, count: 0, activityCount: 0 };
+      map[key].count += 1;
+      if (it.aktiviteVar) map[key].activityCount += 1;
     }
+    const out = Object.values(map).sort((a,b)=>a.bucket.localeCompare(b.bucket));
+    res.json(out);
+  }catch(e){
+    console.error("GET /analytics/stores/:storeId/trend", e);
+    res.status(500).json({message:"Sunucu hatası"});
   }
-);
+});
 
-/** STATION TREND: /api/analytics/stations/:stationId/trend?from&to&bucket= */
-router.get(
-  "/stations/:stationId/trend",
-  auth, roleCheck(["admin","employee"]),
-  async (req,res)=>{
-    try{
-      const stationId = parseId(req.params.stationId);
-      if(!stationId) return res.status(400).json({message:"Geçersiz stationId"});
+/** ---------------- STORE-BAZLI ÖZET ----------------
+ * GET /api/analytics/stores/:storeId/summary?from&to&type=
+ * admin/employee/customer → read-only
+ */
+router.get("/stores/:storeId/summary", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
+  try{
+    const storeId = parseId(req.params.storeId);
+    if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
-      const from = parseISO(req.query.from) || new Date(Date.now()-1000*60*60*24*30);
-      const to   = parseISO(req.query.to)   || new Date();
-      const bucket = ["day","week","month"].includes(String(req.query.bucket)) ? String(req.query.bucket) : "day";
-
-      const bexpr = bucketExpr(bucket);
-      const rows = await prisma.$queryRaw`
-        SELECT 
-          ${bexpr} AS bucket,
-          COUNT(*) AS count,
-          SUM(CASE WHEN aktiviteVar = true THEN 1 ELSE 0 END) AS activityCount
-        FROM StationActivation
-        WHERE stationId = ${stationId}
-          AND observedAt >= ${from} AND observedAt <= ${to}
-        GROUP BY bucket
-        ORDER BY bucket ASC
-      `;
-
-      res.json(rows.map(r=>({
-        bucket: typeof r.bucket === "string" ? r.bucket : new Date(r.bucket).toISOString().slice(0,10),
-        count: Number(r.count||0),
-        activityCount: Number(r.activityCount||0),
-      })));
-    }catch(e){
-      console.error("GET /analytics/stations/:stationId/trend", e);
-      res.status(500).json({message:"Sunucu hatası"});
+    if (req.user.role === "employee") {
+      const ok = await ensureEmployeeStoreAccess(req, storeId);
+      if (!ok) return res.status(403).json({ message: "Erişim yok" });
+    } else if (req.user.role === "customer") {
+      const ok = await customerHasStoreAccess(req, storeId);
+      if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
+
+    const now = new Date();
+    const to = parseISO(req.query.to) || now;
+    const from = parseISO(req.query.from) || new Date(now.getFullYear(), now.getMonth()-1, now.getDate());
+    const type = req.query.type ? String(req.query.type) : undefined;
+
+    const items = await prisma.stationActivation.findMany({
+      where: {
+        storeId,
+        observedAt: { gte: from, lte: to },
+        ...(type ? { type } : {}),
+      },
+      select: { type:true, risk:true, aktiviteVar:true },
+    });
+
+    const byType = {};
+    const byRisk = {};
+    let total = 0, activeCnt = 0;
+    for (const it of items) {
+      byType[it.type] = (byType[it.type] || 0) + 1;
+      byRisk[it.risk] = (byRisk[it.risk] || 0) + 1;
+      total += 1;
+      if (it.aktiviteVar) activeCnt += 1;
+    }
+
+    res.json({ byType, byRisk, activityRate: total ? activeCnt/total : 0, range: { from, to } });
+  }catch(e){
+    console.error("GET /analytics/stores/:storeId/summary", e);
+    res.status(500).json({message:"Sunucu hatası"});
   }
-);
+});
+
+/** ---------------- STATION-BAZLI TREND ----------------
+ * GET /api/analytics/stations/:stationId/trend?from&to&bucket=
+ * admin/employee/customer → read-only (grant/assign kontrolü)
+ */
+router.get("/stations/:stationId/trend", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
+  try{
+    const stationId = parseId(req.params.stationId);
+    if(!stationId) return res.status(400).json({message:"Geçersiz stationId"});
+
+    const st = await prisma.station.findUnique({ where:{ id: stationId }, select:{ storeId:true }});
+    if(!st) return res.status(404).json({message:"İstasyon yok"});
+
+    if (req.user.role === "employee") {
+      const ok = await ensureEmployeeStoreAccess(req, st.storeId);
+      if (!ok) return res.status(403).json({ message: "Erişim yok" });
+    } else if (req.user.role === "customer") {
+      const ok = await customerHasStoreAccess(req, st.storeId);
+      if (!ok) return res.status(403).json({ message: "Yetkisiz" });
+    }
+
+    const now = new Date();
+    const to = parseISO(req.query.to) || now;
+    const from = parseISO(req.query.from) || new Date(now.getFullYear(), now.getMonth()-5, 1);
+    const bucket = ["day","week","month"].includes(String(req.query.bucket)) ? String(req.query.bucket) : "month";
+
+    const items = await prisma.stationActivation.findMany({
+      where: { stationId, observedAt: { gte: from, lte: to } },
+      select: { observedAt:true, aktiviteVar:true },
+      orderBy: { observedAt: "asc" },
+    });
+
+    const map = {};
+    for(const it of items){
+      const d = new Date(it.observedAt);
+      const key = bucketKey(d, bucket);
+      if(!map[key]) map[key] = { bucket:key, count:0, activityCount:0 };
+      map[key].count += 1;
+      if(it.aktiviteVar) map[key].activityCount += 1;
+    }
+    const out = Object.values(map).sort((a,b)=>a.bucket.localeCompare(b.bucket));
+    res.json(out);
+  }catch(e){
+    console.error("GET /analytics/stations/:stationId/trend", e);
+    res.status(500).json({message:"Sunucu hatası"});
+  }
+});
 
 export default router;

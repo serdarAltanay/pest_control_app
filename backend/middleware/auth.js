@@ -10,7 +10,17 @@ export function auth(req, res, next) {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) return res.status(401).json({ message: "Token geçersiz" });
-    req.user = decoded; // { id, role }
+
+    // ── ÖNEMLİ DOKUNUŞ ───────────────────────────────────────────────
+    // AccessOwner ile login olduğumuzda FE yönlendirmesi için role="customer"
+    // taşıyoruz. Bu durumda, erişim hesapları AccessOwner üzerinden yapılmalı.
+    // Bunu açıkça işaretleyelim:
+    if (decoded?.role?.toLowerCase() === "customer") {
+      decoded.accessOwnerId = decoded.id; // <— kritik
+    }
+    // ────────────────────────────────────────────────────────────────
+
+    req.user = decoded; // { id, role, accessOwnerId? }
     next();
   });
 }

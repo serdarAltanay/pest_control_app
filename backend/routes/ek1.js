@@ -7,18 +7,95 @@ const prisma = new PrismaClient();
 const router = Router();
 
 /* ───────── helpers ───────── */
-const toId = (v) => {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
+const toId = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+const normalizeMethod = (m) => { if (!m) return m; const up = String(m).toUpperCase(); return up === "PULVERIZE" ? "PULVERİZE" : up; };
 
-const normalizeMethod = (m) => {
-  if (!m) return m;
-  const up = String(m).toUpperCase();
-  if (up === "PULVERIZE") return "PULVERİZE";
-  return up;
-};
+/* ───────── ACCESS SCOPE (müşteri hangi mağazalara erişir?) ─────────
+   Not: FE’de “customer” rolü, gerçekte AccessOwner kullanıcısını temsil eder. */
+async function getAccessibleStoreIdsForCustomer(prisma, user) {
+  const storeIds = new Set();
 
+  // 0) NEW PATH: AccessOwner → AccessGrant (öncelik)
+  let ownerId = Number(
+    user?.accessOwnerId ??
+    user?.ownerId ??
+    ((user?.role || "").toLowerCase() === "customer" ? user?.id : null)
+  );
+
+  if ((!Number.isFinite(ownerId) || ownerId <= 0) && prisma.accessOwner?.findUnique) {
+    const email = (user?.email || "").trim().toLowerCase();
+    if (email) {
+      const owner = await prisma.accessOwner.findUnique({ where: { email }, select: { id: true } });
+      if (owner?.id) ownerId = owner.id;
+    }
+  }
+
+  if (Number.isFinite(ownerId) && ownerId > 0 && prisma.accessGrant?.findMany) {
+    const grants = await prisma.accessGrant.findMany({
+      where: { ownerId },
+      select: { scopeType: true, customerId: true, storeId: true },
+    });
+    if (grants.length) {
+      const customerIds = [];
+      for (const g of grants) {
+        if (g.scopeType === "STORE" && g.storeId) storeIds.add(g.storeId);
+        if (g.scopeType === "CUSTOMER" && g.customerId) customerIds.push(g.customerId);
+      }
+      if (customerIds.length) {
+        const stores = await prisma.store.findMany({ where: { customerId: { in: customerIds } }, select: { id: true } });
+        stores.forEach(s => storeIds.add(s.id));
+      }
+    }
+  }
+
+  // 1) BACK-COMPAT: customerMembership
+  const uid = Number(user?.id ?? user?.userId);
+  if (prisma.customerMembership?.findMany && Number.isFinite(uid)) {
+    const mems = await prisma.customerMembership.findMany({
+      where: { userId: uid, isEnabled: true },
+      select: { storeId: true, customerId: true },
+    });
+    const orgCustomerIds = mems.filter(m => !m.storeId && m.customerId).map(m => m.customerId);
+    const explicitStoreIds = mems.filter(m => m.storeId).map(m => m.storeId);
+    explicitStoreIds.forEach(id => storeIds.add(id));
+    if (orgCustomerIds.length) {
+      const stores = await prisma.store.findMany({ where: { customerId: { in: orgCustomerIds } }, select: { id: true } });
+      stores.forEach(s => storeIds.add(s.id));
+    }
+  }
+
+  // 2) BACK-COMPAT: customerUser
+  if (prisma.customerUser?.findUnique && Number.isFinite(uid)) {
+    const cu = await prisma.customerUser.findUnique({
+      where: { id: uid },
+      select: { customerId: true, storeId: true },
+    });
+    if (cu?.storeId) storeIds.add(cu.storeId);
+    if (cu?.customerId) {
+      const stores = await prisma.store.findMany({
+        where: { customerId: cu.customerId },
+        select: { id: true },
+      });
+      stores.forEach(s => storeIds.add(s.id));
+    }
+  }
+
+  // 3) BACK-COMPAT: token içeriği
+  if (Array.isArray(user?.storeIds)) {
+    user.storeIds.forEach((x) => Number.isFinite(Number(x)) && storeIds.add(Number(x)));
+  }
+  if (user?.customerId && !storeIds.size) {
+    const stores = await prisma.store.findMany({
+      where: { customerId: Number(user.customerId) },
+      select: { id: true },
+    });
+    stores.forEach(s => storeIds.add(s.id));
+  }
+
+  return Array.from(storeIds);
+}
+
+/* ───────── provider/report yardımcıları ───────── */
 async function ensureProviderProfile() {
   if (!prisma.providerProfile || typeof prisma.providerProfile.findFirst !== "function") {
     return {
@@ -50,6 +127,38 @@ function computeStatusAfter(report) {
   return report.status || "DRAFT";
 }
 
+/* ───────── müşteri erişim guard ───────── */
+async function assertCustomerCanSeeVisit(req, visitId) {
+  const role = (req.user?.role || "").toLowerCase();
+  if (role !== "customer") return true;
+  const v = await prisma.visit.findUnique({ where: { id: visitId }, select: { storeId: true } });
+  if (!v) return false;
+  const allowed = await getAccessibleStoreIdsForCustomer(prisma, req.user);
+  return allowed.includes(v.storeId);
+}
+
+/* ───────── FREE container store ───────── */
+async function ensureFreeContainerStore() {
+  let cust = await prisma.customer.findFirst({ where: { code: "FREE" } });
+  if (!cust) {
+    cust = await prisma.customer.create({
+      data: { code: "FREE", title: "[FREE] SERBEST" },
+    });
+  }
+  let store = await prisma.store.findFirst({ where: { code: "FREE-CONTAINER" } });
+  if (!store) {
+    store = await prisma.store.create({
+      data: {
+        code: "FREE-CONTAINER",
+        name: "[FREE] SERBEST (CONTAINER)",
+        address: "",
+        customerId: cust.id,
+      },
+    });
+  }
+  return store;
+}
+
 /* ───────── loaders ───────── */
 async function loadVisitBundle(visitId) {
   const visit = await prisma.visit.findUnique({
@@ -68,7 +177,6 @@ async function loadVisitBundle(visitId) {
     ensureProviderProfile(),
   ]);
 
-  // Serbest EK-1 meta’sından görsel isimleri türet
   const meta = report?.freeMeta || null;
 
   let store = visit.store || null;
@@ -101,6 +209,12 @@ async function hGetBundle(req, res) {
   try {
     const visitId = toId(req.params.visitId);
     if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
+
+    if ((req.user?.role || "").toLowerCase() === "customer") {
+      const ok = await assertCustomerCanSeeVisit(req, visitId);
+      if (!ok) return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+
     const bundle = await loadVisitBundle(visitId);
     if (!bundle) return res.status(404).json({ message: "Ziyaret bulunamadı" });
     res.json(bundle);
@@ -114,6 +228,12 @@ async function hListLines(req, res) {
   try {
     const visitId = toId(req.params.visitId);
     if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
+
+    if ((req.user?.role || "").toLowerCase() === "customer") {
+      const ok = await assertCustomerCanSeeVisit(req, visitId);
+      if (!ok) return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+
     const lines = await prisma.ek1Line.findMany({
       where: { visitId },
       include: { biosidal: true },
@@ -133,7 +253,7 @@ async function hCreateLine(req, res) {
     if (!visitId || !biosidalId || !method || amount == null) {
       return res.status(400).json({ message: "Zorunlu alanlar eksik" });
     }
-    const v = await prisma.visit.findUnique({ where: { id: visitId } });
+    const v = await prisma.visit.findUnique({ where: { id: visitId }, select: { id: true } });
     if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
 
     const bio = await prisma.biocide.findUnique({ where: { id: Number(biosidalId) } });
@@ -187,6 +307,11 @@ async function hSign(kind, req, res) {
     const visitId = toId(req.params.visitId);
     if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
 
+    if ((req.user?.role || "").toLowerCase() === "customer") {
+      const ok = await assertCustomerCanSeeVisit(req, visitId);
+      if (!ok) return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+
     await ensureReport(visitId);
     const name =
       (req.body?.name || req.user?.fullName || req.user?.email || (kind === "provider" ? "Uygulayıcı" : "Müşteri")).toString();
@@ -206,6 +331,13 @@ async function hSign(kind, req, res) {
     console.error(`SIGN ${kind}`, e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
+}
+
+async function hSignAuto(req, res) {
+  const role = (req.user?.role || "").toLowerCase();
+  if (role === "admin" || role === "employee") return hSign("provider", req, res);
+  if (role === "customer") return hSign("customer", req, res);
+  return res.status(403).json({ message: "Yetkiniz yok" });
 }
 
 async function hApprove(req, res) {
@@ -242,46 +374,26 @@ async function hPdf(req, res) {
   }
 }
 
-/* ───────── FREE container store ───────── */
-async function ensureFreeContainerStore() {
-  // 1) [FREE] SERBEST müşteri (code required ise doldur)
-  let cust = await prisma.customer.findFirst({ where: { code: "FREE" } });
-  if (!cust) {
-    cust = await prisma.customer.create({
-      data: {
-        code: "FREE",
-        title: "[FREE] SERBEST",
-      },
-    });
+async function hSendEmail(req, res) {
+  try {
+    const visitId = toId(req.params.visitId);
+    if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
+    const email = String(req.body?.email || "").trim();
+    if (!email) return res.status(400).json({ message: "E-posta gerekli" });
+    await ensureReport(visitId);
+    // gerçek e-posta kuyruğu entegrasyonu burada yapılabilir
+    res.json({ message: "E-posta kuyruğa alındı", email, visitId });
+  } catch (e) {
+    console.error("SEND EMAIL", e);
+    res.status(500).json({ message: "Sunucu hatası" });
   }
-
-  // 2) [FREE] SERBEST (CONTAINER) mağazası
-  let store = await prisma.store.findFirst({ where: { code: "FREE-CONTAINER" } });
-  if (!store) {
-    store = await prisma.store.create({
-      data: {
-        code: "FREE-CONTAINER",
-        name: "[FREE] SERBEST (CONTAINER)",
-        address: "",
-        // placeType enum’uyla çatışmayı önlemek için değer vermiyoruz
-        customerId: cust.id,
-      },
-    });
-  }
-
-  return store;
 }
 
-/* ───────── FREE EK-1 create ───────── */
-/**
- * POST /api/ek1/free
- * Flat ve nested payload (freeCustomer/freeStore/visit) + ncrs (görselsiz) destekler.
- */
 async function hCreateFreeEk1(req, res) {
   try {
     const b = req.body || {};
 
-    // flat veya nested payload
+    // flat veya nested payload desteği
     const customerTitle = b.customerTitle ?? b.freeCustomer?.title ?? "";
     const customerContactName = b.customerContactName ?? b.freeCustomer?.contactName ?? null;
     const customerEmail = b.customerEmail ?? b.freeCustomer?.email ?? null;
@@ -307,7 +419,6 @@ async function hCreateFreeEk1(req, res) {
       return res.status(400).json({ message: "customerTitle, storeName ve date zorunludur" });
     }
 
-    // FK zorunluluğu için container store kullan
     const freeStore = await ensureFreeContainerStore();
 
     const visit = await prisma.visit.create({
@@ -316,14 +427,13 @@ async function hCreateFreeEk1(req, res) {
         date: new Date(date),
         startTime: startTime ?? null,
         endTime: endTime ?? null,
-        visitType: "DIGER", // enum güvenli değeri
+        visitType: "DIGER",
         targetPests: targetPests ?? null,
         notes: notes ?? null,
         employees: employees ?? null,
       },
     });
 
-    // NCR’ları sanitize et (görselsiz)
     const ncrs = ncrsRaw
       .map((n) => ({
         title: (n?.title || "").toString().trim(),
@@ -332,7 +442,6 @@ async function hCreateFreeEk1(req, res) {
       }))
       .filter((n) => n.title || n.notes);
 
-    // free meta + otomatik müşteri onayı
     const freeMeta = {
       type: "FREE",
       visitKind: "TEK_SEFERLIK",
@@ -345,7 +454,7 @@ async function hCreateFreeEk1(req, res) {
       address: address || null,
       placeType: placeType || null,
       areaM2: areaM2 ?? null,
-      ncrs, // ← serbest uygunsuzluklar
+      ncrs,
     };
 
     await prisma.ek1Report.create({
@@ -358,7 +467,6 @@ async function hCreateFreeEk1(req, res) {
       },
     });
 
-    // Ürün satırları
     if (lines.length > 0) {
       await Promise.all(
         lines.map((l) => {
@@ -383,10 +491,19 @@ async function hCreateFreeEk1(req, res) {
   }
 }
 
-/* ───────── list & misc ───────── */
 async function hListEk1(req, res) {
   try {
+    const role = (req.user?.role || "").toLowerCase();
+
+    let where = {};
+    if (role === "customer") {
+      const allowedStoreIds = await getAccessibleStoreIdsForCustomer(prisma, req.user);
+      if (!allowedStoreIds.length) return res.json([]);
+      where = { visit: { storeId: { in: allowedStoreIds } } };
+    }
+
     const list = await prisma.ek1Report.findMany({
+      where,
       include: { visit: { include: { store: { include: { customer: true } } } } },
       orderBy: [{ updatedAt: "desc" }, { visitId: "desc" }],
     });
@@ -414,6 +531,8 @@ async function hListEk1(req, res) {
         fileUrl: r.pdfUrl || null,
         pdfUrl: r.pdfUrl || null,
         isFree: !!r.freeMeta,
+        providerSignedAt: r.providerSignedAt || null,
+        customerSignedAt: r.customerSignedAt || null,
       };
     });
 
@@ -430,27 +549,6 @@ async function hListEk1(req, res) {
   }
 }
 
-async function hSignAuto(req, res) {
-  const role = (req.user?.role || "").toLowerCase();
-  if (role === "admin" || role === "employee") return hSign("provider", req, res);
-  if (role === "customer") return hSign("customer", req, res);
-  return res.status(403).json({ message: "Yetkiniz yok" });
-}
-
-async function hSendEmail(req, res) {
-  try {
-    const visitId = toId(req.params.visitId);
-    if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
-    const email = String(req.body?.email || "").trim();
-    if (!email) return res.status(400).json({ message: "E-posta gerekli" });
-    await ensureReport(visitId);
-    res.json({ message: "E-posta kuyruğa alındı", email, visitId });
-  } catch (e) {
-    console.error("SEND EMAIL", e);
-    res.status(500).json({ message: "Sunucu hatası" });
-  }
-}
-
 /* ───────── routes ───────── */
 // FREE (Serbest) EK-1
 router.post("/free", auth, roleCheck(["admin", "employee"]), hCreateFreeEk1);
@@ -458,10 +556,8 @@ router.post("/free", auth, roleCheck(["admin", "employee"]), hCreateFreeEk1);
 // LIST
 router.get("/", auth, roleCheck(["admin", "employee", "customer"]), hListEk1);
 
-// Bundle
+// Bundle & Lines
 router.get("/visit/:visitId", auth, roleCheck(["admin", "employee", "customer"]), hGetBundle);
-
-// Lines
 router.get("/visit/:visitId/lines", auth, roleCheck(["admin", "employee", "customer"]), hListLines);
 router.post("/visit/:visitId/lines", auth, roleCheck(["admin", "employee"]), hCreateLine);
 router.delete("/visit/:visitId/lines/:lineId", auth, roleCheck(["admin", "employee"]), hDeleteLine);
@@ -482,7 +578,7 @@ router.post("/:visitId/pdf", auth, roleCheck(["admin", "employee"]), hPdf);
 // Send email (stub)
 router.post("/:visitId/send-email", auth, roleCheck(["admin", "employee"]), hSendEmail);
 
-/* legacy aliases */
+// Legacy aliases
 router.get("/visits/:visitId/ek1", auth, roleCheck(["admin", "employee", "customer"]), hGetBundle);
 router.get("/visits/:visitId/ek1/lines", auth, roleCheck(["admin", "employee", "customer"]), hListLines);
 router.post("/visits/:visitId/ek1/lines", auth, roleCheck(["admin", "employee"]), hCreateLine);

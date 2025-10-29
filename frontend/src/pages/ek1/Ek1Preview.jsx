@@ -1,3 +1,4 @@
+// src/pages/ek1/Ek1Preview.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Layout from "../../components/Layout";
@@ -8,7 +9,7 @@ import "./Ek1Preview.scss";
 import trHealthLogo from "../../assets/saglıkb_logo.png";
 import QRCode from "react-qr-code";
 
-/* ---- Sabitler ---- */
+/* ===================== Sabitler ===================== */
 const VISIT_TYPE_TR = {
   TEK_SEFERLIK: "Tek Seferlik Ziyaret",
   PERIYODIK: "Periyodik Ziyaret",
@@ -17,7 +18,9 @@ const VISIT_TYPE_TR = {
   ILK_ZIYARET: "İlk Ziyaret",
   DIGER: "Diğer",
 };
+
 const UNIT_TR = { ML: "ML", GR: "Gr", LT: "LT", KG: "KG", ADET: "Adet" };
+
 const METHOD_TR = {
   ULV: "ULV",
   PUSKURTME: "Püskürtme",
@@ -26,12 +29,13 @@ const METHOD_TR = {
   YENILEME: "Yenileme",
   ATOMIZER: "Atomizer",
   YEMLEME: "Yemleme",
-  PULVERİZE: "Pulverize",
-  PULVERIZE: "Pulverize",
+  PULVERİZE: "Pulverize", // veritabanında İ’li gelebilir
+  PULVERIZE: "Pulverize", // bazı yerlerde I’lı gelebilir → normalize
 };
 
-/* ---- yardımcılar ---- */
+/* ===================== Yardımcılar ===================== */
 const fmtTRDate = (d) => (d ? new Date(d).toLocaleDateString("tr-TR") : "—");
+
 const joinSafe = (arr, sep = ", ") =>
   (Array.isArray(arr) ? arr : [])
     .map((x) => (typeof x === "string" ? x : x?.fullName || x?.name || x?.email || ""))
@@ -48,6 +52,7 @@ function normalizeEmployees(e) {
   }
   return "—";
 }
+
 function normalizeTargetPests(v) {
   if (!v) return "—";
   if (typeof v === "string") return v;
@@ -59,13 +64,20 @@ function normalizeTargetPests(v) {
   return "—";
 }
 
+/* ===================== Sayfa ===================== */
 export default function Ek1Preview() {
   const { visitId } = useParams();
   const [bundle, setBundle] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  // Aktif kullanıcı rolü (login’de localStorage’a yazılıyor)
+  const role = useMemo(() => (localStorage.getItem("role") || "").toLowerCase(), []);
+  const isCustomerRole = role === "customer";
+
+  // QR için mevcut URL
   const docUrl = useMemo(() => window.location.href, [visitId]);
 
-  /* Bundle */
+  /* ---- Veriyi çek ---- */
   const loadAll = async () => {
     try {
       const { data } = await api.get(`/ek1/visit/${visitId}`);
@@ -74,9 +86,12 @@ export default function Ek1Preview() {
       toast.error(e?.response?.data?.message || "EK-1 verisi alınamadı");
     }
   };
+  useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visitId]);
 
-  useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, [visitId]);
-
+  /* ---- Bundle parçaları ---- */
   const visit = bundle?.visit;
   const store = bundle?.store;
   const customer = bundle?.customer;
@@ -84,36 +99,41 @@ export default function Ek1Preview() {
   const lines = bundle?.lines || [];
   const report = bundle?.report;
 
+  // FREE (serbest) form mu?
   const isFree = report?.freeMeta?.type === "FREE";
   const fm = report?.freeMeta || {};
 
-  // Görünür alanlar: Free ise freeMeta, değilse store’dan
+  // Görünür alanlar
   const displayStoreName = isFree ? (fm.storeName || "—") : (store?.name || "—");
   const displayAddress   = isFree ? (fm.address   || "—") : (store?.address || "—");
   const displayPlaceType = isFree ? (fm.placeType || "—") : (store?.placeType || "—");
   const displayAreaM2    = isFree ? (fm.areaM2 ?? "—")     : (store?.areaM2 ?? "—");
 
-  // Ziyaret tipi: free ise visitKind’i haritala (visit.visitType BE’de DIGER)
+  // Ziyaret tipi
   const visitTypeTR = isFree
     ? (VISIT_TYPE_TR[fm.visitKind] || "Tek Seferlik Ziyaret")
     : (VISIT_TYPE_TR[visit?.visitType] || visit?.visitType || "—");
 
-  // Uygulayıcı(lar) ve hedef zararlı
+  // Tarih/ekip/hedef zararlı
   const dateTR = useMemo(() => fmtTRDate(visit?.date), [visit]);
   const employeesStr = useMemo(() => normalizeEmployees(visit?.employees), [visit]);
   const targetPestsStr = useMemo(() => normalizeTargetPests(visit?.targetPests), [visit]);
 
-  // Uygunsuzluklar
-  const freeNcrs = (Array.isArray(fm.ncrs) ? fm.ncrs : []).filter(n => (n?.title || n?.notes));
+  // Uygunsuzluklar (FREE’de meta’dan gelir)
+  const freeNcrs = (Array.isArray(fm.ncrs) ? fm.ncrs : []).filter((n) => (n?.title || n?.notes));
   const ncrText = isFree
-    ? (freeNcrs.length === 0 ? "—"
-       : freeNcrs.map((n, i) => {
-           const t = (n.title || "").trim();
-           const s = (n.notes || "").trim();
-           return `${i+1}) ${t}${s ? " – " + s : ""}`;
-         }).join("  |  "))
+    ? (freeNcrs.length === 0
+        ? "—"
+        : freeNcrs
+            .map((n, i) => {
+              const t = (n.title || "").trim();
+              const s = (n.notes || "").trim();
+              return `${i + 1}) ${t}${s ? " – " + s : ""}`;
+            })
+            .join("  |  "))
     : "—";
 
+  /* ---- İmzalar ---- */
   const handleProviderSign = async () => {
     setBusy(true);
     try {
@@ -122,26 +142,62 @@ export default function Ek1Preview() {
       toast.success("Dijital imza eklendi");
     } catch (e) {
       toast.error(e?.response?.data?.message || "İmzalanamadı");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
+
   const handleCustomerSign = async () => {
     setBusy(true);
     try {
-      await api.post(`/ek1/visit/${visitId}/sign/customer`);
+      // Müşteri imzasını "sistemde kayıtlı isim" ile at (öncelik sırası):
+      // contactFullName → title → name → localStorage.name
+      const namePayload =
+        customer?.contactFullName ||
+        customer?.title ||
+        customer?.name ||
+        localStorage.getItem("name") ||
+        undefined;
+
+      await api.post(
+        `/ek1/visit/${visitId}/sign/customer`,
+        namePayload ? { name: namePayload } : {}
+      );
       await loadAll();
       toast.success("Müşteri onayı eklendi");
     } catch (e) {
       toast.error(e?.response?.data?.message || "Onay alınamadı");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
+  // Metinde gösterilecek müşteri adı (imza sonrası)
+  const displayCustomerSignerName =
+    report?.customerSignerName ||
+    customer?.contactFullName ||
+    customer?.title ||
+    customer?.name ||
+    localStorage.getItem("name") ||
+    "Yetkili";
+
+  /* ---- Yazdır (tek sayfa) ---- */
   const handlePrintOnlyPage = () => {
     const root = document.querySelector(".ek1-print");
     const page = root?.querySelector(".page");
-    if (!page) { window.print(); return; }
+    if (!page) {
+      window.print();
+      return;
+    }
     const w = window.open("", "_blank", "width=900,height=1200");
     if (!w) return;
-    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((el) => el.outerHTML).join("\n");
+
+    const styles = Array.from(
+      document.querySelectorAll('link[rel="stylesheet"], style')
+    )
+      .map((el) => el.outerHTML)
+      .join("\n");
+
     w.document.open();
     w.document.write(`
       <!doctype html><html><head>
@@ -171,20 +227,35 @@ export default function Ek1Preview() {
       </body></html>
     `);
     w.document.close();
-    w.onload = () => { w.focus(); w.print(); setTimeout(() => w.close(), 300); };
+    w.onload = () => {
+      w.focus();
+      w.print();
+      setTimeout(() => w.close(), 300);
+    };
   };
 
+  /* ---- Render ---- */
   return (
     <Layout>
       <div className="ek1-print">
+        {/* Toolbar */}
         <div className="toolbar no-print">
-          <Link className="btn ghost" to="/admin/ek1">Ziyaretlere Dön</Link>
-          <button className="btn" onClick={handlePrintOnlyPage}>YAZDIR</button>
-          {!report?.providerSignedAt && (
+          <Link className="btn ghost" to="/admin/ek1">
+            Ziyaretlere Dön
+          </Link>
+
+          <button className="btn" onClick={handlePrintOnlyPage}>
+            YAZDIR
+          </button>
+
+          {/* Provider (admin/employee) imza butonu — CUSTOMER rolünde GİZLE */}
+          {!report?.providerSignedAt && !isCustomerRole && (
             <button className="btn primary" onClick={handleProviderSign} disabled={busy}>
               {busy ? "İmzalanıyor..." : "Dijital İmzala"}
             </button>
           )}
+
+          {/* Müşteri onayı: imza yoksa göster */}
           {!report?.customerSignedAt && (
             <button className="btn warn" onClick={handleCustomerSign} disabled={busy}>
               {busy ? "Onay Alınıyor..." : "Müşteri Onayı Al"}
@@ -192,8 +263,9 @@ export default function Ek1Preview() {
           )}
         </div>
 
+        {/* Sayfa */}
         <div className="page A4">
-          {/* ---- Başlık ---- */}
+          {/* Başlık */}
           <header className="doc-head">
             <img src={trHealthLogo} alt="T.C. Sağlık Bakanlığı" />
             <h1>EK-1 BİYOSİDAL UYGULAMA İŞLEM FORMU</h1>
@@ -202,24 +274,48 @@ export default function Ek1Preview() {
             </div>
           </header>
 
-          {/* ---- Uygulayıcı Bilgileri ---- */}
+          {/* Uygulayıcı Bilgileri */}
           <section className="block">
             <div className="block-title">UYGULAMAYI YAPANA AİT BİLGİLER</div>
             <table className="kv">
-              <colgroup><col style={{ width: "42%" }} /><col /></colgroup>
+              <colgroup>
+                <col style={{ width: "42%" }} />
+                <col />
+              </colgroup>
               <tbody>
-                <tr><th>Belge Seri No</th><td>{provider?.certificateSerial || "—"}</td></tr>
-                <tr><th>Uygulamayı Yapan Firma Adı</th><td>{provider?.companyName || "—"}</td></tr>
-                <tr><th>Açık Adresi</th><td>{provider?.address || "—"}</td></tr>
-                <tr><th>Mesul Müdür</th><td>{provider?.responsibleTitle || provider?.responsibleName || "—"}</td></tr>
-                <tr><th>Uygulayıcı/lar Adı, Soyadı</th><td>{employeesStr}</td></tr>
-                <tr><th>Telefon, Faks Numarası</th><td>{provider?.phoneFax || "—"}</td></tr>
-                <tr><th>Müdürlük İzin Tarih ve Sayısı</th><td>{provider?.permissionNo || "—"}</td></tr>
+                <tr>
+                  <th>Belge Seri No</th>
+                  <td>{provider?.certificateSerial || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Uygulamayı Yapan Firma Adı</th>
+                  <td>{provider?.companyName || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Açık Adresi</th>
+                  <td>{provider?.address || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Mesul Müdür</th>
+                  <td>{provider?.responsibleTitle || provider?.responsibleName || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Uygulayıcı/lar Adı, Soyadı</th>
+                  <td>{employeesStr}</td>
+                </tr>
+                <tr>
+                  <th>Telefon, Faks Numarası</th>
+                  <td>{provider?.phoneFax || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Müdürlük İzin Tarih ve Sayısı</th>
+                  <td>{provider?.permissionNo || "—"}</td>
+                </tr>
               </tbody>
             </table>
           </section>
 
-          {/* ---- Biyosidal Ürün Bilgileri ---- */}
+          {/* Biyosidal Ürün Bilgileri */}
           <section className="block">
             <div className="block-title">KULLANILAN BİYOSİDAL ÜRÜNE AİT BİLGİLER</div>
             <table className="list">
@@ -243,30 +339,44 @@ export default function Ek1Preview() {
               </thead>
               <tbody>
                 {lines.length === 0 ? (
-                  <tr><td colSpan={6} className="center">—</td></tr>
-                ) : lines.map((l, i) => (
-                  <tr key={l.id ?? i}>
-                    <td>{i + 1}</td>
-                    <td>{l.biosidal?.name || "—"}</td>
-                    <td>{l.biosidal?.activeIngredient || "—"}</td>
-                    <td>{l.biosidal?.antidote || "—"}</td>
-                    <td>{METHOD_TR[l.method] || l.method || "—"}</td>
-                    <td>{l.amount} {UNIT_TR[l.biosidal?.unit] || l.biosidal?.unit || ""}</td>
+                  <tr>
+                    <td colSpan={6} className="center">
+                      —
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  lines.map((l, i) => (
+                    <tr key={l.id ?? i}>
+                      <td>{i + 1}</td>
+                      <td>{l.biosidal?.name || "—"}</td>
+                      <td>{l.biosidal?.activeIngredient || "—"}</td>
+                      <td>{l.biosidal?.antidote || "—"}</td>
+                      <td>{METHOD_TR[l.method] || l.method || "—"}</td>
+                      <td>
+                        {l.amount} {UNIT_TR[l.biosidal?.unit] || l.biosidal?.unit || ""}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </section>
 
-          {/* ---- Uygulama Yapılan Yer ---- */}
+          {/* Uygulama Yapılan Yer */}
           <section className="block">
             <div className="block-title">UYGULAMA YAPILAN YER HAKKINDA BİLGİLER</div>
             <table className="kv">
-              <colgroup><col style={{ width: "42%" }} /><col /></colgroup>
+              <colgroup>
+                <col style={{ width: "42%" }} />
+                <col />
+              </colgroup>
               <tbody>
                 <tr>
                   <th>Uygulama Yapılan Yerin Adı ve Açık Adresi</th>
-                  <td>{displayStoreName}{displayAddress && displayAddress !== "—" ? ` / ${displayAddress}` : ""}</td>
+                  <td>
+                    {displayStoreName}
+                    {displayAddress && displayAddress !== "—" ? ` / ${displayAddress}` : ""}
+                  </td>
                 </tr>
                 <tr>
                   <th>Ziyaret Tipi</th>
@@ -282,35 +392,58 @@ export default function Ek1Preview() {
                 </tr>
                 <tr>
                   <th>Uygulama Tarihi, Başlangıç ve Bitiş Saati</th>
-                  <td>{dateTR} | {visit?.startTime || "—"} - {visit?.endTime || "—"}</td>
+                  <td>
+                    {dateTR} | {visit?.startTime || "—"} - {visit?.endTime || "—"}
+                  </td>
                 </tr>
-                <tr><th>Mesken &amp; İşyeri</th><td>{displayPlaceType || "—"}</td></tr>
-                <tr><th>Uygulama Yapılan Yerin Alanı (m²)</th><td>{displayAreaM2}</td></tr>
-                <tr><th>Alınan Güvenlik Önlemleri, yapılan uyarı ve öneriler</th><td>{visit?.notes || "—"}</td></tr>
+                <tr>
+                  <th>Mesken &amp; İşyeri</th>
+                  <td>{displayPlaceType || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Uygulama Yapılan Yerin Alanı (m²)</th>
+                  <td>{displayAreaM2}</td>
+                </tr>
+                <tr>
+                  <th>Alınan Güvenlik Önlemleri, yapılan uyarı ve öneriler</th>
+                  <td>{visit?.notes || "—"}</td>
+                </tr>
                 <tr>
                   <th>Uygulamayı Yapan Yetkili / Sorumlu</th>
-                  <td>{report?.providerSignedAt
-                    ? `${fmtTRDate(report.providerSignedAt)} tarihinde ${report.providerSignerName || provider?.responsibleName || "Yetkili"} tarafından dijital onay verilmiştir.`
-                    : "—"}</td>
+                  <td>
+                    {report?.providerSignedAt
+                      ? `${fmtTRDate(report.providerSignedAt)} tarihinde ${
+                          report?.providerSignerName || provider?.responsibleName || "Yetkili"
+                        } tarafından dijital onay verilmiştir.`
+                      : "—"}
+                  </td>
                 </tr>
                 <tr>
                   <th>Uygulama Yapılan Yerin Yetkili / Sorumlusu</th>
-                  <td>{report?.customerSignedAt
-                    ? `${fmtTRDate(report.customerSignedAt)} tarihinde ${report.customerSignerName || (customer?.contactFullName ?? "Yetkili")} tarafından dijital onay verilmiştir.`
-                    : "—"}</td>
+                  <td>
+                    {report?.customerSignedAt
+                      ? `${fmtTRDate(report.customerSignedAt)} tarihinde ${displayCustomerSignerName} tarafından dijital onay verilmiştir.`
+                      : "—"}
+                  </td>
                 </tr>
               </tbody>
             </table>
           </section>
 
+          {/* Not */}
           <section className="note">
-            <b>Not:</b> ZEHİRLENME DURUMLARINDA ULUSAL ZEHİR DANIŞMA MERKEZİ 114 VE ACİL SAĞLIK HİZMETLERİ 112 NOLU TELEFONU ARAYINIZ.
+            <b>Not:</b> ZEHİRLENME DURUMLARINDA ULUSAL ZEHİR DANIŞMA MERKEZİ 114 VE ACİL SAĞLIK
+            HİZMETLERİ 112 NOLU TELEFONU ARAYINIZ.
             <br />
-            Bu belgede yer alan bilgiler {provider?.companyName || "uygulayıcı firma"} tarafından üretilmiştir.
+            Bu belgede yer alan bilgiler {provider?.companyName || "uygulayıcı firma"} tarafından
+            üretilmiştir.
           </section>
 
+          {/* Footer (opsiyonel ikinci yazdır) */}
           <div className="footer no-print">
-            <button className="btn" onClick={() => window.print()}>YAZDIR</button>
+            <button className="btn" onClick={() => window.print()}>
+              YAZDIR
+            </button>
           </div>
         </div>
       </div>
