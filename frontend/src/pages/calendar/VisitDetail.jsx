@@ -5,6 +5,7 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./VisitDetail.scss";
 
+/* ───────── helpers ───────── */
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
 const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
 const hashColorFromId = (id) => {
@@ -16,37 +17,109 @@ const hashColorFromId = (id) => {
 const fmtDate = (d) => d.toLocaleDateString("tr-TR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 const fmtTime = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 const fmtDateTime = (d) => d.toLocaleString("tr-TR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
-
 const STATUS_LABEL = {
   PENDING: "Henüz yapılmadı", PLANNED: "Planlandı", COMPLETED: "Yapıldı",
   FAILED: "Yapılamadı", CANCELLED: "İptal edildi", POSTPONED: "Ertelendi",
 };
 const statusLabel = (s) => STATUS_LABEL[s] || "—";
 const statusClass = (s) => `st-${(s || "PLANNED").toLowerCase()}`;
+const minutesOf = (hhmm) => {
+  if (!hhmm || typeof hhmm !== "string") return null;
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]), min = Number(m[2]);
+  if (!Number.isFinite(h) || !Number.isFinite(min)) return null;
+  return h * 60 + min;
+};
+const sameDay = (a, b) => a?.toDateString?.() === b?.toDateString?.();
 
+/* ───────── role ───────── */
 const role = (localStorage.getItem("role") || "").toLowerCase();
 const isCustomer = role === "customer";
 
-/* API */
-async function fetchEventById(id) { const { data } = await api.get(`/schedule/events/${id}`); return data; }
+/* ───────── API ───────── */
+async function fetchEventById(id) {
+  const { data } = await api.get(`/schedule/events/${id}`);
+  return data;
+}
 async function updateStatus(id, status) {
   try { await api.put(`/schedule/events/${id}`, { status }); return true; }
   catch (e) { toast.error(e?.response?.data?.error || "Durum güncellenemedi"); return false; }
 }
+async function listStoreVisits(storeId) {
+  // iki alias’tan birini mutlaka yakalar
+  try { const { data } = await api.get(`/stores/${storeId}/visits`); return Array.isArray(data) ? data : []; }
+  catch {
+    const { data } = await api.get(`/visits/store/${storeId}`); 
+    return Array.isArray(data) ? data : [];
+  }
+}
+
+/* Event’e en makul visitId’yi bağla: aynı gün ve (varsa) saat çakışması öncelikli */
+function pickVisitIdForEvent(event, storeVisits) {
+  if (!event?.start || !Array.isArray(storeVisits)) return null;
+  const evStart = new Date(event.start);
+  const evEnd = new Date(event.end);
+  const evSMin = evStart.getHours() * 60 + evStart.getMinutes();
+  const evEMin = evEnd.getHours() * 60 + evEnd.getMinutes();
+
+  // 1) Aynı gün olanları filtrele
+  const sameDayVisits = storeVisits.filter(v => {
+    const vd = v?.date ? new Date(v.date) : null;
+    return vd && sameDay(vd, evStart);
+  });
+
+  if (sameDayVisits.length === 0) return null;
+
+  // 2) Saat aralığı mevcutsa çakışanlar
+  const overlappers = sameDayVisits.filter(v => {
+    const s = minutesOf(v?.startTime);
+    const e = minutesOf(v?.endTime);
+    if (s == null || e == null) return false;
+    return (s < evEMin) && (e > evSMin); // aralıklar çakışıyor mu?
+  });
+
+  // 3) Öncelik: çakışan varsa en yakını; yoksa aynı gün en yeni kayıt
+  const pick = (arr) => {
+    if (arr.length === 0) return null;
+    arr.sort((a, b) => {
+      const ad = new Date(a.date).getTime();
+      const bd = new Date(b.date).getTime();
+      // en yakın/son kayıt
+      return bd - ad;
+    });
+    return arr[0]?.id ?? null;
+  };
+
+  return pick(overlappers) ?? pick(sameDayVisits) ?? null;
+}
 
 export default function VisitDetail() {
-  const { id } = useParams();
+  const { id: idParam } = useParams();
   const navigate = useNavigate();
+
+  const eventId = useMemo(() => {
+    const cleaned = String(idParam ?? "").trim().replace(/^:+/, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  }, [idParam]);
 
   const [event, setEvent] = useState(null);
   const [store, setStore] = useState(null);
+  const [visitId, setVisitId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
+        if (!eventId) {
+          toast.error("Geçersiz etkinlik numarası");
+          navigate(-1);
+          return;
+        }
         setLoading(true);
-        const ev = await fetchEventById(id);
+
+        const ev = await fetchEventById(eventId);
         ev.start = new Date(ev.start);
         ev.end = new Date(ev.end);
         if (ev.plannedAt) ev.plannedAt = new Date(ev.plannedAt);
@@ -54,13 +127,26 @@ export default function VisitDetail() {
         ev.status = ev.status || "PLANNED";
         setEvent(ev);
         setStore(ev.store || null);
+
+        // Ziyaret eşlemesi (EK-1 göstermek için)
+        if (ev.storeId) {
+          try {
+            const visits = await listStoreVisits(ev.storeId);
+            const vId = pickVisitIdForEvent(ev, visits);
+            if (vId) setVisitId(vId);
+          } catch {}
+        }
       } catch (e) {
-        toast.error(e?.response?.data?.error || e.message || "Detaylar getirilemedi");
+        const st = e?.response?.status;
+        if (st === 400) toast.error("Geçersiz etkinlik numarası");
+        else if (st === 403) toast.error("Bu ziyareti görüntüleme yetkiniz yok");
+        else if (st === 404) toast.error("Ziyaret bulunamadı");
+        else toast.error(e?.response?.data?.error || e.message || "Detaylar getirilemedi");
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [eventId, navigate]);
 
   const employeeDisplay = useMemo(() => {
     if (!event) return "";
@@ -69,7 +155,7 @@ export default function VisitDetail() {
       event.employeeName ||
       event.employee?.name ||
       event.employee?.email ||
-      `Personel #${event.employeeId}`
+      (event.employeeId ? `Personel #${event.employeeId}` : "-")
     );
   }, [event]);
 
@@ -107,12 +193,9 @@ export default function VisitDetail() {
     );
   }
 
-  // ✅ Ziyarete bağlı bir visitId varsa EK-1 önizleme rotasına gidebiliriz.
-  const visitId = event?.visitId || event?.visit?.id || null;
   const canViewEk1 = event?.status === "COMPLETED" && !!visitId;
   const ek1PreviewPath = visitId ? `/ek1/visit/${visitId}` : null;
 
-  // Admin/employee için doğru mağaza detayı rotası
   const storeDetailPath = store?.id
     ? (isCustomer ? `/customer/stores/${store.id}` : `/admin/stores/${store.id}`)
     : null;
@@ -129,7 +212,7 @@ export default function VisitDetail() {
           <div className="actions">
             {storeDetailPath && <Link className="btn ghost" to={storeDetailPath}>Mağaza Detayı</Link>}
 
-            {/* Admin/Employee: Ziyaret tamamlandıysa EK-1 Görüntüle; her zaman EK-1 Rapor Doldur */}
+            {/* Admin/Employee: Ziyaret tamamlandıysa EK-1 Görüntüle + Rapor Doldur */}
             {!isCustomer && canViewEk1 && ek1PreviewPath && (
               <Link to={ek1PreviewPath} className="btn">EK-1 Görüntüle</Link>
             )}
@@ -159,12 +242,15 @@ export default function VisitDetail() {
                 </span>
               </div>
             </div>
+
+            {/* Planlayan bilgisi müşteri görmesin */}
             {!isCustomer && (
-              <div className="kv"><div className="k">Planlayan</div><div className="v">{plannedByDisplay}</div></div>
+              <>
+                <div className="kv"><div className="k">Planlayan</div><div className="v">{plannedByDisplay}</div></div>
+                <div className="kv"><div className="k">Planlama Zamanı</div><div className="v">{event.plannedAt ? fmtDateTime(event.plannedAt) : "-"}</div></div>
+              </>
             )}
-            {!isCustomer && (
-              <div className="kv"><div className="k">Planlama Zamanı</div><div className="v">{event.plannedAt ? fmtDateTime(event.plannedAt) : "-"}</div></div>
-            )}
+
             {event.storeName && <div className="kv"><div className="k">Mağaza</div><div className="v">{event.storeName}</div></div>}
             {event.notes && <div className="kv"><div className="k">Notlar</div><div className="v">{event.notes}</div></div>}
             <div className="kv">
@@ -235,12 +321,8 @@ export default function VisitDetail() {
         <div className="vd-foot">
           <button className="btn ghost" onClick={() => navigate(-1)}>Geri</button>
           {storeDetailPath && <Link className="btn ghost" to={storeDetailPath}>Mağaza Detayı</Link>}
-
-          {/* Admin/Employee alt aksiyonları */}
           {!isCustomer && canViewEk1 && ek1PreviewPath && <Link className="btn" to={ek1PreviewPath}>EK-1 Görüntüle</Link>}
           {!isCustomer && store?.id && <Link className="btn" to={`/admin/stores/${store.id}/ek1`}>EK-1 Rapor Doldur</Link>}
-
-          {/* Müşteri alt aksiyonları */}
           {isCustomer && canViewEk1 && ek1PreviewPath && <Link className="btn" to={ek1PreviewPath}>EK-1 Görüntüle</Link>}
         </div>
       </div>

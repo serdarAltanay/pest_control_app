@@ -1,12 +1,16 @@
+// src/pages/customer/CustomerStoreDetail.jsx
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./CustomerStoreDetail.scss";
 
-let Recharts; try { Recharts = require("recharts"); } catch {}
+/* ───────── Recharts (opsiyonel) ───────── */
+let Recharts;
+try { Recharts = require("recharts"); } catch {}
 
+/* ───────── Sabitler ───────── */
 const TYPE_TR = {
   FARE_YEMLEME: "Fare Yemleme",
   CANLI_YAKALAMA: "Canlı Yakalama",
@@ -21,29 +25,61 @@ const VISIT_TYPE_TR = {
   ILK_ZIYARET: "İlk Ziyaret",
   DIGER: "Diğer",
 };
-const PIE_COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#8b5cf6","#14b8a6","#f97316","#06b6d4","#84cc16","#e11d48"];
+const PIE_COLORS = [
+  "#2563eb","#10b981","#f59e0b","#ef4444","#8b5cf6",
+  "#14b8a6","#f97316","#06b6d4","#84cc16","#e11d48"
+];
 
+/* ───────── Yardımcılar ───────── */
+const isAbort = (e) =>
+  e?.name === "CanceledError" ||
+  e?.code === "ERR_CANCELED" ||
+  e?.message === "canceled" ||
+  e?.__CANCEL__ === true;
+
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("tr-TR") : "—");
+const fmtTimePair = (a, b) => `${a || "—"} / ${b || "—"}`;
+
+const joinSafe = (arr, sep = ", ") =>
+  (Array.isArray(arr) ? arr : [])
+    .map((x) => (typeof x === "string" ? x : (x?.fullName || x?.name || x?.email || "")))
+    .filter(Boolean)
+    .join(sep);
+
+function normalizeEmployees(e) {
+  if (!e) return "—";
+  if (typeof e === "string") return e;
+  if (Array.isArray(e)) return joinSafe(e);
+  if (typeof e === "object") {
+    const list = e.names || e.list || e.employees || Object.values(e);
+    return Array.isArray(list) ? joinSafe(list) : "—";
+  }
+  return "—";
+}
+
+/* ───────── Sayfa ───────── */
 export default function CustomerStoreDetail() {
   const { storeId } = useParams();
+  const navigate = useNavigate();
+
   const [store, setStore] = useState(null);
   const [metrics, setMetrics] = useState({});
   const [visits, setVisits] = useState([]);
-  const [stations, setStations] = useState([]);        // ← YENİ
+  const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fmtD = (d) => (d ? new Date(d).toLocaleDateString("tr-TR") : "—");
-  const fmtT = (a, b) => `${a || "—"} / ${b || "—"}`;
-
-  // Mağaza
+  /* Mağaza bilgisi */
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
       setLoading(true);
       try {
-        const { data: s } = await api.get(`/stores/${storeId}`, { signal: ctrl.signal });
-        setStore(s);
+        const { data } = await api.get(`/stores/${storeId}`, { signal: ctrl.signal });
+        setStore(data);
       } catch (e) {
-        toast.error(e?.response?.data?.message || "Mağaza bilgisi alınamadı");
+        if (!isAbort(e)) {
+          toast.error(e?.response?.data?.message || "Mağaza bilgisi alınamadı");
+        }
       } finally {
         setLoading(false);
       }
@@ -51,7 +87,7 @@ export default function CustomerStoreDetail() {
     return () => ctrl.abort();
   }, [storeId]);
 
-  // İstasyon metrikleri
+  /* İstasyon metrikleri */
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -65,12 +101,14 @@ export default function CustomerStoreDetail() {
           m = data;
         }
         setMetrics(m || {});
-      } catch {}
+      } catch (e) {
+        if (!isAbort(e)) console.warn("metrics fetch error:", e);
+      }
     })();
     return () => ctrl.abort();
   }, [storeId]);
 
-  // Ziyaretler
+  /* Ziyaretler */
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -83,16 +121,21 @@ export default function CustomerStoreDetail() {
           const { data } = await api.get(`/stores/${storeId}/visits`, { signal: ctrl.signal });
           list = data;
         }
-        list = Array.isArray(list)
-          ? [...list].sort((a, b) => new Date(b.date) - new Date(a.date))
-          : [];
+        if (!Array.isArray(list)) list = [];
+        list.sort((a, b) => {
+          const da = a?.date ? new Date(a.date).getTime() : 0;
+          const db = b?.date ? new Date(b.date).getTime() : 0;
+          return db - da;
+        });
         setVisits(list);
-      } catch {}
+      } catch (e) {
+        if (!isAbort(e)) console.warn("visits fetch error:", e);
+      }
     })();
     return () => ctrl.abort();
   }, [storeId]);
 
-  // ← YENİ: İstasyon listesi
+  /* İstasyonlar */
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
@@ -106,22 +149,35 @@ export default function CustomerStoreDetail() {
           list = data;
         }
         setStations(Array.isArray(list) ? list : []);
-      } catch {}
+      } catch (e) {
+        if (!isAbort(e)) console.warn("stations fetch error:", e);
+      }
     })();
     return () => ctrl.abort();
   }, [storeId]);
 
+  /* Pasta verisi */
   const pieData = useMemo(
     () =>
       Object.entries(metrics)
         .map(([k, v]) => ({ name: TYPE_TR[k] || k, value: v }))
-        .filter((d) => d.value > 0),
+        .filter((d) => (Number(d.value) || 0) > 0),
     [metrics]
   );
+
+  /* Navigasyon yardımcıları */
+  const goStation = (s) => navigate(`/customer/stations/${s.id}`);
+  const goVisit = (v) => {
+    const raw = v?.scheduleEventId ?? v?.eventId ?? v?.calendarEventId;
+    const evId = Number(raw);
+    if (Number.isFinite(evId)) return navigate(`/calendar/visit/${evId}`); // müşteri & admin ortak rota alias’ı
+    return navigate(`/ek1/visit/${v.id}`); // yedek
+  };
 
   return (
     <Layout title={store?.name || "Mağaza"}>
       <div className="cust-store-detail">
+        {/* Başlık & sekmeler */}
         <div className="head">
           <div className="title">
             <h1>{store?.name || "Mağaza"}</h1>
@@ -135,10 +191,12 @@ export default function CustomerStoreDetail() {
           </div>
         </div>
 
+        {/* İçerik */}
         {loading ? (
           <section className="card">Yükleniyor…</section>
         ) : (
           <>
+            {/* Mağaza bilgisi */}
             <section className="card">
               <div className="card-title">Mağaza Bilgileri</div>
               <div className="kv">
@@ -146,11 +204,17 @@ export default function CustomerStoreDetail() {
                 <div><b>Şehir</b><span>{store?.city || "—"}</span></div>
                 <div><b>Telefon</b><span>{store?.phone || "—"}</span></div>
                 <div className="full"><b>Adres</b><span>{store?.address || "—"}</span></div>
-                <div><b>Durum</b><span className={`badge ${store?.isActive ? "ok":"no"}`}>{store?.isActive?"Aktif":"Pasif"}</span></div>
+                <div>
+                  <b>Durum</b>
+                  <span className={`badge ${store?.isActive ? "ok":"no"}`}>
+                    {store?.isActive ? "Aktif" : "Pasif"}
+                  </span>
+                </div>
               </div>
             </section>
 
             <div className="grid">
+              {/* Son Ziyaretler */}
               <section className="card">
                 <div className="card-title">Son Ziyaretler</div>
                 {visits.length === 0 ? (
@@ -158,20 +222,28 @@ export default function CustomerStoreDetail() {
                 ) : (
                   <table className="table">
                     <thead>
-                      <tr><th>Tarih</th><th>Saat</th><th>Tür</th><th>Personel</th><th>EK-1</th></tr>
+                      <tr>
+                        <th>Tarih</th>
+                        <th>Saat</th>
+                        <th>Tür</th>
+                        <th>Personel</th>
+                        <th>EK-1</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {visits.map((v) => (
-                        <tr key={v.id}>
-                          <td>{fmtD(v.date)}</td>
-                          <td>{fmtT(v.startTime, v.endTime)}</td>
+                        <tr
+                          key={v.id}
+                          className="click-row"
+                          onClick={() => goVisit(v)}
+                          title="Detayı görüntülemek için tıklayın"
+                          style={{ cursor: "pointer" }}
+                        >
+                          <td>{fmtDate(v.date)}</td>
+                          <td>{fmtTimePair(v.startTime, v.endTime)}</td>
                           <td>{VISIT_TYPE_TR[v.visitType] || v.visitType || "—"}</td>
-                          <td>{
-                            Array.isArray(v.employees)
-                              ? v.employees.join(", ")
-                              : (typeof v.employees === "string" ? v.employees : "—")
-                          }</td>
-                          <td>
+                          <td>{normalizeEmployees(v.employees)}</td>
+                          <td onClick={(e) => e.stopPropagation()}>
                             <Link className="btn primary" to={`/ek1/visit/${v.id}`}>Önizle</Link>
                           </td>
                         </tr>
@@ -181,12 +253,20 @@ export default function CustomerStoreDetail() {
                 )}
               </section>
 
+              {/* Ekipman dağılımı (opsiyonel grafik) */}
               <section className="card chart-card">
                 <div className="card-title">Ekipman Dağılımı</div>
                 {Recharts && pieData.length > 0 ? (
                   <Recharts.ResponsiveContainer width="100%" height={260}>
                     <Recharts.PieChart>
-                      <Recharts.Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} label>
+                      <Recharts.Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={60}
+                        outerRadius={100}
+                        label
+                      >
                         {pieData.map((_, i) => (
                           <Recharts.Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                         ))}
@@ -207,7 +287,7 @@ export default function CustomerStoreDetail() {
               </section>
             </div>
 
-            {/* ─────────────── YENİ BÖLÜM: Mağazada Kurulu İstasyonlar ─────────────── */}
+            {/* Kurulu İstasyonlar */}
             <section className="card">
               <div className="card-title">
                 Kurulu İstasyonlar {stations.length ? `(${stations.length})` : ""}
@@ -228,7 +308,13 @@ export default function CustomerStoreDetail() {
                   </thead>
                   <tbody>
                     {stations.map((s) => (
-                      <tr key={s.id}>
+                      <tr
+                        key={s.id}
+                        className="click-row"
+                        onClick={() => goStation(s)}
+                        title="İstasyon detayına git"
+                        style={{ cursor: "pointer" }}
+                      >
                         <td>{s.code || "—"}</td>
                         <td className="strong">{s.name || "—"}</td>
                         <td>{TYPE_TR[s.type] || s.type || "—"}</td>
@@ -237,7 +323,7 @@ export default function CustomerStoreDetail() {
                             {s.isActive ? "Aktif" : "Pasif"}
                           </span>
                         </td>
-                        <td>
+                        <td onClick={(e) => e.stopPropagation()}>
                           <Link className="btn primary" to={`/customer/stations/${s.id}`}>
                             Detay
                           </Link>
@@ -248,7 +334,6 @@ export default function CustomerStoreDetail() {
                 </table>
               )}
             </section>
-            {/* ─────────────────────────────────────────────────────────────────────── */}
           </>
         )}
       </div>

@@ -41,6 +41,7 @@ import ReportDetail from "./pages/reports/ReportDetail.jsx";
 
 import VisitCalendar from "./pages/calendar/VisitCalendar.jsx";
 import VisitDetail from "./pages/calendar/VisitDetail.jsx";
+import CustomerAgenda from "./pages/customer/CustomerAgenda.jsx";
 
 import EmployeeRoutes from "./pages/tracking/EmployeeTracking.jsx";
 
@@ -58,11 +59,9 @@ import CustomerStoreNonconformities from "./pages/customer/CustomerStoreNonconfo
 import CustomerNcrDetail from "./pages/customer/CustomerNcrDetail.jsx";
 import CustomerStationDetail from "./pages/customer/CustomerStationDetail.jsx";
 
-
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
 import 'leaflet/dist/leaflet.css';
-
 
 function App() {
   return (
@@ -97,14 +96,6 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin']}>
               <AddEmployee />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/customer/calendar/visit/:id"
-          element={
-            <PrivateRoute allowedRoles={['customer']}>
-              <VisitDetail />
             </PrivateRoute>
           }
         />
@@ -404,8 +395,24 @@ function App() {
         <Route
           path="/calendar/visit/:id"
           element={
-            <PrivateRoute allowedRoles={['admin','employee']}>
+            <PrivateRoute allowedRoles={['admin','employee','customer']}>
               <VisitDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/calendar/visit/:id"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <VisitDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/agenda"
+          element={
+            <PrivateRoute allowedRoles={['customer']}>
+              <CustomerAgenda />
             </PrivateRoute>
           }
         />
