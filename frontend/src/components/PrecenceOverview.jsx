@@ -10,9 +10,9 @@ export default function PresenceOverview() {
   const fetchSummary = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/presence/summary");
-      setData(data);
-    } catch (e) {
+      const res = await api.get("/presence/summary");
+      setData(res.data || null);
+    } catch {
       // sessiz geçebiliriz; dashboard’da kritik değil
     } finally {
       setLoading(false);
@@ -37,6 +37,25 @@ export default function PresenceOverview() {
     </div>
   );
 
+  const TotalsCard = ({ totals }) => (
+    <div className="presence-card total-card">
+      <div className="title">Sistem Toplamları</div>
+      <div className="totals">
+        <div className="tile">
+          <div className="k">Müşteri</div>
+          <div className="v">{totals?.customers ?? 0}</div>
+        </div>
+        <div className="tile">
+          <div className="k">Mağaza</div>
+          <div className="v">{totals?.stores ?? 0}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // customers: backend’de accessOwners alias’ı ile de geliyor → öncelik accessOwners
+  const customersBucket = data?.accessOwners || data?.customers;
+
   return (
     <div className={`presence-overview ${loading ? "is-loading" : ""}`}>
       <div className="header">
@@ -49,11 +68,14 @@ export default function PresenceOverview() {
       <div className="grid">
         <Card title="Yöneticiler" bucket={data?.admins} />
         <Card title="Personeller" bucket={data?.employees} />
-        <Card title="Müşteriler" bucket={data?.customers} />
+        <Card title="Müşteriler"  bucket={customersBucket} />
+        <TotalsCard totals={data?.totals} />
       </div>
 
       {data?.updatedAt && (
-        <div className="updated-at">Güncellendi: {new Date(data.updatedAt).toLocaleTimeString("tr-TR")}</div>
+        <div className="updated-at">
+          Güncellendi: {new Date(data.updatedAt).toLocaleTimeString("tr-TR")}
+        </div>
       )}
     </div>
   );

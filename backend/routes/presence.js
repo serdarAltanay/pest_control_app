@@ -27,7 +27,7 @@ async function tryUpdateByRole(role, id, now) {
   if (role === "employee") return prisma.employee.update({ where: { id }, data: { lastSeenAt: now } });
 
   if (role === "customer") {
-    // AccessOwner oturumu da FE için "customer" rolüyle gelir
+    // AccessOwner oturumu da FE için "customer" rolüyle gelebilir
     try {
       return await prisma.accessOwner.update({ where: { id }, data: { lastSeenAt: now } });
     } catch (e) {
@@ -159,6 +159,7 @@ router.post("/heartbeat", auth, async (req, res) => {
 /**
  * GET /api/presence/summary
  * - Admin / Employee / AccessOwner (FE uyumu için customers alias’ı da verilir)
+ * - + totals: sistemdeki toplam müşteri ve mağaza sayıları
  */
 router.get("/summary", auth, async (_req, res) => {
   try {
@@ -177,10 +178,12 @@ router.get("/summary", auth, async (_req, res) => {
       return { total, online, idle, offline };
     };
 
-    const [admins, employees, accessOwners] = await Promise.all([
+    const [admins, employees, accessOwners, customersTotal, storesTotal] = await Promise.all([
       countBuckets(prisma.admin),
       countBuckets(prisma.employee),
       countBuckets(prisma.accessOwner), // müşteriler için AccessOwner’ı kullanıyoruz
+      prisma.customer.count(),
+      prisma.store.count(),
     ]);
 
     // FE geriye uyumluluk: customers = accessOwners
@@ -191,6 +194,10 @@ router.get("/summary", auth, async (_req, res) => {
       employees,
       customers: accessOwners,
       accessOwners,
+      totals: {
+        customers: customersTotal,
+        stores: storesTotal,
+      },
     });
   } catch (err) {
     console.error("GET /presence/summary error:", err);

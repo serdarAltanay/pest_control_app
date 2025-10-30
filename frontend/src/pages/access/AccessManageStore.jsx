@@ -48,8 +48,16 @@ export default function AccessManageStore() {
     try {
       setSaving(true);
 
-      const ensureBody = { email: email.trim(), role, firstName, lastName, phone, password: "123456" };
-      const { data: owner } = await api.post("/access-owners/ensure", ensureBody);
+      // 🔧 Kanonik endpoint + sade body
+      const ensureBody = {
+        email: email.trim(),
+        role,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        phone: phone || undefined,
+        // forceReset: true, // (opsiyonel) mevcutsa şifre sıfırlansın istersen aç
+      };
+      const { data: owner } = await api.post("/access/owners/ensure", ensureBody);
       if (!owner?.id) throw new Error("Owner oluşturulamadı");
 
       const payload = {
@@ -121,7 +129,9 @@ export default function AccessManageStore() {
 
             <div className="full btn-row">
               <button className="btn primary" disabled={saving}>{saving ? "Kaydediliyor..." : "Erişim Ver"}</button>
-              <span className="muted">Not: Owner yoksa e-posta + rol ile oluşturulur. Şifre: <b>123456</b></span>
+              <span className="muted">
+                Not: Owner yoksa e-posta + rol ile oluşturulur. <b>6 haneli geçici şifre e-posta ile gönderilir.</b>
+              </span>
             </div>
           </form>
         </section>
