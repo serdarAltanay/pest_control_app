@@ -58,6 +58,7 @@ import CustomerStoreDetail from "./pages/customer/CustomerStoreDetail.jsx";
 import CustomerStoreNonconformities from "./pages/customer/CustomerStoreNonconformities.jsx";
 import CustomerNcrDetail from "./pages/customer/CustomerNcrDetail.jsx";
 import CustomerStationDetail from "./pages/customer/CustomerStationDetail.jsx";
+import CustomerReports from "./pages/customer/CustomerReports.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -381,6 +382,23 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['customer']}>
               <TrendAnalysis />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/customer/reports"
+          element={
+            <PrivateRoute allowedRoles={['customer','admin','employee']}>
+              <CustomerReports />
+            </PrivateRoute>
+          }
+        />
+        <Route path="/customer/stores/:storeId/reports" element={<CustomerReports />} />
+        <Route
+          path="/customer/reports/:storeId/:reportId"
+          element={
+            <PrivateRoute allowedRoles={['customer','admin','employee']}>
+              <ReportDetail />
             </PrivateRoute>
           }
         />

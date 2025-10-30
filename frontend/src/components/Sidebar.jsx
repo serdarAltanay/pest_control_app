@@ -61,9 +61,8 @@ export default function Sidebar() {
               <li className="sidebar-item" onClick={() => navigate("/customer")}>Anasayfa</li>
               <li className="sidebar-item" onClick={goMyStore}>{labelMyStore}</li>
               <li className="sidebar-item" onClick={() => navigate("/customer/agenda")}>Ziyaret Ajandam</li>
-              <li className="sidebar-item" onClick={() => navigate("/customer/files")}>Dosyalar/Raporlar</li>
+              <li className="sidebar-item" onClick={() => navigate("/customer/reports")}>Dosyalar/Raporlar</li>
               <li className="section-title">iletişim</li>
-
             </>
           )}
 

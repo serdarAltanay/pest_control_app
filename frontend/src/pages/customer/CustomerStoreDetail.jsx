@@ -187,8 +187,7 @@ export default function CustomerStoreDetail() {
           </div>
           <div className="tabs">
             <Link className="tab" to={`/customer/stores/${storeId}/nonconformities`}>Uygunsuzluklar</Link>
-            <Link className="tab" to={`/customer/files?storeId=${storeId}`}>Raporlar</Link>
-            {/* ▼ Yeni: Trend Analizi sekmesi */}
+            <Link className="tab" to={`/customer/stores/${storeId}/reports`}>Raporlar</Link>
             <Link className="tab" to={`/customer/stores/${storeId}/analytics`}>Trend Analizi</Link>
           </div>
         </div>

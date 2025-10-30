@@ -1,5 +1,6 @@
+// src/pages/reports/ReportDetail.jsx
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -8,7 +9,14 @@ import { toAbsoluteUrl, addCacheBust } from "../../utils/getAssetUrl";
 
 export default function ReportDetail() {
   const { storeId, reportId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const inCustomer = location.pathname.startsWith("/customer/");
+  const backHref = inCustomer
+    ? (storeId ? `/customer/reports?storeId=${storeId}` : "/customer/reports")
+    : (storeId ? `/admin/stores/${storeId}/reports` : "/admin");
+
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -33,10 +41,10 @@ export default function ReportDetail() {
   const isPdf = useMemo(() => item?.mime?.includes("pdf"), [item?.mime]);
   const isImage = useMemo(() => item?.mime?.startsWith("image/"), [item?.mime]);
 
-const fileUrl = useMemo(() => {
-  if (!item?.file) return null;
-  return addCacheBust(toAbsoluteUrl(item.file, { forceApi: true }));
-}, [item?.file]);
+  const fileUrl = useMemo(() => {
+    if (!item?.file) return null;
+    return addCacheBust(toAbsoluteUrl(item.file, { forceApi: true }));
+  }, [item?.file]);
 
   const onDelete = async () => {
     if (!window.confirm("Rapor silinsin mi?")) return;
@@ -44,7 +52,7 @@ const fileUrl = useMemo(() => {
       setDeleting(true);
       await api.delete(`/reports/${reportId}`);
       toast.success("Silindi");
-      navigate(`/admin/stores/${storeId}/reports`);
+      navigate(backHref);
     } catch {
       toast.error("Silinemedi");
       setDeleting(false);
@@ -63,7 +71,7 @@ const fileUrl = useMemo(() => {
             </div>
           </div>
           <div className="head-actions">
-            <Link className="btn ghost" to={`/admin/stores/${storeId}/reports`}>Listeye Dön</Link>
+            <Link className="btn ghost" to={backHref}>Listeye Dön</Link>
           </div>
         </div>
 
@@ -105,10 +113,13 @@ const fileUrl = useMemo(() => {
             <div className="card actions-bar">
               <div className="actions">
                 <a className="btn" href={toAbsoluteUrl(`api/reports/${reportId}/download`, { forceApi: true })}>İndir</a>
-                <button className="btn danger" onClick={onDelete} disabled={deleting}>
-                  {deleting ? "Siliniyor…" : "Sil"}
-                </button>
-                <Link className="btn ghost" to={`/admin/stores/${storeId}/reports`}>Listeye Dön</Link>
+                {/* müşteri arayüzünde silme butonunu gösterme */}
+                {!inCustomer && (
+                  <button className="btn danger" onClick={onDelete} disabled={deleting}>
+                    {deleting ? "Siliniyor…" : "Sil"}
+                  </button>
+                )}
+                <Link className="btn ghost" to={backHref}>Listeye Dön</Link>
               </div>
             </div>
           </>

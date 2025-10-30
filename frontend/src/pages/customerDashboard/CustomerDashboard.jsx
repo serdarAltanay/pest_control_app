@@ -21,11 +21,31 @@ const isCustomer = role === "customer";
 
 /* ───────── Carousel ───────── */
 function HeroCarousel() {
+  // role üst scope'ta tanımlı: isCustomer
+  const base = isCustomer ? "/customer" : ""; // admin için boş bırak (örn. /calendar)
   const slides = useMemo(() => ([
-    { id: 1, title: "PestApp – Dijital Servis Takibi", text: "Ziyaretlerinizi ve raporlarınızı tek panelde izleyin.", cta: { text: "EK-1 Kayıtlarını Gör", to: "/customer/ek1" }, theme: "g1" },
-    { id: 2, title: "Canlı İzleme", text: "İstasyon aktivite ve risk durumlarını anlık takip edin.", cta: { text: "Mağazalarım", to: "/customer/stores" }, theme: "g2" },
-    { id: 3, title: "Planlı Ziyaretler", text: "Yaklaşan randevulardan haberdar olun.", cta: { text: "Takvim", to: "/customer/calendar" }, theme: "g3" },
-  ]), []);
+    {
+      id: 1,
+      title: "PestApp – Dijital Servis Takibi",
+      text: "Raporlarınızı ve EK-1 kayıtlarını tek panelde izleyin.",
+      cta: { text: "Raporlar", to: `${base}/reports` }, 
+      theme: "g1"
+    },
+    {
+      id: 2,
+      title: "Canlı İzleme",
+      text: "İstasyon aktivite ve risk durumlarını anlık takip edin.",
+      cta: { text: "Mağazalarım", to: `${base}/stores` },
+      theme: "g2"
+    },
+    {
+      id: 3,
+      title: "Planlı Ziyaretler",
+      text: "Yaklaşan randevulardan haberdar olun.",
+      cta: { text: "Ajanda", to: `${base}/calendar` },
+      theme: "g3"
+    },
+  ]), [base]);
 
   const [index, setIndex] = useState(0);
   const timerRef = useRef(null);

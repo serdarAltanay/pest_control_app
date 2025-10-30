@@ -45,7 +45,11 @@
 }
 .hero-carousel .viewport {
   position: relative;
-  height: 180px;
+  height: 50dvh;
+}
+@supports not (height: 1dvh) {
+  /* Eski tarayıcılar için fallback */
+  .hero-carousel .viewport { height: 50vh; }
 }
 .hero-carousel .slide {
   position: absolute; inset: 0;
@@ -54,6 +58,7 @@
   display: flex; align-items: center;
   padding: 16px 20px;
   border-radius: 14px;
+  height: 100%;
 }
 .hero-carousel .slide.is-active {
   opacity: 1; transform: translateX(0);
