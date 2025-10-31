@@ -103,6 +103,38 @@
   }
 }
 
+/* Personel kartı (küçük ve aynı satırda) */
+.person-card {
+  .person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    flex-shrink: 0;
+  }
+  .meta {
+    display: flex;
+    flex-direction: column;
+    .label {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0b1220;
+    }
+  }
+}
+
 /* Map card */
 .map-card .row {
   display: flex; align-items: center; justify-content: space-between;
@@ -116,7 +148,7 @@
   .btn.ghost { background: #e5e7eb; color: #111827; }
 }
 
-/* Small chip for employee */
+/* Small chip (kullanım dışı kaldı ama dursun) */
 .chip {
   display: inline-flex; align-items: center;
   padding: 2px 8px; font-size: 12px; border-radius: 999px;

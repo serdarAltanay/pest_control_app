@@ -3,9 +3,25 @@ import { useEffect, useState } from "react";
 import api from "../api/axios";
 import "../styles/PrecenceOverview.scss";
 
+// FREE müşteriyi belirleyen yardımcı
+const isFreeCustomer = (c) => {
+  const code  = (c?.code  || "").toUpperCase();
+  const title = (c?.title || c?.fullName || c?.name || "").toUpperCase();
+  const seg   = (c?.segment || c?.tier || c?.plan || "").toUpperCase();
+  return (
+    code === "FREE" ||
+    title === "FREE" ||
+    title.includes("[FREE]") ||
+    seg === "FREE"
+  );
+};
+
 export default function PresenceOverview() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // UI toplamını override etmek için: FREE olmayan müşteri adedi
+  const [nonFreeCustomerCount, setNonFreeCustomerCount] = useState(null);
 
   const fetchSummary = async () => {
     try {
@@ -19,9 +35,25 @@ export default function PresenceOverview() {
     }
   };
 
+  // /customers → FREE olmayan sayısı
+  const fetchCustomersCount = async () => {
+    try {
+      const { data } = await api.get("/customers");
+      const list = Array.isArray(data) ? data : [];
+      const cleaned = list.filter((c) => !isFreeCustomer(c));
+      setNonFreeCustomerCount(cleaned.length);
+    } catch {
+      // hata olursa totals fallback kullanılacak
+    }
+  };
+
   useEffect(() => {
     fetchSummary();
-    const id = setInterval(fetchSummary, 30000);
+    fetchCustomersCount();
+    const id = setInterval(() => {
+      fetchSummary();
+      fetchCustomersCount();
+    }, 30000);
     return () => clearInterval(id);
   }, []);
 
@@ -37,13 +69,13 @@ export default function PresenceOverview() {
     </div>
   );
 
-  const TotalsCard = ({ totals }) => (
+  const TotalsCard = ({ totals, customersOverride }) => (
     <div className="presence-card total-card">
       <div className="title">Sistem Toplamları</div>
       <div className="totals">
         <div className="tile">
           <div className="k">Müşteri</div>
-          <div className="v">{totals?.customers ?? 0}</div>
+          <div className="v">{customersOverride ?? totals?.customers ?? 0}</div>
         </div>
         <div className="tile">
           <div className="k">Mağaza</div>
@@ -60,7 +92,7 @@ export default function PresenceOverview() {
     <div className={`presence-overview ${loading ? "is-loading" : ""}`}>
       <div className="header">
         <h3>Çevrimiçi Durum Özeti</h3>
-        <button onClick={fetchSummary} disabled={loading}>
+        <button onClick={() => { fetchSummary(); fetchCustomersCount(); }} disabled={loading}>
           {loading ? "Yükleniyor..." : "Yenile"}
         </button>
       </div>
@@ -68,8 +100,8 @@ export default function PresenceOverview() {
       <div className="grid">
         <Card title="Yöneticiler" bucket={data?.admins} />
         <Card title="Personeller" bucket={data?.employees} />
-        <Card title="Müşteriler"  bucket={customersBucket} />
-        <TotalsCard totals={data?.totals} />
+        <Card title="Erişim Sahipleri"  bucket={customersBucket} />
+        <TotalsCard totals={data?.totals} customersOverride={nonFreeCustomerCount} />
       </div>
 
       {data?.updatedAt && (

@@ -12,8 +12,17 @@ export default function Navbar() {
   const { profile, setProfile } = useContext(ProfileContext);
   const { theme, setTheme } = useTheme();
 
-  const rawAvatar = profile?.profileImage ?? localStorage.getItem("profileImage");
-  const imgSrc = getAvatarUrl(rawAvatar) || localStorage.getItem("profileImage") || "/noavatar.jpg";
+  const roleLower =
+    (profile?.role || profile?.userRole || "").toString().toLowerCase();
+
+  // CUSTOMER (access owner) için her zaman noavatar.jpg göster
+  const rawAvatar =
+    roleLower === "customer" ? null : (profile?.profileImage ?? localStorage.getItem("profileImage"));
+
+  const imgSrc =
+    roleLower === "customer"
+      ? "/noavatar.jpg"
+      : (getAvatarUrl(rawAvatar) || "/noavatar.jpg");
 
   const displayName =
     profile?.fullName || profile?.name || profile?.email?.split("@")[0] || "Kullanıcı";

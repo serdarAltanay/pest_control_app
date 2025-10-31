@@ -1,3 +1,4 @@
+// src/pages/ek1/Ek1List.jsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
@@ -43,6 +44,27 @@ function normalizeEmployees(e) {
   }
   return "";
 }
+
+/* ───────── YENİ: FREE placeholder ayıklama ───────── */
+const isFreeToken = (s) =>
+  typeof s === "string" &&
+  s.trim().toUpperCase().replace(/\[|\]/g, "") === "FREE";
+
+/** Müşteri adını seç: gerçek ad alanları → mağaza adı → fallback → "—" */
+const pickCustomerName = (customerObj, storeObj, fallback) => {
+  const candidates = [
+    customerObj?.title,
+    customerObj?.fullName,
+    customerObj?.name,
+    customerObj?.companyName,
+    customerObj?.legalName,
+    customerObj?.displayName,
+    fallback,
+  ].filter(Boolean);
+
+  const picked = candidates.find((v) => v && !isFreeToken(v) && v !== "—");
+  return picked || storeObj?.name || fallback || "—";
+};
 
 /* ───────── api helpers ───────── */
 async function listEk1() {
@@ -91,26 +113,49 @@ export default function Ek1List() {
       const withVisit = await Promise.all(
         base.map(async (r) => {
           const visitId = r.visitId ?? r.id ?? r?.visit?.id ?? null;
+
+          // İlk değerler (fallback)
           let createdAt = r.createdAt || r?.visit?.createdAt || null;
           let start = r.start || r?.visit?.date || null;
           let providerSignedAt = r.providerSignedAt || r?.report?.providerSignedAt || null;
           let customerSignedAt = r.customerSignedAt || r?.report?.customerSignedAt || null;
           let visitType = r.visitType || r?.visit?.visitType || "DIGER";
-
           let employeeName = r.employeeName || "";
+
+          // Görünen adlar
+          let storeName = r.storeName ?? r?.visit?.store?.name ?? (r.storeId ? `Mağaza #${r.storeId}` : "-");
+          let customerNameRaw = r.customerName ?? r?.visit?.store?.customer?.title ?? "-";
+
+          // Nesne referansları (daha sonra pick için)
+          let storeObj = r?.visit?.store || null;
+          let customerObj = r?.visit?.store?.customer || null;
+
           if (visitId) {
             try {
               const b = await getBundle(visitId);
               const rep = b?.report || {};
               const vis = b?.visit || {};
+              const st  = vis?.store || {};
+              const cu  = st?.customer || {};
+
               if (vis?.date) start = vis.date;
               if (vis?.createdAt) createdAt = vis.createdAt;
               if (vis?.visitType) visitType = vis.visitType;
               if (!employeeName) employeeName = normalizeEmployees(vis?.employees);
+
               providerSignedAt = providerSignedAt || rep.providerSignedAt || null;
               customerSignedAt = customerSignedAt || rep.customerSignedAt || null;
+
+              // Nesne/baslıkları bundle ile iyileştir
+              storeObj = st || storeObj;
+              customerObj = cu || customerObj;
+              storeName = st?.name || storeName;
+              customerNameRaw = cu?.title ?? customerNameRaw;
             } catch {}
           }
+
+          // FREE / [FREE] placeholder'ını kullanıcı-dostu isme dönüştür
+          const customerName = pickCustomerName(customerObj, storeObj, customerNameRaw);
 
           const updatedAt =
             r.updatedAt ||
@@ -124,8 +169,8 @@ export default function Ek1List() {
           return {
             visitId,
             storeId: r.storeId ?? r?.visit?.storeId ?? null,
-            storeName: r.storeName ?? r?.visit?.store?.name ?? (r.storeId ? `Mağaza #${r.storeId}` : "-"),
-            customerName: r.customerName ?? r?.visit?.store?.customer?.title ?? "-",
+            storeName,
+            customerName,
             visitType,
             visitDate: start ? new Date(start) : null,
             createdAt: createdAt ? new Date(createdAt) : null,
@@ -193,7 +238,6 @@ export default function Ek1List() {
   const onView = (row) => {
     if (row.pdfUrl) return window.open(row.pdfUrl, "_blank", "noopener,noreferrer");
     if (!row.visitId) return toast.info("visitId yok");
-    // Müşteri: centrally allowed route
     if (isCustomer) return navigate(`/ek1/visit/${row.visitId}`);
     if (row.storeId) return navigate(`/admin/stores/${row.storeId}/visits/${row.visitId}/preview`);
     return toast.info("Önizleme için mağaza/ziyaret bilgisi eksik");
@@ -209,7 +253,6 @@ export default function Ek1List() {
 
   const onSignCustomer = async (row) => {
     if (!row.visitId) return toast.error("visitId yok");
-    // ❗ Müşteride prompt yok; AccessOwner adıyla imzala
     const accessOwnerName = localStorage.getItem("name") || undefined;
     await signCustomer(row.visitId, isCustomer ? accessOwnerName : (accessOwnerName || undefined));
     toast.success("Müşteri onayı verildi");

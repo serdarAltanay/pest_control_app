@@ -1,3 +1,4 @@
+// routes/upload.js
 import express from "express";
 import multer from "multer";
 import path from "path";
@@ -49,33 +50,44 @@ function removeIfExists(relOrAbsPath) {
   catch (e) { console.warn("Avatar silinemedi:", e?.message); }
 }
 
+// Avatar kullanımına izin verilen roller
+const AVATAR_ROLES = new Set(["admin", "employee"]);
+
 async function getTargetUser(prismaClient, role, id) {
   if (role === "admin")    return prismaClient.admin.findUnique({ where: { id } });
   if (role === "employee") return prismaClient.employee.findUnique({ where: { id } });
-  if (role === "customer") return prismaClient.customer.findUnique({ where: { id } });
+  // AccessOwner (customer) için avatar kapalı
   return null;
 }
 async function updateTargetUser(prismaClient, role, id, data) {
   if (role === "admin")    return prismaClient.admin.update({ where: { id }, data });
   if (role === "employee") return prismaClient.employee.update({ where: { id }, data });
-  if (role === "customer") return prismaClient.customer.update({ where: { id }, data });
-  throw new Error("Geçersiz rol");
+  throw new Error("Geçersiz ya da izin verilmeyen rol");
 }
 
 /* ------------- POST /api/upload/avatar ------------- */
 router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
   try {
+    const { id, role } = req.user || {};
+    if (!AVATAR_ROLES.has(role)) {
+      // AccessOwner (customer) için avatar yükleme devre dışı
+      if (req.file?.path) removeIfExists(req.file.path); // yüklenmişse geri sil
+      return res.status(403).json({ error: "Bu rol için avatar özelliği devre dışı" });
+    }
+
     if (!req.file) return res.status(400).json({ error: "Dosya yüklenmedi" });
 
-    const { id, role } = req.user;
-
     const current = await getTargetUser(prisma, role, id);
-    if (!current) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+    if (!current) {
+      // güvenlik: kaydı yoksa dosyayı sil
+      removeIfExists(req.file.path);
+      return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+    }
 
     // eski resmi sil
     removeIfExists(current.profileImage);
 
-    // 🔧 DB'ye hep forward slash ile kaydet
+    // DB'ye hep forward slash ile kaydet
     const relativePath = rel(req.file.path); // "uploads/avatars/....jpg"
     const updated = await updateTargetUser(prisma, role, id, { profileImage: relativePath });
 
@@ -98,10 +110,15 @@ router.delete("/avatar", auth, async (req, res) => {
       targetId   = req.user.id;
     }
 
-    // authorization: admin -> herkes; diğeri -> sadece kendi
+    // yetkilendirme: admin -> herkes; diğer roller -> sadece kendi
     const isSelf = req.user.role === targetRole && req.user.id === targetId;
     if (!isSelf && req.user.role !== "admin") {
       return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+
+    // AccessOwner (customer) tarafında avatar özelliği kapalı
+    if (!AVATAR_ROLES.has(targetRole)) {
+      return res.status(403).json({ error: "Bu rol için avatar özelliği devre dışı" });
     }
 
     const target = await getTargetUser(prisma, targetRole, targetId);

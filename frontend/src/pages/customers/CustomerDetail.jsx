@@ -1,10 +1,8 @@
-// src/pages/customers/CustomerDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import { getAvatarUrl } from "../../utils/getAssetUrl";
 import "./CustomerDetail.scss";
 
 const PERIOD_TR = {
@@ -75,7 +73,6 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState(null);
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [removing, setRemoving] = useState(false);
   const [query, setQuery] = useState("");
 
   const filteredStores = useMemo(() => {
@@ -154,37 +151,6 @@ export default function CustomerDetail() {
     }
   };
 
-  const removeAvatar = async () => {
-    if (!window.confirm("Profil fotoğrafını kaldırmak istiyor musunuz?")) return;
-    try {
-      setRemoving(true);
-      await api.delete(`/upload/avatar/customer/${id}`);
-      setCustomer((p) => (p ? { ...p, profileImage: null, updatedAt: new Date().toISOString() } : p));
-      toast.success("Profil fotoğrafı kaldırıldı");
-    } catch (err) {
-      toast.error(err?.response?.data?.error || "Fotoğraf kaldırılamadı");
-    } finally {
-      setRemoving(false);
-    }
-  };
-
-  const deleteStore = async (storeId) => {
-    if (!window.confirm("Bu mağazayı silmek istiyor musunuz?")) return;
-    const prev = stores;
-    setStores((s) => s.filter((x) => x.id !== storeId));
-    try {
-      await api.delete(`/stores/${storeId}`);
-      toast.success("Mağaza silindi");
-    } catch (err) {
-      setStores(prev);
-      toast.error(err.response?.data?.message || "Silinemedi");
-    }
-  };
-  const goStore   = (storeId) => navigate(`/admin/stores/${storeId}`);
-  const stop      = (e) => e.stopPropagation();
-
-  const avatarSrc = getAvatarUrl(customer?.profileImage);
-
   // ---- Operasyon metrikleri (STORE'lardan) ----
   const storeCount = stores.length;
   const totalArea = useMemo(
@@ -204,7 +170,7 @@ export default function CustomerDetail() {
     <Layout>
       <div className="customer-detail-page">
         <div className="header">
-          {/* Sol blok: başlık + presence + avatar */}
+          {/* Sol blok: başlık + presence (Avatar BLOĞU KALDIRILDI) */}
           <div className="identity">
             <div className="title-wrap">
               <h1 className="title">{customer?.title || "—"}</h1>
@@ -215,21 +181,6 @@ export default function CustomerDetail() {
                 <span className="dot" />
                 {presence.label}
               </span>
-            </div>
-
-            <div className="avatar-stack">
-              <div className="avatar-wrap">
-                <img src={avatarSrc} alt="Profil" />
-              </div>
-              <button
-                type="button"
-                className="btn danger"
-                onClick={removeAvatar}
-                disabled={removing || !customer?.profileImage}
-                title={!customer?.profileImage ? "Fotoğraf yok" : "Profil fotoğrafını kaldır"}
-              >
-                {removing ? "Kaldırılıyor..." : (customer?.profileImage ? "Kaldır" : "Fotoğraf Yok")}
-              </button>
             </div>
           </div>
 
@@ -271,7 +222,7 @@ export default function CustomerDetail() {
                 </div>
               </section>
 
-              {/* GÜNCEL: Operasyon bilgileri STORE'lardan türetiliyor */}
+              {/* Operasyon bilgileri STORE'lardan türetiliyor */}
               <section className="card">
                 <div className="card-title">Operasyon</div>
                 <div className="kv">
@@ -340,6 +291,7 @@ export default function CustomerDetail() {
                           <th>Yetkili</th>
                           <th>Durum</th>
                           <th>İşlem</th>
+                          <th></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -349,8 +301,8 @@ export default function CustomerDetail() {
                             className="clickable"
                             role="button"
                             tabIndex={0}
-                            onClick={() => goStore(s.id)}
-                            onKeyDown={(e) => { if (e.key === "Enter") goStore(s.id); }}
+                            onClick={() => navigate(`/admin/stores/${s.id}`)}
+                            onKeyDown={(e) => { if (e.key === "Enter") navigate(`/admin/stores/${s.id}`); }}
                           >
                             <td className="strong name-cell">
                               {s.name}
@@ -369,11 +321,23 @@ export default function CustomerDetail() {
                                 {s.isActive ? "Aktif" : "Pasif"}
                               </span>
                             </td>
-
-                            {/* İşlemler – satır tıklamasını engelliyoruz */}
-                            <td className="actions" onClick={stop}>
+                            <td className="actions" onClick={(e) => e.stopPropagation()}>
                               <Link className="btn" to={`/admin/stores/${s.id}/edit`}>Düzenle</Link>
-                              <button className="btn danger" onClick={(e) => { e.stopPropagation(); deleteStore(s.id); }}>
+                              <button
+                                className="btn danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!window.confirm("Bu mağazayı silmek istiyor musunuz?")) return;
+                                  const prev = stores;
+                                  setStores((x) => x.filter((xx) => xx.id !== s.id));
+                                  api.delete(`/stores/${s.id}`)
+                                    .then(() => toast.success("Mağaza silindi"))
+                                    .catch((err) => {
+                                      setStores(prev);
+                                      toast.error(err.response?.data?.message || "Silinemedi");
+                                    });
+                                }}
+                              >
                                 Sil
                               </button>
                               {s.latitude != null && s.longitude != null && (
@@ -388,9 +352,7 @@ export default function CustomerDetail() {
                                 </a>
                               )}
                             </td>
-
-                            {/* En sağda “Mağaza” sayfası */}
-                            <td className="go" onClick={stop}>
+                            <td className="go" onClick={(e) => e.stopPropagation()}>
                               <Link className="btn primary" to={`/admin/stores/${s.id}`}>
                                 Mağaza
                               </Link>

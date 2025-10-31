@@ -32,6 +32,7 @@ const normRole = (r) =>
     ? String(r).toUpperCase()
     : "CALISAN";
 
+// ⚠️ AccessOwner için profileImage seçilmiyor
 const grantInclude = {
   owner: {
     select: {
@@ -40,7 +41,7 @@ const grantInclude = {
       firstName: true,
       lastName: true,
       phone: true,
-      profileImage: true,
+      // profileImage: true,  // ← KALDIRILDI
       role: true,
       isActive: true,
       lastLoginAt: true,
@@ -56,12 +57,8 @@ const grantInclude = {
 /* -------------------- ensure owner (with mail) -------------------- */
 /**
  * POST /api/access/owners/ensure   (ANA)
- *    body: { email*, role?, firstName?, lastName?, phone?, forceReset? }
- * Alias:  /api/access-owners/ensure (eski FE çağrılarını kırmamak için)
- *
- * - yoksa: 6 haneli şifre üretir, hash’leyip kaydeder, HOŞ GELDİN maili yollar
- * - varsa: forceReset=true ise yeni 6 haneli üretip günceller, HOŞ GELDİN (reset) maili yollar
- * - dönen: { id, email, role, firstName, lastName, phone, isActive, created, emailed }
+ * body: { email*, role?, firstName?, lastName?, phone?, forceReset? }
+ * Alias: /api/access-owners/ensure
  */
 async function ensureOwnerHandler(req, res) {
   try {
@@ -130,6 +127,7 @@ async function ensureOwnerHandler(req, res) {
       emailed = true;
     }
 
+    // ⚠️ Dönüşte de profileImage alanı yok
     return res.json({
       id: owner.id,
       email: owner.email,
@@ -146,24 +144,12 @@ async function ensureOwnerHandler(req, res) {
     res.status(500).json({ message: "Sunucu hatası" });
   }
 }
-router.post(
-  "/owners/ensure",
-  auth,
-  roleCheck(["admin", "employee"]),
-  ensureOwnerHandler
-);
-// Eski FE çağrılarını kırmamak için alias:
-router.post(
-  "/../access-owners/ensure", // NOT: router base'i /api/access ise -> /api/access/../access-owners/ensure => /api/access-owners/ensure
-  auth,
-  roleCheck(["admin", "employee"]),
-  ensureOwnerHandler
-);
+router.post("/owners/ensure", auth, roleCheck(["admin", "employee"]), ensureOwnerHandler);
+router.post("/../access-owners/ensure", auth, roleCheck(["admin", "employee"]), ensureOwnerHandler);
 
 /* -------------------- owner detail + grants -------------------- */
 /**
  * GET /api/access/owner/:id
- * - owner tüm alanları + grant listesi
  */
 router.get(
   "/owner/:id",
@@ -180,7 +166,7 @@ router.get(
       const grants = await prisma.accessGrant.findMany({
         where: { ownerId: id },
         orderBy: { createdAt: "desc" },
-        include: grantInclude,
+        include: grantInclude, // profileImage zaten include edilmiyor
       });
 
       res.json({ owner, grants });
@@ -191,8 +177,7 @@ router.get(
   }
 );
 
-// routes/access.js
-
+/* -------------------- reset password -------------------- */
 router.post(
   "/owner/:ownerId/reset-password",
   auth,
@@ -203,7 +188,6 @@ router.post(
       if (!ownerId) return res.status(400).json({ message: "Geçersiz id" });
 
       const { reveal = false, notify = true } = req.body || {};
-
       const owner = await prisma.accessOwner.findUnique({ where: { id: ownerId } });
       if (!owner) return res.status(404).json({ message: "Erişim sahibi bulunamadı" });
 
@@ -226,7 +210,6 @@ router.post(
         }
       }
 
-      // DİKKAT: plaintext kodu DB'ye yazmıyoruz; yalnızca bu yanıtta döndürülüyor.
       const payload = { ok: true, emailed };
       if (reveal) payload.code = code;
 
@@ -238,11 +221,7 @@ router.post(
   }
 );
 
-
 /* -------------------- grants list (filters) -------------------- */
-/**
- * GET /api/access/grants?ownerId=&scopeType=&customerId=&storeId=
- */
 router.get(
   "/grants",
   auth,
@@ -251,17 +230,14 @@ router.get(
     try {
       const where = {};
       if (req.query.ownerId) where.ownerId = toId(req.query.ownerId) || undefined;
-      if (req.query.scopeType)
-        where.scopeType = String(req.query.scopeType).toUpperCase();
-      if (req.query.customerId)
-        where.customerId = toId(req.query.customerId) || undefined;
-      if (req.query.storeId)
-        where.storeId = toId(req.query.storeId) || undefined;
+      if (req.query.scopeType) where.scopeType = String(req.query.scopeType).toUpperCase();
+      if (req.query.customerId) where.customerId = toId(req.query.customerId) || undefined;
+      if (req.query.storeId) where.storeId = toId(req.query.storeId) || undefined;
 
       const rows = await prisma.accessGrant.findMany({
         where,
         orderBy: { updatedAt: "desc" },
-        include: grantInclude,
+        include: grantInclude, // profileImage yok
       });
       res.json(rows);
     } catch (e) {
@@ -272,10 +248,6 @@ router.get(
 );
 
 /* -------------------- effective access for store -------------------- */
-/**
- * GET /api/access/store/:storeId
- * - Doğrudan STORE grant’ları + aynı customer'sa CUSTOMER grant’ları
- */
 router.get(
   "/store/:storeId",
   auth,
@@ -310,10 +282,6 @@ router.get(
 );
 
 /* -------------------- effective access for customer -------------------- */
-/**
- * GET /api/access/customer/:customerId
- * - CUSTOMER grant’ları + bu müşterinin mağazalarına ait STORE grant’ları
- */
 router.get(
   "/customer/:customerId",
   auth,
@@ -321,8 +289,7 @@ router.get(
   async (req, res) => {
     try {
       const customerId = toId(req.params.customerId);
-      if (!customerId)
-        return res.status(400).json({ message: "Geçersiz customerId" });
+      if (!customerId) return res.status(400).json({ message: "Geçersiz customerId" });
 
       const stores = await prisma.store.findMany({
         where: { customerId },
@@ -354,12 +321,6 @@ router.get(
 );
 
 /* -------------------- create grant -------------------- */
-/**
- * POST /api/access/grant
- * body: { ownerId*, scopeType*: "CUSTOMER"|"STORE", customerId?, storeId? }
- * - aynı grant varsa tekrar oluşturmaz
- * - başarıyla olursa bilgilendirme maili gönderir
- */
 router.post(
   "/grant",
   auth,
@@ -404,7 +365,6 @@ router.post(
         include: grantInclude,
       });
 
-      // bilgilendirme maili (best-effort)
       try {
         const scopeText =
           scopeType === "CUSTOMER"
@@ -430,9 +390,6 @@ router.post(
 );
 
 /* -------------------- delete grant -------------------- */
-/**
- * DELETE /api/access/:id
- */
 router.delete(
   "/:id",
   auth,

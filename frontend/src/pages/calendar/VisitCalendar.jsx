@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
 import "./VisitCalendar.scss";
 
 /* ───────── Yardımcılar ───────── */
@@ -19,22 +19,14 @@ const endOfYear    = (d) => new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
 
 const VIEW = { DAY: "day", MONTH: "month", YEAR: "year" };
 
-const COLORS = [
-  "#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee",
-  "#f472b6","#f97316","#84cc16","#e879f9","#38bdf8",
-];
+/* 07:00 → ertesi gün 02:00 aralığı (19 saat) */
+const GRID_HOURS = 19;
+const HOUR_PX = 60;      // 1 saat = 60px
+const MIN_EVENT_PX = 72; // event minimum yüksekliği
 
-const minutesFromMidnight = (d) => d.getHours() * 60 + d.getMinutes();
-const nearestQuarter = (min) => Math.round(min / 15) * 15;
+const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
+const hashColorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
 
-function hashColorFromId(id) {
-  if (!id && id !== 0) return COLORS[0];
-  let h = 0; const s = String(id);
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return COLORS[h % COLORS.length];
-}
-
-/* ───────── Status label & class ───────── */
 const STATUS_LABEL = {
   PENDING:   "Henüz yapılmadı",
   PLANNED:   "Planlandı",
@@ -46,7 +38,6 @@ const STATUS_LABEL = {
 const statusLabel = (s) => STATUS_LABEL[s] || "—";
 const statusClass = (s) => `st-${(s || "PLANNED").toLowerCase()}`;
 
-/* ───────── Ziyaret Türleri (Başlık için) ───────── */
 const VISIT_TYPE_TR = {
   PERIYODIK: "Periyodik Ziyaret",
   ACIL_CAGRI: "Acil Çağrı",
@@ -54,7 +45,22 @@ const VISIT_TYPE_TR = {
   ILK_ZIYARET: "İlk Ziyaret",
 };
 
-/* ───────── Çakışan etkinlikleri şeritlere dağıt ───────── */
+/* ───────── Responsive gün sütun sayısı (3 → 2 → 1) ───────── */
+function useResponsiveDayCols() {
+  const [cols, setCols] = useState(3);
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth || 1280;
+      setCols(w >= 1280 ? 3 : w >= 900 ? 2 : 1);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+  return cols;
+}
+
+/* ───────── Çakışan etkinlikleri lane’lere dağıt ───────── */
 function assignLanesForDay(list) {
   const evs = [...list].sort((a, b) => a.start - b.start);
   const laneEnds = [];
@@ -90,29 +96,23 @@ async function fetchEmployees() {
     }
   }
 }
-
 async function fetchCustomers() {
-  const tryList = ["/customers", "/admin/customers", "/api/customers"];
-  for (const path of tryList) {
+  const tries = ["/customers", "/admin/customers"];
+  for (const t of tries) {
     try {
-      const { data } = await api.get(path);
+      const { data } = await api.get(t);
       if (Array.isArray(data)) return data;
     } catch {}
   }
   return [];
 }
-
 async function fetchStoresByCustomer(customerId) {
   if (!customerId) return [];
   try {
     const { data } = await api.get(`/stores/customer/${customerId}`);
     return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
-
-// Basit sıralama
 function rankStores(list, q) {
   if (!q) return list;
   const needle = q.toLowerCase();
@@ -138,8 +138,7 @@ async function fetchEventsInRange(from, to) {
     return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error("GET /schedule/events hata:", err);
-    const msg = err?.response?.data?.error || err?.message || "Etkinlikler getirilemedi";
-    toast.error(msg);
+    toast.error(err?.response?.data?.error || "Etkinlikler getirilemedi");
     return [];
   }
 }
@@ -150,25 +149,18 @@ async function createEvent(payload) {
   return data;
 }
 
-/* ───────── Görsel sabitler (px) ve gün penceresi ───────── */
-const HOUR_PX = 60;      // 1 saat = 60px
-const MIN_EVENT_PX = 72; // etkinlik min. yükseklik
-
-// Gün: 07:00 → ertesi gün 02:00 (19 saat)
-const DAY_START_MIN = 7 * 60;
-const DAY_END_MIN   = 26 * 60; // 24 + 2
-const DAY_SPAN_MIN  = DAY_END_MIN - DAY_START_MIN; // 1140 dk
-const GRID_HOURS    = DAY_SPAN_MIN / 60; // 19
-
-function windowBoundsForDay(d) {
+/* ───────── Gün penceresi 07:00 → 02:00 ───────── */
+function dayWindow(d) {
   const ws = new Date(d); ws.setHours(7, 0, 0, 0);
   const we = new Date(d); we.setDate(we.getDate() + 1); we.setHours(2, 0, 0, 0);
   return { ws, we };
 }
 
+/* ───────── Component ───────── */
 export default function VisitCalendar() {
-  const isAdmin = (localStorage.getItem("role") || "").toLowerCase() === "admin";
   const navigate = useNavigate();
+  const isAdmin = (localStorage.getItem("role") || "").toLowerCase() === "admin";
+  const dayCols = useResponsiveDayCols();
 
   const [view, setView] = useState(VIEW.DAY);
   const [anchor, setAnchor] = useState(new Date());
@@ -188,8 +180,8 @@ export default function VisitCalendar() {
   const [stores, setStores] = useState([]);
   const [storeQ, setStoreQ] = useState("");
   const [selectedStoreId, setSelectedStoreId] = useState(null);
-  const [saving, setSaving] = useState(false);
   const [storesLoading, setStoresLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Range
   const range = useMemo(() => {
@@ -202,7 +194,7 @@ export default function VisitCalendar() {
     return { from: startOfYear(anchor), to: endOfYear(anchor) };
   }, [anchor, view]);
 
-  // Events yükle
+  // Load events
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -211,7 +203,7 @@ export default function VisitCalendar() {
         ...e,
         start: new Date(e.start),
         end: new Date(e.end),
-        color: e.color || hashColorFromId(e.employeeId),
+        color: e.color || hashColorFromId(e.employeeId ?? e.storeId),
         status: e.status || "PLANNED",
       }));
       setEvents(norm);
@@ -224,11 +216,11 @@ export default function VisitCalendar() {
   }, [range]);
   useEffect(() => { load(); }, [load]);
 
-  // Çalışanlar/Müşteriler
+  // Employees / Customers
   useEffect(() => { (async () => setEmployees(await fetchEmployees()))(); }, []);
   useEffect(() => { (async () => setCustomers(await fetchCustomers()))(); }, []);
 
-  // Seçilen müşteri → mağazalar
+  // Customer → Stores
   useEffect(() => {
     (async () => {
       setStoresAll([]); setStores([]); setSelectedStoreId(null);
@@ -240,14 +232,103 @@ export default function VisitCalendar() {
     })();
   }, [selectedCustomerId]);
 
-  // Arama
+  // Store search
   useEffect(() => {
     const q = storeQ.trim();
-    const ranked = rankStores(storesAll, q).slice(0, 10);
+    const ranked = rankStores(storesAll, q).slice(0, 12);
     setStores(ranked);
   }, [storeQ, storesAll]);
 
-  // View helpers
+  // Day hour labels (07..23, 00..01)
+  const dayHourLabels = useMemo(() => {
+    if (view !== VIEW.DAY) return [];
+    const labels = [];
+    for (let h = 7; h <= 23; h++) labels.push(`${pad2(h)}:00`);
+    labels.push("00:00", "01:00");
+    return labels;
+  }, [view]);
+
+  // Day columns by responsive count
+  const dayColumns = useMemo(() => {
+    if (view !== VIEW.DAY) return [];
+    const offsets =
+      dayCols === 3 ? [-1, 0, 1] :
+      dayCols === 2 ? [0, 1] :
+      [0];
+    return offsets.map((off) => {
+      const d = new Date(anchor);
+      d.setDate(d.getDate() + off);
+      return d;
+    });
+  }, [view, anchor, dayCols]);
+
+  // Events per displayed day (clipped to window 07→02)
+  const dayEventsByDate = useMemo(() => {
+    if (view !== VIEW.DAY) return {};
+    const map = {};
+    for (const d of dayColumns) {
+      const key = toDateInput(d);
+      const { ws, we } = dayWindow(d);
+      const winEvents = [];
+      for (const e of events) {
+        if (e.end <= ws || e.start >= we) continue;
+        const s = new Date(Math.max(e.start, ws));
+        const ee = new Date(Math.min(e.end, we));
+        winEvents.push({
+          ...e,
+          start: s,
+          end: ee,
+          _relStartMin: Math.round((s - ws) / 60000),
+          _relEndMin: Math.round((ee - ws) / 60000),
+        });
+      }
+      map[key] = assignLanesForDay(winEvents);
+    }
+    return map;
+  }, [view, dayColumns, events]);
+
+  // Month view
+  const monthLabel = useMemo(
+    () => anchor.toLocaleDateString("tr-TR", { month: "long", year: "numeric" }),
+    [anchor]
+  );
+  const monthMatrix = useMemo(() => {
+    if (view !== VIEW.MONTH) return [];
+    const first = startOfMonth(anchor);
+    const last  = endOfMonth(anchor);
+    const start = new Date(first);
+    start.setDate(first.getDate() - (first.getDay() || 7) + 1);
+    const weeks = [];
+    let cur = new Date(start);
+    while (cur <= last || weeks.length < 6) {
+      const row = [];
+      for (let i = 0; i < 7; i++) {
+        row.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+      weeks.push(row);
+      if (cur > last && weeks.length >= 6) break;
+    }
+    return weeks;
+  }, [view, anchor]);
+  const monthEventsByDayKey = useMemo(() => {
+    if (view !== VIEW.MONTH) return {};
+    const map = {};
+    for (const ev of events) {
+      const key = toDateInput(ev.start);
+      (map[key] ||= []).push(ev);
+    }
+    for (const k of Object.keys(map)) map[k].sort((a, b) => a.start - b.start);
+    return map;
+  }, [view, events]);
+
+  // Year view
+  const yearMonths = useMemo(() => {
+    if (view !== VIEW.YEAR) return [];
+    return Array.from({ length: 12 }, (_, i) => new Date(anchor.getFullYear(), i, 1));
+  }, [view, anchor]);
+
+  // UI helpers
   const goToday = () => setAnchor(new Date());
   const prev = () => {
     if (view === VIEW.DAY)   { const d = new Date(anchor); d.setDate(d.getDate() - 1); setAnchor(d); }
@@ -260,18 +341,17 @@ export default function VisitCalendar() {
     else { const d = new Date(anchor); d.setFullYear(d.getFullYear() + 1); setAnchor(d); }
   };
 
-  // Ay başlığı (tr-TR)
-  const monthLabel = useMemo(
-    () => anchor.toLocaleDateString("tr-TR", { month: "long", year: "numeric" }),
-    [anchor]
-  );
-
-  // Create
   const openCreateForDay = (day, defaults) => {
     if (!isAdmin) return;
     setModalDate(startOfDay(day));
     setModalDefaults(defaults || null);
     setModalOpen(true);
+  };
+
+  /* Yeni: Ay görünümünde bir güne tıklayınca Gün görünümüne geç */
+  const goToDay = (d) => {
+    setAnchor(new Date(d));
+    setView(VIEW.DAY);
   };
 
   const formRef = useRef(null);
@@ -285,11 +365,8 @@ export default function VisitCalendar() {
     const employeeId = Number(fd.get("employeeId") || 0);
     const pickedStoreId = Number(fd.get("storeId") || selectedStoreId || 0);
 
-    // ▼▼▼ Yeni: ziyaret türü (başlık buradan türetilir)
     const visitTypeKey = fd.get("visitType") || "";
     const title = VISIT_TYPE_TR[visitTypeKey] || "Ziyaret";
-    // ▲▲▲
-
     const notes = fd.get("notes") || "";
 
     if (!employeeId) return toast.error("Personel seçin");
@@ -302,7 +379,6 @@ export default function VisitCalendar() {
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
 
-    // 00–06 seçilirse ertesi güne kaydır
     const start = new Date(modalDate);
     if (sh < 7) start.setDate(start.getDate() + 1);
     start.setHours(sh, sm, 0, 0);
@@ -327,108 +403,7 @@ export default function VisitCalendar() {
     }
   };
 
-  // Saat etiketleri: 07..23, ardından 00..01
-  const dayHourLabels = useMemo(() => {
-    if (view !== VIEW.DAY) return [];
-    const labels = [];
-    for (let h = 7; h <= 23; h++) labels.push(`${pad2(h)}:00`);
-    labels.push("00:00", "01:00");
-    return labels;
-  }, [view]);
-
-  // Gün kolonları: -1, 0, +1, +2
-  const dayColumns = useMemo(() => {
-    if (view !== VIEW.DAY) return [];
-    const offsets = [-1, 0, 1, 2];
-    return offsets.map((off) => {
-      const d = new Date(anchor);
-      d.setDate(d.getDate() + off);
-      return d;
-    });
-  }, [view, anchor]);
-
-  // Bir gün penceresine göre (07→02) eventleri paketle
-  const dayEventsByDate = useMemo(() => {
-    if (view !== VIEW.DAY) return {};
-    const map = {};
-    for (const d of dayColumns) {
-      const key = toDateInput(d);
-      const { ws, we } = windowBoundsForDay(d);
-
-      // Pencere ile kesişenleri al, pencereye göre kırp
-      const winEvents = [];
-      for (const e of events) {
-        if (e.end <= ws || e.start >= we) continue; // kesişmiyor
-        const s = new Date(Math.max(e.start, ws));
-        const ee = new Date(Math.min(e.end, we));
-        winEvents.push({
-          ...e,
-          // şerit atama için pencere-tabanlı start/end
-          start: s,
-          end: ee,
-          // render için göreli dakika
-          _relStartMin: Math.round((s - ws) / 60000),
-          _relEndMin: Math.round((ee - ws) / 60000),
-        });
-      }
-
-      const packed = assignLanesForDay(winEvents);
-      map[key] = packed;
-    }
-    return map;
-  }, [view, dayColumns, events]);
-
-  // Ay görünümü
-  const monthMatrix = useMemo(() => {
-    if (view !== VIEW.MONTH) return [];
-    const first = startOfMonth(anchor);
-    const last  = endOfMonth(anchor);
-    const start = new Date(first);
-    start.setDate(first.getDate() - (first.getDay() || 7) + 1);
-    const weeks = [];
-    let cur = new Date(start);
-    while (cur <= last || weeks.length < 6) {
-      const row = [];
-      for (let i = 0; i < 7; i++) {
-        row.push(new Date(cur));
-        cur.setDate(cur.getDate() + 1);
-      }
-      weeks.push(row);
-      if (cur > last && weeks.length >= 6) break;
-    }
-    return weeks;
-  }, [view, anchor]);
-
-  const monthEventsByDayKey = useMemo(() => {
-    if (view !== VIEW.MONTH) return {};
-    const map = {};
-    for (const ev of events) {
-      const key = toDateInput(ev.start);
-      (map[key] ||= []).push(ev);
-    }
-    for (const k of Object.keys(map)) map[k].sort((a, b) => a.start - b.start);
-    return map;
-  }, [view, events]);
-
-  // Yıl görünümü
-  const yearMonths = useMemo(() => {
-    if (view !== VIEW.YEAR) return [];
-    return Array.from({ length: 12 }, (_, i) => new Date(anchor.getFullYear(), i, 1));
-  }, [view, anchor]);
-
-  // Grid tıklama → 07→02 aralığına göre default saat üret
-  const onGridClick = (day, e) => {
-    if (!isAdmin) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const relMin = Math.round((y / rect.height) * DAY_SPAN_MIN);
-    const sRel = nearestQuarter(Math.max(0, Math.min(DAY_SPAN_MIN - 15, relMin)));
-    // mutlak gün içi dakika (0..1439)
-    const absStart = (DAY_START_MIN + sRel) % (24 * 60);
-    const absEnd   = (absStart + 60) % (24 * 60);
-    const defaults = { startMin: absStart, endMin: absEnd };
-    openCreateForDay(day, defaults);
-  };
+  const isSelectedDate = (d) => d.toDateString() === anchor.toDateString();
 
   return (
     <Layout title="Ziyaret Takvimi">
@@ -504,7 +479,10 @@ export default function VisitCalendar() {
         {loading ? (
           <div className="card">Yükleniyor…</div>
         ) : view === VIEW.DAY ? (
-          <div className="vc-day" style={{ "--grid-hours": GRID_HOURS }}>
+          <div
+            className="vc-day"
+            style={{ "--grid-hours": GRID_HOURS, "--day-cols": dayCols }}
+          >
             {/* Saat kolonu */}
             <div className="hours">
               <div className="hours-head" />
@@ -520,16 +498,15 @@ export default function VisitCalendar() {
               {dayColumns.map((d) => {
                 const key = toDateInput(d);
                 const meta = dayEventsByDate[key] || { events: [], laneCount: 1 };
-                const isSelected = d.toDateString() === anchor.toDateString();
                 return (
-                  <div className={`col ${isSelected ? "is-selected" : ""}`} key={key}>
+                  <div className={`col ${isSelectedDate(d) ? "is-selected" : ""}`} key={key}>
                     <div className="col-head" onClick={() => openCreateForDay(d)}>
-                      {toDateInput(d)}{isSelected ? " • Seçili" : ""}
+                      {toDateInput(d)}{isSelectedDate(d) ? " • Seçili" : ""}
                     </div>
 
                     <div
                       className="col-grid"
-                      onClick={(e) => onGridClick(d, e)}
+                      onClick={() => openCreateForDay(d)}
                       style={{ "--lane-count": meta.laneCount }}
                     >
                       {meta.events.map((ev) => {
@@ -546,7 +523,7 @@ export default function VisitCalendar() {
                               top: `${topPx}px`,
                               height: `${heightPx}px`,
                               background: ev.color,
-                              cursor: "pointer"
+                              cursor: "pointer",
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -554,10 +531,7 @@ export default function VisitCalendar() {
                             }}
                             title={`${ev.title} • ${ev.employeeName || ""} • ${ev.storeName || ""}`}
                           >
-                            <span className={`badge ${statusClass(ev.status)}`}>
-                              {statusLabel(ev.status)}
-                            </span>
-
+                            <span className={`badge ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
                             <div className="ev-title">{ev.title}</div>
                             <div className="ev-meta">
                               {pad2(ev.start.getHours())}:{pad2(ev.start.getMinutes())}
@@ -578,28 +552,16 @@ export default function VisitCalendar() {
           </div>
         ) : view === VIEW.MONTH ? (
           <div className="vc-month">
-            {/* Ay başlık + oklar */}
             <div className="month-nav">
-              <button
-                className="nav-btn"
-                onClick={() => setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1))}
-                aria-label="Önceki ay"
-              >
-                ‹
-              </button>
+              <button className="nav-btn" onClick={() => setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1))}>‹</button>
               <div className="month-title">{monthLabel}</div>
-              <button
-                className="nav-btn"
-                onClick={() => setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1))}
-                aria-label="Sonraki ay"
-              >
-                ›
-              </button>
+              <button className="nav-btn" onClick={() => setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1))}>›</button>
             </div>
 
             <div className="dow">
               {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((l) => <div key={l}>{l}</div>)}
             </div>
+
             <div className="grid">
               {monthMatrix.map((row, ri) => (
                 <div className="row" key={ri}>
@@ -608,15 +570,28 @@ export default function VisitCalendar() {
                     const dayEvs = (monthEventsByDayKey[key] || []).sort((a,b)=>a.start-b.start);
                     const isOtherMonth = d.getMonth() !== anchor.getMonth();
                     return (
-                      <div className={`cell ${isOtherMonth ? "muted" : ""}`} key={key}>
-                        <div className="date" onClick={() => openCreateForDay(d)}>{d.getDate()}</div>
+                      <div
+                        className={`cell ${isOtherMonth ? "muted" : ""}`}
+                        key={key}
+                        onClick={() => goToDay(d)}  /* ↩ Yeni: hücreye tıkla → Gün görünümü */
+                        title={`${toDateInput(d)} gününe git`}
+                      >
+                        <div
+                          className="date"
+                          onClick={(e) => { e.stopPropagation(); goToDay(d); }}  /* sadece tarihi tıklayınca da aynı */
+                        >
+                          {d.getDate()}
+                        </div>
                         <div className="list">
                           {dayEvs.slice(0, 3).map((ev) => (
                             <div
                               key={ev.id}
                               className="pill"
                               style={{ background: ev.color, cursor: "pointer" }}
-                              onClick={() => navigate(`/calendar/visit/${ev.id}`)}
+                              onClick={(e) => { /* pill’e tıklandığında hücre onClick tetiklenmesin */
+                                e.stopPropagation();
+                                navigate(`/calendar/visit/${ev.id}`);
+                              }}
                               title={`${ev.title} • ${ev.employeeName || ""} • ${ev.storeName || ""}`}
                             >
                               <span className={`badge xs ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
@@ -626,7 +601,7 @@ export default function VisitCalendar() {
                               </span>
                             </div>
                           ))}
-                          {dayEvs.length > 3 && <div className="more">+{dayEvs.length - 3} daha</div>}
+                          {dayEvs.length > 3 && <div className="more" onClick={(e)=>{e.stopPropagation(); goToDay(d);}}>+{dayEvs.length - 3} daha</div>}
                         </div>
                       </div>
                     );
@@ -673,7 +648,7 @@ export default function VisitCalendar() {
 
                 <div className="field">
                   <label>Tarih</label>
-                  <input type="date" value={toDateInput(modalDate)} readOnly/>
+                  <input type="date" value={toDateInput(modalDate)} readOnly />
                 </div>
 
                 <div className="field">
@@ -683,7 +658,7 @@ export default function VisitCalendar() {
                       ? `${pad2(Math.floor(modalDefaults.startMin/60))}:${pad2(modalDefaults.startMin%60)}`
                       : "09:00"
                   }>
-                    {Array.from({ length: 24 * 60 / 15 }, (_, i) => {
+                    {Array.from({ length: 96 }, (_, i) => {
                       const m = i * 15;
                       return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
                     }).map((t) => <option key={t} value={t}>{t}</option>)}
@@ -697,7 +672,7 @@ export default function VisitCalendar() {
                       ? `${pad2(Math.floor(modalDefaults.endMin/60))}:${pad2(modalDefaults.endMin%60)}`
                       : "10:00"
                   }>
-                    {Array.from({ length: 24 * 60 / 15 }, (_, i) => {
+                    {Array.from({ length: 96 }, (_, i) => {
                       const m = i * 15;
                       return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
                     }).map((t) => <option key={t} value={t}>{t}</option>)}
@@ -761,7 +736,6 @@ export default function VisitCalendar() {
                   </div>
                 </div>
 
-                {/* ▼▼▼ Güncellendi: Başlık yerine Ziyaret Türü seçimi */}
                 <div className="field full">
                   <label>Ziyaret Türü</label>
                   <select name="visitType" defaultValue="PERIYODIK" required>
@@ -771,7 +745,6 @@ export default function VisitCalendar() {
                     <option value="ILK_ZIYARET">{VISIT_TYPE_TR.ILK_ZIYARET}</option>
                   </select>
                 </div>
-                {/* ▲▲▲ */}
 
                 <div className="field full">
                   <label>Notlar</label>

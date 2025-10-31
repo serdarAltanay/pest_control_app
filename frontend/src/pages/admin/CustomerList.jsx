@@ -15,6 +15,19 @@ const PERIOD_TR = {
   UCAYLIK: "3 Aylık",
 };
 
+// FREE müşteriyi yakalamak için yardımcı (title/code/segment vb.)
+const isFreeCustomer = (c) => {
+  const code  = (c?.code  || "").toUpperCase();
+  const title = (c?.title || c?.fullName || c?.name || "").toUpperCase();
+  const seg   = (c?.segment || c?.tier || c?.plan || "").toUpperCase();
+  return (
+    code === "FREE" ||
+    title === "FREE" ||
+    title.includes("[FREE]") ||
+    seg === "FREE"
+  );
+};
+
 export default function CustomerList() {
   const navigate = useNavigate();
 
@@ -36,7 +49,10 @@ export default function CustomerList() {
     try {
       setLoading(true);
       const { data } = await api.get("/customers");
-      setCustomers(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      // FREE müşterileri gösterme
+      const cleaned = list.filter((c) => !isFreeCustomer(c));
+      setCustomers(cleaned);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Müşteri listesi alınamadı");
     } finally {
@@ -48,7 +64,7 @@ export default function CustomerList() {
     fetchCustomers();
   }, []);
 
-  // Arama filtresi
+  // Arama filtresi (temizlenmiş liste üzerinde)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return customers;
@@ -106,7 +122,6 @@ export default function CustomerList() {
           />
 
           <div className="right-controls">
-            {/* Export yeri şimdilik pasif */}
             <div className="export" aria-disabled>
               Export
             </div>
@@ -130,7 +145,6 @@ export default function CustomerList() {
           <table className="customer-table">
             <thead>
               <tr>
-                {/* Durum sütunu kaldırıldı */}
                 <th>Müşteri Kod</th>
                 <th>Müşteri</th>
                 <th>Şehir</th>
@@ -212,6 +226,7 @@ export default function CustomerList() {
           </table>
         </div>
 
+        {/* Sayfalama ve sayaçlar filtrelenmiş listeye göre */}
         <div className="pagination">
           <button
             className="page-btn"

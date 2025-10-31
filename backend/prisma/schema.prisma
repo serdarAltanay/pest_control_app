@@ -109,15 +109,15 @@ enum AccessRole {
 }
 
 model AccessOwner {
-  id           Int        @id @default(autoincrement())
-  email        String     @unique
-  password     String
-  firstName    String?
-  lastName     String?
-  phone        String?
-  profileImage String?
-  role         AccessRole @default(CALISAN)
-  isActive     Boolean    @default(true)
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
+  password  String
+  firstName String?
+  lastName  String?
+  phone     String?
+  // profileImage String?
+  role      AccessRole @default(CALISAN)
+  isActive  Boolean    @default(true)
 
   lastLoginAt   DateTime?
   lastProfileAt DateTime?

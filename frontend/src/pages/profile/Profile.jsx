@@ -1,4 +1,3 @@
-// src/pages/profile/Profile.jsx
 import { useEffect, useState, useRef, useContext, useCallback } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios.js";
@@ -65,10 +64,11 @@ export default function Profile() {
     );
   }
 
-  // AccessOwner tespiti: JWT role 'customer' + accessOwnerRole alanının varlığı
+  // Rol kontrolleri
   const isAccessOwner = profile.role === "customer" && !!profile.accessOwnerRole;
+  const isAdminOrEmployee = profile.role === "admin" || profile.role === "employee";
 
-  // Görünen ad: AccessOwner -> first/last > fullName > contact/title > email
+  // Görünen ad
   const visibleName =
     [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
     profile.fullName ||
@@ -77,7 +77,9 @@ export default function Profile() {
     profile.email ||
     "—";
 
-  const avatarUrl = getAvatarUrl(profile?.profileImage);
+  const avatarUrl = isAdminOrEmployee
+    ? (getAvatarUrl(profile?.profileImage) || "/noavatar.jpg")
+    : "/noavatar.jpg";
 
   const handleAvatarClick = () => setEditModalOpen(true);
   const handleFileChange = (e) => {
@@ -160,10 +162,7 @@ export default function Profile() {
     }
   };
 
-  /** İsim kalıcılığı:
-   *  - AccessOwner ise firstName/lastName güncellenir
-   *  - Aksi halde fullName alanı yazılır
-   */
+  /** İsim kalıcılığı */
   const persistName = async (fullName) => {
     const wantsSplit = isAccessOwner || "firstName" in profile || "lastName" in profile;
     const payload = wantsSplit ? splitFullName(fullName) : { fullName };
@@ -206,13 +205,11 @@ export default function Profile() {
                 <span>{profile.email || "—"}</span>
               </div>
 
-              {/* Sistem rolü (JWT rolü) */}
               <div className="profile-field">
                 <strong>Sistem Rolü:</strong>
                 <span className="badge">{profile.role}</span>
               </div>
 
-              {/* AccessOwner iş rolü */}
               {isAccessOwner && (
                 <div className="profile-field">
                   <strong>Erişim Rolü:</strong>
@@ -222,7 +219,6 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* (Opsiyonel) şirket alanı vb. sağlanmışsa göster */}
               {"company" in profile && (
                 <div className="profile-field">
                   <strong>Şirket:</strong>
@@ -231,28 +227,31 @@ export default function Profile() {
               )}
             </div>
 
-            <div className="profile-avatar-block">
-              <div className="profile-avatar" onClick={handleAvatarClick} role="button" tabIndex={0}>
-                <img src={avatarUrl} alt="Profil Fotoğrafı" />
-                <div className="avatar-overlay">
-                  <span>Düzenle</span>
+            {/* Avatar BLOĞU: Sadece admin & employee için */}
+            {isAdminOrEmployee && (
+              <div className="profile-avatar-block">
+                <div className="profile-avatar" onClick={handleAvatarClick} role="button" tabIndex={0}>
+                  <img src={avatarUrl} alt="Profil Fotoğrafı" />
+                  <div className="avatar-overlay">
+                    <span>Düzenle</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="avatar-actions">
-                <button className="btn danger" onClick={handleRemoveAvatar}>
-                  Profil Fotoğrafını Kaldır
-                </button>
-              </div>
+                <div className="avatar-actions">
+                  <button className="btn danger" onClick={handleRemoveAvatar}>
+                    Profil Fotoğrafını Kaldır
+                  </button>
+                </div>
 
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-                accept="image/*"
-              />
-            </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  accept="image/*"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -267,7 +266,8 @@ export default function Profile() {
           />
         )}
 
-        {editModalOpen && (
+        {/* Avatar düzenleme MODALI: Sadece admin & employee */}
+        {editModalOpen && isAdminOrEmployee && (
           <div className="modal-backdrop">
             <div className="modal-content">
               <h2>Profil Fotoğrafını Güncelle</h2>

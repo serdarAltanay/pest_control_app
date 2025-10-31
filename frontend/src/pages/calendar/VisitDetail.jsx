@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import { getAvatarUrl } from "../../utils/getAssetUrl";
 import "./VisitDetail.scss";
 
 /* ───────── helpers ───────── */
@@ -47,15 +48,14 @@ async function updateStatus(id, status) {
   catch (e) { toast.error(e?.response?.data?.error || "Durum güncellenemedi"); return false; }
 }
 async function listStoreVisits(storeId) {
-  // iki alias’tan birini mutlaka yakalar
   try { const { data } = await api.get(`/stores/${storeId}/visits`); return Array.isArray(data) ? data : []; }
   catch {
-    const { data } = await api.get(`/visits/store/${storeId}`); 
+    const { data } = await api.get(`/visits/store/${storeId}`);
     return Array.isArray(data) ? data : [];
   }
 }
 
-/* Event’e en makul visitId’yi bağla: aynı gün ve (varsa) saat çakışması öncelikli */
+/* Event’e en makul visitId’yi bağla */
 function pickVisitIdForEvent(event, storeVisits) {
   if (!event?.start || !Array.isArray(storeVisits)) return null;
   const evStart = new Date(event.start);
@@ -63,7 +63,6 @@ function pickVisitIdForEvent(event, storeVisits) {
   const evSMin = evStart.getHours() * 60 + evStart.getMinutes();
   const evEMin = evEnd.getHours() * 60 + evEnd.getMinutes();
 
-  // 1) Aynı gün olanları filtrele
   const sameDayVisits = storeVisits.filter(v => {
     const vd = v?.date ? new Date(v.date) : null;
     return vd && sameDay(vd, evStart);
@@ -71,21 +70,18 @@ function pickVisitIdForEvent(event, storeVisits) {
 
   if (sameDayVisits.length === 0) return null;
 
-  // 2) Saat aralığı mevcutsa çakışanlar
   const overlappers = sameDayVisits.filter(v => {
     const s = minutesOf(v?.startTime);
     const e = minutesOf(v?.endTime);
     if (s == null || e == null) return false;
-    return (s < evEMin) && (e > evSMin); // aralıklar çakışıyor mu?
+    return (s < evEMin) && (e > evSMin);
   });
 
-  // 3) Öncelik: çakışan varsa en yakını; yoksa aynı gün en yeni kayıt
   const pick = (arr) => {
     if (arr.length === 0) return null;
     arr.sort((a, b) => {
       const ad = new Date(a.date).getTime();
       const bd = new Date(b.date).getTime();
-      // en yakın/son kayıt
       return bd - ad;
     });
     return arr[0]?.id ?? null;
@@ -128,7 +124,6 @@ export default function VisitDetail() {
         setEvent(ev);
         setStore(ev.store || null);
 
-        // Ziyaret eşlemesi (EK-1 göstermek için)
         if (ev.storeId) {
           try {
             const visits = await listStoreVisits(ev.storeId);
@@ -148,8 +143,9 @@ export default function VisitDetail() {
     })();
   }, [eventId, navigate]);
 
+  /* Görüntülenecek personel adı ve avatarı */
   const employeeDisplay = useMemo(() => {
-    if (!event) return "";
+    if (!event) return "-";
     return (
       event.employee?.fullName ||
       event.employeeName ||
@@ -157,6 +153,12 @@ export default function VisitDetail() {
       event.employee?.email ||
       (event.employeeId ? `Personel #${event.employeeId}` : "-")
     );
+  }, [event]);
+
+  const employeeAvatar = useMemo(() => {
+    const raw = event?.employee?.profileImage || null;
+    const url = getAvatarUrl(raw);
+    return url || "/noavatar.jpg";
   }, [event]);
 
   const plannedByDisplay = useMemo(() => event?.plannedByName || "-", [event]);
@@ -212,7 +214,7 @@ export default function VisitDetail() {
           <div className="actions">
             {storeDetailPath && <Link className="btn ghost" to={storeDetailPath}>Mağaza Detayı</Link>}
 
-            {/* Admin/Employee: Ziyaret tamamlandıysa EK-1 Görüntüle + Rapor Doldur */}
+            {/* Admin/Employee */}
             {!isCustomer && canViewEk1 && ek1PreviewPath && (
               <Link to={ek1PreviewPath} className="btn">EK-1 Görüntüle</Link>
             )}
@@ -220,7 +222,7 @@ export default function VisitDetail() {
               <Link to={`/admin/stores/${store.id}/ek1`} className="btn">EK-1 Rapor Doldur</Link>
             )}
 
-            {/* Müşteri: sadece tamamlandıysa EK-1 Görüntüle */}
+            {/* Müşteri */}
             {isCustomer && canViewEk1 && ek1PreviewPath && (
               <Link to={ek1PreviewPath} className="btn">EK-1 Görüntüle</Link>
             )}
@@ -229,19 +231,14 @@ export default function VisitDetail() {
 
         {/* Bilgiler */}
         <div className="vd-grid">
+          {/* Ziyaret Bilgisi */}
           <div className="card info">
             <div className="sec-title">Ziyaret Bilgisi</div>
 
             <div className="kv"><div className="k">Tarih</div><div className="v">{fmtDate(event.start)}</div></div>
             <div className="kv"><div className="k">Saat</div><div className="v">{fmtTime(event.start)} – {fmtTime(event.end)} ({durationMin} dk)</div></div>
-            <div className="kv">
-              <div className="k">Personel</div>
-              <div className="v">
-                <span className="chip" style={{ background: event.color, color: "#0b1220" }} title={employeeDisplay}>
-                  {employeeDisplay}
-                </span>
-              </div>
-            </div>
+
+            {/* Personel satırı BURADAN kaldırıldı; ayrı kartta gösteriliyor */}
 
             {/* Planlayan bilgisi müşteri görmesin */}
             {!isCustomer && (
@@ -258,7 +255,7 @@ export default function VisitDetail() {
               <div className="v"><span className={`badge ${statusClass(event.status)}`}>{statusLabel(event.status)}</span></div>
             </div>
 
-            {/* Admin/Employee durumu değiştirebilir, müşteri göremez */}
+            {/* Admin/Employee durumu değiştirebilir */}
             {!isCustomer && (
               <div className="kv">
                 <div className="k">Durumu Değiştir</div>
@@ -288,6 +285,7 @@ export default function VisitDetail() {
             )}
           </div>
 
+          {/* Mağaza Bilgisi */}
           <div className="card info">
             <div className="sec-title">Mağaza Bilgisi</div>
             {store ? (
@@ -301,6 +299,18 @@ export default function VisitDetail() {
                 <div className="kv"><div className="k">Durum</div><div className="v">{store.isActive ? "Aktif" : "Pasif"}</div></div>
               </>
             ) : <div>Mağaza bilgisi bulunamadı.</div>}
+          </div>
+
+          {/* Personel Kartı (yeni) */}
+          <div className="card person-card">
+            <div className="sec-title">Personel</div>
+            <div className="person">
+              <img className="avatar" src={employeeAvatar} alt="Personel" />
+              <div className="meta">
+                <div className="label">Uygulayıcı personel:</div>
+                <div className="name">{employeeDisplay}</div>
+              </div>
+            </div>
           </div>
         </div>
 
