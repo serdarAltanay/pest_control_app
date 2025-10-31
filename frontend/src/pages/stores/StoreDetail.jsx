@@ -1,3 +1,4 @@
+// src/pages/stores/StoreDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
@@ -142,7 +143,6 @@ export default function StoreDetail() {
           const { data } = await api.get(`/stores/${storeId}/visits`);
           list = data;
         }
-        // güvenli sıralama (yeniden eskiye)
         list = Array.isArray(list) ? [...list].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
         setVisits(list);
       } catch {}
@@ -186,9 +186,36 @@ export default function StoreDetail() {
     return `${s} / ${e}`;
   };
 
+  // ✉️ Ziyaret maili (erişim sahiplerine)
+  const handleSendVisitMail = async (visitId) => {
+    const ok = window.confirm("Erişim sahiplerine bilgilendirme e-postası gönderilecek. Onaylıyor musunuz?");
+    if (!ok) return;
+    try {
+      await api.post(`/visits/${visitId}/email-summary`);
+      toast.success("Bilgilendirme e-postası gönderildi.");
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "E-posta gönderilemedi");
+    }
+  };
+
+  // 🗑️ Ziyaret sil
+  const handleDeleteVisit = async (visitId) => {
+    const ok = window.confirm("Bu ziyaret kaydını silmek istediğinize emin misiniz?");
+    if (!ok) return;
+    try {
+      await api.delete(`/visits/${visitId}`);
+      setVisits((prev) => prev.filter((v) => v.id !== visitId));
+      toast.success("Ziyaret silindi.");
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Silinemedi");
+    }
+  };
+
+  // 🗑️ Mağaza sil — (eksikti) tekrar eklendi
   const handleDeleteStore = async () => {
     if (!store) return;
-    if (!window.confirm("Bu mağazayı silmek istediğinize emin misiniz?")) return;
+    const ok = window.confirm("Bu mağazayı silmek istediğinize emin misiniz?");
+    if (!ok) return;
     try {
       await api.delete(`/stores/${storeId}`);
       toast.success("Mağaza silindi");
@@ -220,10 +247,7 @@ export default function StoreDetail() {
             <Link to={`/admin/stores/${storeId}/ek1`} className="tab">EK-1 Rapor İşleri</Link>
             <Link to={`/admin/stores/${storeId}/stations`} className="tab">İstasyonlar</Link>
             <Link to={`/admin/stores/${storeId}/nonconformities`} className="tab">Uygunsuzluklar</Link>
-            {/* 🔁 "Aktivite Raporları" → "Trend Analizi" */}
             <Link to={`/admin/stores/${storeId}/analytics`} className="tab">Trend Analizi</Link>
-
-            {/* 🔁 "Dosyalar" → "Raporlar" */}
             <Link to={`/admin/stores/${storeId}/reports`} className="tab">Raporlar</Link>
           </div>
         </div>
@@ -313,7 +337,6 @@ export default function StoreDetail() {
                       </span>
                     </td>
                     <td className="actions">
-                      {/* DÜZENLE → direkt edit rotası, bubbling engelleniyor */}
                       <Link
                         className="btn"
                         to={`/admin/stations/${s.id}/edit`}
@@ -326,25 +349,20 @@ export default function StoreDetail() {
                       >
                         Düzenle
                       </Link>
-
-                      {/* Liste butonu da satır tıklamasını tetiklemesin */}
                       <Link
                         className="btn ghost"
                         to={`/admin/stores/${storeId}/stations`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
+                        onClick={(e) => { e.stopPropagation(); }}
                       >
                         Liste
                       </Link>
-
                       {ACT_PATH[s.type] ? (
                         <button
                           type="button"
                           className="btn primary"
                           onClick={(e) => {
                             e.preventDefault();
-                            e.stopPropagation(); // satırın onClick’ini iptal et
+                            e.stopPropagation();
                             const slug = ACT_PATH[s.type];
                             navigate(`/admin/stores/${storeId}/stations/${s.id}/activation/${slug}`);
                           }}
@@ -396,14 +414,15 @@ export default function StoreDetail() {
                       <td className="firm">{store?.name || "—"}</td>
                       <td className="type">{VISIT_TYPE_TR[v.visitType] || v.visitType || "—"}</td>
                       <td className="user">
-                        {Array.isArray(v.employees)
-                          ? v.employees.join(", ")
-                          : (typeof v.employees === "string" ? v.employees : "—")}
+                        {typeof v.employees === "string" ? v.employees :
+                          (Array.isArray(v.employees) ? v.employees.join(", ") : "—")}
                       </td>
                       <td className="row-actions">
-                        <button className="btn">Mail</button>
-                        <button className="btn warn">Gözlem</button>
-                        <button className="btn danger">Sil</button>
+                        {/* ✉️ Mail */}
+                        <button className="btn" onClick={() => handleSendVisitMail(v.id)}>Mail</button>
+                        {/* 🗑️ Sil */}
+                        <button className="btn danger" onClick={() => handleDeleteVisit(v.id)}>Sil</button>
+                        {/* EK-1 Önizleme / PDF */}
                         <Link
                           className="btn primary"
                           to={`/admin/stores/${storeId}/visits/${v.id}/preview`}
@@ -411,6 +430,7 @@ export default function StoreDetail() {
                         >
                           EK-1
                         </Link>
+                        {/* Gözlem butonu KALDIRILDI */}
                       </td>
                     </tr>
                   ))}

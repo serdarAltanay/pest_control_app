@@ -14,22 +14,34 @@ const isAuthPath = (u = "") =>
   /\/auth\/(login|refresh|logout)(?:[/?#]|$)/.test(String(u));
 
 /** ───────────────────── Instances ───────────────────── */
-// Normal istekler (interceptor’lü)
 const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: true, // refresh cookie için şart
+  withCredentials: true,
 });
 
-// Interceptor’suz “çıplak” instance (sadece REFRESH ve özel durumlar için)
 const apiBare = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
 });
 
-/** Dışarı açılan: Bearer eklemeyen & refresh denemeyen tek-seferlik yardımcı */
-export function apiNoRefresh(cfg = {}) {
-  const headers = { ...(cfg.headers || {}), Authorization: "" };
-  return apiBare({ ...cfg, headers });
+/** ───────────────────── Auth Utils ───────────────────── */
+export function clearAuth() {
+  try {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("role");
+    localStorage.removeItem("fullName");
+    localStorage.removeItem("name");
+    localStorage.removeItem("email");
+    localStorage.removeItem("profileImage");
+    localStorage.removeItem("accessOwnerRole");
+  } catch {}
+  try { delete api.defaults.headers.common.Authorization; } catch {}
+}
+
+export function setAuthToken(token) {
+  if (!token) { clearAuth(); return; }
+  localStorage.setItem("accessToken", token);
+  api.defaults.headers.common.Authorization = `Bearer ${token}`;
 }
 
 /** ───────────────────── Request ───────────────────── */
@@ -37,15 +49,12 @@ api.interceptors.request.use((config) => {
   const url = String(config.url || "");
   const t = localStorage.getItem("accessToken");
 
-  // AUTH rotalarında BEARER GÖNDERME: defaults'taki Authorization'ı da override et
   if (isAuthPath(url)) {
     config.headers = config.headers || {};
-    // Boş string ile default Authorization'ı ez → sunucuya Bearer gitmez
     config.headers.Authorization = "";
     return config;
   }
 
-  // Diğer tüm isteklerde access token'ı ekle
   if (t) {
     config.headers = config.headers || {};
     if (!config.headers.Authorization) {
@@ -73,26 +82,19 @@ api.interceptors.response.use(
     const original = error.config || {};
     const status = error.response?.status;
     const url = String(original.url || "");
-
-    // Heartbeat gibi isteklerde refresh denemesi yapma
     const suppressRefresh =
       original._isHeartbeat === true || /\/presence\/heartbeat$/.test(url);
 
-    // 403: yetki yok → guard karar versin
     if (status === 403) return Promise.reject(error);
 
-    // 401 → access süresi dolmuş olabilir
     if (status === 401) {
-      // auth rotası / zaten bir kez denenmiş / suppress ise bırak
       if (suppressRefresh || original._retry || isAuthPath(url)) {
         return Promise.reject(error);
       }
-
       original._retry = true;
 
       try {
         if (isRefreshing) {
-          // Devam eden refresh’i bekle
           const newToken = await enqueueWaiter();
           if (newToken) {
             original.headers = original.headers || {};
@@ -103,18 +105,14 @@ api.interceptors.response.use(
 
         isRefreshing = true;
 
-        // REFRESH'i interceptor’suz ve BEARER’sız yap
         const r = await apiBare.post("/auth/refresh", {}, { headers: { Authorization: "" } });
         const token = r.data?.accessToken;
         if (!token) throw new Error("No accessToken from refresh");
 
-        localStorage.setItem("accessToken", token);
-        api.defaults.headers.common.Authorization = `Bearer ${token}`;
-
+        setAuthToken(token);
         isRefreshing = false;
         flushWaiters(null, token);
 
-        // Orijinal isteği yeni token ile tekrar et
         original.headers = original.headers || {};
         original.headers.Authorization = `Bearer ${token}`;
         return api(original);
@@ -122,20 +120,8 @@ api.interceptors.response.use(
         isRefreshing = false;
         flushWaiters(e, null);
 
-        // BEST-EFFORT: refresh cookie'yi sunucudan temizlet (Authorization'sız)
         try { await apiBare.post("/auth/logout", {}, { headers: { Authorization: "" } }); } catch {}
-
-        // FE temizliği
-        try {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("role");
-          localStorage.removeItem("fullName");
-          localStorage.removeItem("name");
-          localStorage.removeItem("email");
-          localStorage.removeItem("profileImage");
-          localStorage.removeItem("accessOwnerRole");
-        } catch {}
-
+        clearAuth();
         return Promise.reject(e);
       }
     }
@@ -143,5 +129,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export { apiBare };
+export function apiNoRefresh(cfg = {}) {
+  const headers = { ...(cfg.headers || {}), Authorization: "" };
+  return apiBare({ ...cfg, headers });
+}
 
 export default api;
