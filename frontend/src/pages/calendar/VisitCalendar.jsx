@@ -156,10 +156,29 @@ function dayWindow(d) {
   return { ws, we };
 }
 
-/* ───────── Component ───────── */
 export default function VisitCalendar() {
   const navigate = useNavigate();
-  const isAdmin = (localStorage.getItem("role") || "").toLowerCase() === "admin";
+
+  /* Profil → rol ve kendi id’si (employee ise) */
+  const [me, setMe] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get("/profile");
+        setMe(data || null);
+      } catch {
+        setMe(null);
+      }
+    })();
+  }, []);
+  const localRole = (localStorage.getItem("role") || "").toLowerCase();
+  const role = String(me?.role || localRole || "").toLowerCase();
+  const selfId = Number(me?.id ?? me?.userId ?? me?.employeeId ?? 0) || null;
+
+  const isAdmin = role === "admin";
+  const isEmployee = role === "employee";
+  const isPlanner = isAdmin || isEmployee;
+
   const dayCols = useResponsiveDayCols();
 
   const [view, setView] = useState(VIEW.DAY);
@@ -219,6 +238,14 @@ export default function VisitCalendar() {
   // Employees / Customers
   useEffect(() => { (async () => setEmployees(await fetchEmployees()))(); }, []);
   useEffect(() => { (async () => setCustomers(await fetchCustomers()))(); }, []);
+
+  // Employee list’e kendini ekle (liste dönmezse select kilitlenmesin)
+  useEffect(() => {
+    if (isEmployee && selfId && !employees.find(e => e.id === selfId)) {
+      setEmployees(prev => [{ id: selfId, fullName: me?.fullName || me?.name || me?.email || `Personel #${selfId}` }, ...prev]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEmployee, selfId, me]);
 
   // Customer → Stores
   useEffect(() => {
@@ -342,13 +369,13 @@ export default function VisitCalendar() {
   };
 
   const openCreateForDay = (day, defaults) => {
-    if (!isAdmin) return;
+    if (!isPlanner) return;
     setModalDate(startOfDay(day));
     setModalDefaults(defaults || null);
     setModalOpen(true);
   };
 
-  /* Yeni: Ay görünümünde bir güne tıklayınca Gün görünümüne geç */
+  /* Ay görünümünde bir güne tıklayınca Gün görünümüne geç */
   const goToDay = (d) => {
     setAnchor(new Date(d));
     setView(VIEW.DAY);
@@ -357,12 +384,13 @@ export default function VisitCalendar() {
   const formRef = useRef(null);
   const onCreate = async (e) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!isPlanner) return;
     const form = formRef.current;
     if (!form) return toast.error("Form bulunamadı.");
 
     const fd = new FormData(form);
-    const employeeId = Number(fd.get("employeeId") || 0);
+    // Employee rolünde → her zaman KENDİ id’si
+    const employeeId = isEmployee ? (selfId || 0) : Number(fd.get("employeeId") || 0);
     const pickedStoreId = Number(fd.get("storeId") || selectedStoreId || 0);
 
     const visitTypeKey = fd.get("visitType") || "";
@@ -469,9 +497,9 @@ export default function VisitCalendar() {
           </div>
         )}
 
-        {!isAdmin && (
+        {!isPlanner && (
           <div className="vc-tip card">
-            Bu takvimi admin ve çalışanlar görebilir. <b>Yeni ziyaret planlama sadece admin içindir.</b>
+            Bu takvimi admin ve çalışanlar görebilir. <b>Yeni ziyaret planlama admin ve personel içindir.</b>
           </div>
         )}
 
@@ -573,12 +601,12 @@ export default function VisitCalendar() {
                       <div
                         className={`cell ${isOtherMonth ? "muted" : ""}`}
                         key={key}
-                        onClick={() => goToDay(d)}  /* ↩ Yeni: hücreye tıkla → Gün görünümü */
+                        onClick={() => goToDay(d)}
                         title={`${toDateInput(d)} gününe git`}
                       >
                         <div
                           className="date"
-                          onClick={(e) => { e.stopPropagation(); goToDay(d); }}  /* sadece tarihi tıklayınca da aynı */
+                          onClick={(e) => { e.stopPropagation(); goToDay(d); }}
                         >
                           {d.getDate()}
                         </div>
@@ -588,7 +616,7 @@ export default function VisitCalendar() {
                               key={ev.id}
                               className="pill"
                               style={{ background: ev.color, cursor: "pointer" }}
-                              onClick={(e) => { /* pill’e tıklandığında hücre onClick tetiklenmesin */
+                              onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/calendar/visit/${ev.id}`);
                               }}
@@ -681,12 +709,20 @@ export default function VisitCalendar() {
 
                 <div className="field">
                   <label>Personel</label>
-                  <select name="employeeId" required>
-                    <option value="">Seçin…</option>
+                  <select
+                    name="employeeId"
+                    required
+                    value={isEmployee ? (selfId || "") : undefined}
+                    defaultValue={isEmployee ? undefined : ""}
+                    onChange={() => {}}
+                    disabled={isEmployee}
+                  >
+                    {!isEmployee && <option value="">Seçin…</option>}
                     {employees.map(e => (
                       <option key={e.id} value={e.id}>{e.fullName || e.name || e.email}</option>
                     ))}
                   </select>
+                  {isEmployee && <small>Kendi adınıza planlıyorsunuz.</small>}
                 </div>
 
                 {/* Müşteri -> Mağaza */}

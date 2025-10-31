@@ -160,6 +160,8 @@ router.get("/mine", auth, async (req, res) => {
         latitude: true,
         longitude: true,
         customerId: true,
+        createdAt: true,   // ✨ eklendi
+        updatedAt: true,   // ✨ eklendi
       },
     });
     return res.json(stores);
@@ -197,6 +199,8 @@ router.get("/", auth, async (req, res, next) => {
         latitude: true,
         longitude: true,
         customerId: true,
+        createdAt: true,   // ✨ eklendi
+        updatedAt: true,   // ✨ eklendi
       },
     });
     return res.json({ items: stores });
@@ -227,6 +231,7 @@ router.get(
             phone: true,
             manager: true,
             isActive: true,
+            createdAt: true, // (opsiyonel)
           },
         });
         return res.json(latest);
@@ -244,6 +249,7 @@ router.get(
           phone: true,
           manager: true,
           isActive: true,
+          createdAt: true, // (opsiyonel)
         },
       });
 
@@ -280,6 +286,8 @@ router.get(
           latitude: true,
           longitude: true,
           customerId: true,
+          createdAt: true,   // ✨ eklendi
+          updatedAt: true,   // ✨ eklendi
         },
       });
       res.json(list);
@@ -352,6 +360,8 @@ router.get("/:id", auth, async (req, res) => {
         pestType: true,
         placeType: true,
         areaM2: true,
+        createdAt: true,   // ✨ eklendi
+        updatedAt: true,   // ✨ eklendi
       },
     });
     if (!store) return res.status(404).json({ message: "Mağaza bulunamadı" });

@@ -1,4 +1,3 @@
-// routes/schedule.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
@@ -19,11 +18,9 @@ const asStatus = (val) => {
 };
 
 /* ========== erişim: müşterinin görebileceği mağazalar ========== */
-/* AccessOwner → AccessGrant ana yol + backward-compat (customerMembership/customerUser/token) */
 async function getAccessibleStoreIdsForCustomer(prisma, user) {
   const storeIds = new Set();
 
-  // NEW PATH: AccessOwner → AccessGrant
   let ownerId = Number(
     user?.accessOwnerId ??
     user?.ownerId ??
@@ -59,7 +56,6 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
     }
   }
 
-  // BACK-COMPAT: customerMembership
   const uid = Number(user?.id ?? user?.userId);
   if (prisma.customerMembership?.findMany && Number.isFinite(uid)) {
     const mems = await prisma.customerMembership.findMany({
@@ -75,7 +71,6 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
     }
   }
 
-  // BACK-COMPAT: customerUser
   if (prisma.customerUser?.findUnique && Number.isFinite(uid)) {
     const cu = await prisma.customerUser.findUnique({
       where: { id: uid },
@@ -88,7 +83,6 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
     }
   }
 
-  // BACK-COMPAT: token payload
   if (Array.isArray(user?.storeIds)) {
     user.storeIds.forEach((x) => Number.isFinite(Number(x)) && storeIds.add(Number(x)));
   }
@@ -136,9 +130,6 @@ async function resolvePlannerName(prisma, role, id, u) {
 
 /* =========================================
    GET /api/schedule/events
-   - admin/employee/customer
-   - tarih aralığı çakışanları döner
-   - employeeId/storeId/ scope=mine destekli
 ========================================= */
 router.get(
   "/events",
@@ -158,7 +149,6 @@ router.get(
 
       const whereAND = [{ start: { lt: to } }, { end: { gt: from } }];
 
-      // MÜŞTERİ → erişebildiği mağazalar
       if (role === "customer") {
         const allowedStoreIds = await getAccessibleStoreIdsForCustomer(prisma, req.user);
         if (!allowedStoreIds.length) return res.json([]);
@@ -166,13 +156,11 @@ router.get(
         whereAND.push({ storeId: { in: allowedStoreIds } });
       }
 
-      // ÇALIŞAN → scope=mine ise kendi görevleri
       if (role === "employee" && scope === "mine") {
         const eid = Number(req.user?.id ?? req.user?.userId);
         if (Number.isFinite(eid)) whereAND.push({ employeeId: eid });
       }
 
-      // Serbest filtreler
       if (employeeIdQ) whereAND.push({ employeeId: employeeIdQ });
       if (storeIdQ)    whereAND.push({ storeId: storeIdQ });
 
@@ -183,7 +171,6 @@ router.get(
         orderBy: { start: "asc" },
       });
 
-      // ad/etiket haritaları
       const empIds   = Array.from(new Set(list.map(x => x.employeeId).filter(Boolean)));
       const storeIds = Array.from(new Set(list.map(x => x.storeId).filter(Boolean)));
 
@@ -232,23 +219,36 @@ router.get(
 
 /* =========================================
    POST /api/schedule/events
-   - admin (istersen employee de ekleyebilirsin)
+   - admin ve employee
+   - employee yalnızca KENDİ adına planlayabilir
    - 15 dk gridi, çakışma kontrolü
    - planlayan bilgisini set eder
    - bildirim + atanana e-posta gönderir
 ========================================= */
 router.post(
   "/events",
-  auth, roleCheck(["admin"]),
+  auth, roleCheck(["admin","employee"]),
   async (req, res) => {
     try {
       const title      = String(req.body?.title || "").trim() || "Ziyaret";
       const notes      = req.body?.notes ? String(req.body.notes) : null;
-      const employeeId = Number(req.body?.employeeId) || null;
+      let   employeeId = Number(req.body?.employeeId) || null;
       const storeId    = Number(req.body?.storeId) || null;
       const start      = req.body?.start ? new Date(req.body.start) : null;
       const end        = req.body?.end ? new Date(req.body.end) : null;
       const status     = req.body?.status ? asStatus(req.body.status) : null;
+
+      const reqRole = (req.user?.role || "").toLowerCase();
+      const selfId  = Number(req.user?.id ?? req.user?.userId) || null;
+
+      // Employee → sadece kendi adına planlayabilir
+      if (reqRole === "employee") {
+        if (!selfId) return res.status(403).json({ error: "Yetki yok (kimlik bulunamadı)" });
+        if (employeeId && employeeId !== selfId) {
+          return res.status(403).json({ error: "Çalışan yalnızca kendi adına ziyaret planlayabilir." });
+        }
+        employeeId = selfId;
+      }
 
       if (!employeeId) return res.status(400).json({ error: "employeeId zorunludur" });
       if (!storeId)    return res.status(400).json({ error: "storeId zorunludur" });
@@ -265,10 +265,9 @@ router.post(
       if (conflict) return res.status(409).json({ error: "Personelin aynı zamanda başka bir ziyareti var." });
 
       // planlayan bilgisi
-      const u = req.user ?? {};
-      const plannedById   = Number(u.id ?? u.userId) || null;
-      const plannedByRole = u.role ?? null;
-      const plannedByName = await resolvePlannerName(prisma, plannedByRole, plannedById, u);
+      const plannedById   = Number(req.user?.id ?? req.user?.userId) || null;
+      const plannedByRole = req.user?.role ?? null;
+      const plannedByName = await resolvePlannerName(prisma, plannedByRole, plannedById, req.user);
 
       const created = await prisma.scheduleEvent.create({
         data: {
@@ -353,7 +352,7 @@ router.post(
 /* =========================================
    PUT /api/schedule/events/:id
    - employee: SADECE status günceller
-   - admin: tüm alanları güncelleyebilir (grid/çakışma kuralları korunur)
+   - admin: tüm alanları güncelleyebilir
 ========================================= */
 router.put(
   "/events/:id",
@@ -368,7 +367,6 @@ router.put(
 
       const role = (req.user?.role || "").toLowerCase();
 
-      // ÇALIŞAN: sadece status
       if (role === "employee") {
         if (!("status" in req.body)) {
           return res.status(403).json({ error: "Çalışan sadece durum (status) güncelleyebilir." });
@@ -379,7 +377,6 @@ router.put(
         return res.json({ message: "Durum güncellendi", event: updated });
       }
 
-      // ADMIN: serbest güncelleme (validasyonlu)
       const data = {};
       if ("title" in req.body) data.title = String(req.body.title || "").trim() || "Ziyaret";
       if ("notes" in req.body) data.notes = req.body.notes ? String(req.body.notes) : null;
@@ -436,7 +433,6 @@ router.put(
 
 /* =========================================
    GET /api/schedule/events/:id
-   - admin/employee/customer (müşteri: mağaza erişim kontrolü)
 ========================================= */
 router.get(
   "/events/:id",

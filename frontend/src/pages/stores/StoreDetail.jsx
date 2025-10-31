@@ -16,6 +16,7 @@ const TYPE_TR = {
   BOCEK_MONITOR: "Böcek Monitörü",
   GUVE_TUZAGI: "Güve Tuzağı",
 };
+
 const ACT_PATH = {
   FARE_YEMLEME: "rodent-bait",
   CANLI_YAKALAMA: "live-catch",
@@ -81,8 +82,6 @@ function StoreAccessList({ storeId }) {
     </table>
   );
 }
-
-
 
 export default function StoreDetail() {
   const { storeId } = useParams();
@@ -291,7 +290,6 @@ export default function StoreDetail() {
                   <th>Ad</th>
                   <th>Tür</th>
                   <th>Durum</th>
-                  <th>Aktivite</th>
                   <th>İşlem</th>
                 </tr>
               </thead>
@@ -314,9 +312,6 @@ export default function StoreDetail() {
                         {s.isActive ? "Aktif" : "Pasif"}
                       </span>
                     </td>
-                    <td>
-                      <span className="badge ghost" title="Sonraki aşamada eklenecek">—</span>
-                    </td>
                     <td className="actions">
                       {/* DÜZENLE → direkt edit rotası, bubbling engelleniyor */}
                       <Link
@@ -338,7 +333,6 @@ export default function StoreDetail() {
                         to={`/admin/stores/${storeId}/stations`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          // preventDefault gerekmez; Link kendi rotasına gider
                         }}
                       >
                         Liste
@@ -362,12 +356,9 @@ export default function StoreDetail() {
                         <button className="btn" disabled>Aktivasyon</button>
                       )}
                     </td>
-
-
                   </tr>
                 ))}
               </tbody>
-
             </table>
           )}
         </section>
@@ -468,6 +459,7 @@ export default function StoreDetail() {
               {Object.keys(metrics).length === 0 && <li>—</li>}
             </ul>
           </section>
+
           <section className="card">
             <div className="card-title with-actions">
               <span className="title-text">Erişebilenler</span>

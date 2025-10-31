@@ -6,25 +6,16 @@ import { auth, roleCheck } from "../middleware/auth.js";
 const prisma = new PrismaClient();
 const router = Router();
 
-/** Helpers */
+/* ───────── helpers ───────── */
 const parseId = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
 const parseISO = (v) => { if (!v) return null; const d = new Date(v); return Number.isFinite(+d) ? d : null; };
-const parseLimit = (v, def=20, max=200) => {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n <= 0) return def;
-  return Math.min(n, max);
-};
-const parseOffset = (v, def=0) => {
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0 ? n : def;
-};
+const parseLimit = (v, def=20, max=200) => { const n = Number(v); return (!Number.isFinite(n) || n<=0) ? def : Math.min(n,max); };
+const parseOffset = (v, def=0) => { const n = Number(v); return Number.isFinite(n) && n>=0 ? n : def; };
 
-// Employee → her mağazaya/istasyona sınırsız
-async function ensureEmployeeStoreAccess(req, storeId) {
-  return true;
-}
+/* Çalışan için şimdilik serbest (gerekirse sıkılaştırırsın) */
+async function ensureEmployeeStoreAccess(_req, _storeId){ return true; }
 
-// Customer (AccessOwner) grant kontrolü (okuma için)
+/* Customer (AccessOwner) → grant kontrolü (okuma) */
 async function customerHasStoreAccess(req, storeId) {
   if (["admin", "employee"].includes(req.user?.role)) return true;
   if (req.user?.role !== "customer") return false;
@@ -32,10 +23,7 @@ async function customerHasStoreAccess(req, storeId) {
   const ownerId = Number(req.user.id);
   if (!Number.isFinite(ownerId) || ownerId <= 0) return false;
 
-  const store = await prisma.store.findUnique({
-    where: { id: storeId },
-    select: { customerId: true },
-  });
+  const store = await prisma.store.findUnique({ where: { id: storeId }, select: { customerId: true } });
   if (!store) return false;
 
   const grant = await prisma.accessGrant.findFirst({
@@ -51,10 +39,21 @@ async function customerHasStoreAccess(req, storeId) {
   return !!grant;
 }
 
-/** ---------------- LISTE: STATION ----------------
- * GET /api/activations/stations/:stationId?limit&offset&from&to&type&risk&activity=0|1
- * admin/employee/customer
- */
+/* Tip-özgül alanları body’den çek (FARE_YEMLEME) */
+function extractRodentBaitExtras(body){
+  return {
+    deformeYem:           !!body?.deformeYem,
+    yemDegisti:           !!body?.yemDegisti,
+    deformeMonitor:       !!body?.deformeMonitor,
+    monitorDegisti:       !!body?.monitorDegisti,
+    ulasilamayanMonitor:  !!body?.ulasilamayanMonitor,
+  };
+}
+
+/* ───────────────── LISTE: STATION ─────────────────
+   GET /api/activations/stations/:stationId?limit&offset&from&to&type&risk&activity=0|1
+   admin/employee/customer
+*/
 router.get("/stations/:stationId", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
   try{
     const stationId = parseId(req.params.stationId);
@@ -67,7 +66,6 @@ router.get("/stations/:stationId", auth, roleCheck(["admin","employee","customer
       const ok = await customerHasStoreAccess(req, st.storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
-    // employee/admin → serbest
 
     const limit = parseLimit(req.query.limit, 20);
     const offset = parseOffset(req.query.offset, 0);
@@ -81,19 +79,14 @@ router.get("/stations/:stationId", auth, roleCheck(["admin","employee","customer
 
     const where = {
       stationId,
-      ...(from || to ? { observedAt: {
-        ...(from ? { gte: from } : {}),
-        ...(to   ? { lte: to }   : {}),
-      }} : {}),
+      ...(from || to ? { observedAt: { ...(from?{ gte: from }:{}), ...(to?{ lte: to }:{}) } } : {}),
       ...(type ? { type } : {}),
       ...(risk ? { risk } : {}),
       ...(activity !== undefined ? { aktiviteVar: activity } : {}),
     };
 
     const [rows, total] = await Promise.all([
-      prisma.stationActivation.findMany({
-        where, orderBy: { observedAt: "desc" }, skip: offset, take: limit
-      }),
+      prisma.stationActivation.findMany({ where, orderBy: { observedAt: "desc" }, skip: offset, take: limit }),
       prisma.stationActivation.count({ where })
     ]);
 
@@ -104,10 +97,10 @@ router.get("/stations/:stationId", auth, roleCheck(["admin","employee","customer
   }
 });
 
-/** ---------------- LISTE: STORE ----------------
- * GET /api/activations/stores/:storeId?limit&offset&from&to&type&risk&activity=0|1
- * admin/employee/customer
- */
+/* ───────────────── LISTE: STORE ─────────────────
+   GET /api/activations/stores/:storeId?...
+   admin/employee/customer
+*/
 router.get("/stores/:storeId", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
   try{
     const storeId = parseId(req.params.storeId);
@@ -117,7 +110,6 @@ router.get("/stores/:storeId", auth, roleCheck(["admin","employee","customer"]),
       const ok = await customerHasStoreAccess(req, storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
-    // employee/admin → serbest
 
     const limit = parseLimit(req.query.limit, 20);
     const offset = parseOffset(req.query.offset, 0);
@@ -131,19 +123,14 @@ router.get("/stores/:storeId", auth, roleCheck(["admin","employee","customer"]),
 
     const where = {
       storeId,
-      ...(from || to ? { observedAt: {
-        ...(from ? { gte: from } : {}),
-        ...(to   ? { lte: to }   : {}),
-      }} : {}),
+      ...(from || to ? { observedAt: { ...(from?{ gte: from }:{}), ...(to?{ lte: to }:{}) } } : {}),
       ...(type ? { type } : {}),
       ...(risk ? { risk } : {}),
       ...(activity !== undefined ? { aktiviteVar: activity } : {}),
     };
 
     const [rows, total] = await Promise.all([
-      prisma.stationActivation.findMany({
-        where, orderBy: { observedAt: "desc" }, skip: offset, take: limit
-      }),
+      prisma.stationActivation.findMany({ where, orderBy: { observedAt: "desc" }, skip: offset, take: limit }),
       prisma.stationActivation.count({ where })
     ]);
 
@@ -154,10 +141,9 @@ router.get("/stores/:storeId", auth, roleCheck(["admin","employee","customer"]),
   }
 });
 
-/** ---------------- GET ONE ----------------
- * GET /api/activations/:id
- * admin/employee/customer (customer grant: activation.storeId üzerinden)
- */
+/* ───────────────── GET ONE ─────────────────
+   GET /api/activations/:id
+*/
 router.get("/:id", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
   try{
     const id = parseId(req.params.id);
@@ -170,7 +156,6 @@ router.get("/:id", auth, roleCheck(["admin","employee","customer"]), async (req,
       const ok = await customerHasStoreAccess(req, act.storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
-    // employee/admin → serbest
 
     res.json(act);
   }catch(e){
@@ -179,22 +164,21 @@ router.get("/:id", auth, roleCheck(["admin","employee","customer"]), async (req,
   }
 });
 
-/** ---------------- CREATE ----------------
- * POST /api/activations
- * body: { stationId, storeId?, type, risk, aktiviteVar, observedAt?, notes? }
- * admin/employee
- */
+/* ───────────────── CREATE (GENERIC BODY) ─────────────────
+   POST /api/activations
+   body: { stationId, type, risk, aktiviteVar, observedAt?, notes?, ...rodentBaitExtras }
+   admin/employee
+*/
 router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
   try{
     const stationId = parseId(req.body?.stationId);
     if(!stationId) return res.status(400).json({message:"stationId zorunlu"});
 
-    const st = await prisma.station.findUnique({
-      where: { id: stationId }, select: { id:true, storeId:true }
-    });
+    const st = await prisma.station.findUnique({ where: { id: stationId }, select: { id:true, storeId:true } });
     if(!st) return res.status(404).json({message:"İstasyon bulunamadı"});
+    if (req.user.role === "employee") await ensureEmployeeStoreAccess(req, st.storeId);
 
-    const payload = {
+    const base = {
       stationId: st.id,
       storeId: st.storeId,
       type: String(req.body?.type || ""),
@@ -203,10 +187,15 @@ router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
       observedAt: parseISO(req.body?.observedAt) || new Date(),
       notes: req.body?.notes ? String(req.body.notes).trim() : null,
     };
-    if (!payload.type || !payload.risk)
-      return res.status(400).json({message:"type ve risk zorunlu"});
+    if (!base.type || !base.risk) return res.status(400).json({message:"type ve risk zorunlu"});
 
-    const created = await prisma.stationActivation.create({ data: payload });
+    /* Tip-özgül alanlar (FARE_YEMLEME) */
+    let extras = {};
+    if (base.type === "FARE_YEMLEME") {
+      extras = extractRodentBaitExtras(req.body);
+    }
+
+    const created = await prisma.stationActivation.create({ data: { ...base, ...extras } });
     res.json({ message: "Aktivasyon eklendi", activation: created });
   }catch(e){
     console.error("POST /activations", e);
@@ -214,10 +203,94 @@ router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
   }
 });
 
-/** ---------------- UPDATE ----------------
- * PUT /api/activations/:id
- * admin/employee
- */
+/* ───────────────── CREATE (BY STATION) ─────────────────
+   POST /api/activations/stations/:stationId
+   body: { type, risk, aktiviteVar, observedAt?, notes?, ...rodentBaitExtras }
+   admin/employee
+*/
+router.post("/stations/:stationId", auth, roleCheck(["admin","employee"]), async (req,res)=>{
+  try{
+    const stationId = parseId(req.params.stationId);
+    if(!stationId) return res.status(400).json({message:"Geçersiz stationId"});
+
+    const st = await prisma.station.findUnique({ where: { id: stationId }, select: { id:true, storeId:true } });
+    if(!st) return res.status(404).json({message:"İstasyon bulunamadı"});
+    if (req.user.role === "employee") await ensureEmployeeStoreAccess(req, st.storeId);
+
+    const base = {
+      stationId: st.id,
+      storeId: st.storeId,
+      type: String(req.body?.type || ""),
+      risk: String(req.body?.risk || ""),
+      aktiviteVar: !!req.body?.aktiviteVar,
+      observedAt: parseISO(req.body?.observedAt) || new Date(),
+      notes: req.body?.notes ? String(req.body.notes).trim() : null,
+    };
+    if (!base.type || !base.risk) return res.status(400).json({message:"type ve risk zorunlu"});
+
+    let extras = {};
+    if (base.type === "FARE_YEMLEME") extras = extractRodentBaitExtras(req.body);
+
+    const created = await prisma.stationActivation.create({ data: { ...base, ...extras } });
+    res.json({ message: "Aktivasyon eklendi", activation: created });
+  }catch(e){
+    console.error("POST /activations/stations/:stationId", e);
+    res.status(500).json({message:"Sunucu hatası"});
+  }
+});
+
+/* ───────────────── CREATE (BY VISIT + STATION) ─────────────────
+   POST /api/activations/visits/:visitId/stations/:stationId
+   body: { type, risk, aktiviteVar, observedAt?, notes?, ...rodentBaitExtras }
+   Ziyarete bağlar (visitId sütunun varsa doldurur).
+   admin/employee
+*/
+router.post("/visits/:visitId/stations/:stationId", auth, roleCheck(["admin","employee"]), async (req,res)=>{
+  try{
+    const visitId = parseId(req.params.visitId);
+    const stationId = parseId(req.params.stationId);
+    if(!visitId || !stationId) return res.status(400).json({message:"Geçersiz id"});
+
+    const [visit, station] = await Promise.all([
+      prisma.visit.findUnique({ where: { id: visitId }, select: { id:true, storeId:true } }),
+      prisma.station.findUnique({ where: { id: stationId }, select: { id:true, storeId:true } }),
+    ]);
+    if(!visit)   return res.status(404).json({message:"Ziyaret bulunamadı"});
+    if(!station) return res.status(404).json({message:"İstasyon bulunamadı"});
+
+    // Ziyaret ile istasyon aynı mağazada mı? (tutarlılık)
+    if (visit.storeId !== station.storeId) {
+      return res.status(400).json({message:"Ziyaret ve istasyon farklı mağazalara ait"});
+    }
+    if (req.user.role === "employee") await ensureEmployeeStoreAccess(req, station.storeId);
+
+    const base = {
+      stationId: station.id,
+      storeId: station.storeId,
+      visitId: visit.id, // şeman varsa
+      type: String(req.body?.type || ""),
+      risk: String(req.body?.risk || ""),
+      aktiviteVar: !!req.body?.aktiviteVar,
+      observedAt: parseISO(req.body?.observedAt) || new Date(),
+      notes: req.body?.notes ? String(req.body.notes).trim() : null,
+    };
+    if (!base.type || !base.risk) return res.status(400).json({message:"type ve risk zorunlu"});
+
+    let extras = {};
+    if (base.type === "FARE_YEMLEME") extras = extractRodentBaitExtras(req.body);
+
+    const created = await prisma.stationActivation.create({ data: { ...base, ...extras } });
+    res.json({ message: "Aktivasyon eklendi", activation: created });
+  }catch(e){
+    console.error("POST /activations/visits/:visitId/stations/:stationId", e);
+    res.status(500).json({message:"Sunucu hatası"});
+  }
+});
+
+/* ───────────────── UPDATE ─────────────────
+   PUT /api/activations/:id
+   admin/employee
+*/
 router.put("/:id", auth, roleCheck(["admin","employee"]), async (req,res)=>{
   try{
     const id = parseId(req.params.id);
@@ -237,6 +310,13 @@ router.put("/:id", auth, roleCheck(["admin","employee"]), async (req,res)=>{
     }
     if ("notes" in req.body) data.notes = req.body.notes ? String(req.body.notes).trim() : null;
 
+    // FARE_YEMLEME alanları varsa güncelle
+    if ("deformeYem" in req.body)          data.deformeYem = !!req.body.deformeYem;
+    if ("yemDegisti" in req.body)          data.yemDegisti = !!req.body.yemDegisti;
+    if ("deformeMonitor" in req.body)      data.deformeMonitor = !!req.body.deformeMonitor;
+    if ("monitorDegisti" in req.body)      data.monitorDegisti = !!req.body.monitorDegisti;
+    if ("ulasilamayanMonitor" in req.body) data.ulasilamayanMonitor = !!req.body.ulasilamayanMonitor;
+
     const updated = await prisma.stationActivation.update({ where: { id }, data });
     res.json({ message: "Aktivasyon güncellendi", activation: updated });
   }catch(e){
@@ -246,15 +326,14 @@ router.put("/:id", auth, roleCheck(["admin","employee"]), async (req,res)=>{
   }
 });
 
-/** ---------------- DELETE ----------------
- * DELETE /api/activations/:id
- * admin/employee
- */
+/* ───────────────── DELETE ─────────────────
+   DELETE /api/activations/:id
+   admin/employee
+*/
 router.delete("/:id", auth, roleCheck(["admin","employee"]), async (req,res)=>{
   try{
     const id = parseId(req.params.id);
     if(!id) return res.status(400).json({message:"Geçersiz id"});
-
     await prisma.stationActivation.delete({ where: { id }});
     res.json({ message: "Aktivasyon silindi" });
   }catch(e){
