@@ -1,3 +1,4 @@
+// frontend/src/pages/auth/Login.jsx
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api, { apiNoRefresh } from "../../api/axios.js";
@@ -7,11 +8,10 @@ import { ProfileContext } from "../../context/ProfileContext.jsx";
 import "./Login.scss";
 
 /**
- * Kalıcı akış:
- * - Mount’ta yalnızca 1 kez sessiz refresh dene (apiNoRefresh)
- * - LocalStorage’da geçerli token varsa direkt role’e göre geç
- * - from değeri yalnızca role’ün yetkisine uygunsa kullan
- * - Aynı path’e navigate etme (loop kır)
+ * Akış:
+ * - Mount’ta localStorage’ta geçerli access varsa role’e göre geçir
+ * - Değilse, URL ?fresh=1 DEĞİLSE sessiz refresh dene (eski kullanıcıyı geri getirir)
+ * - Login/Logout çağrıları withCredentials:true (çerez yönetimi)
  */
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -54,7 +54,10 @@ export default function Login() {
     if (triedOnce.current) return;
     triedOnce.current = true;
 
-    // 0) LocalStorage’da geçerli token varsa direkt geç
+    const qs = new URLSearchParams(location.search);
+    const skipRefresh = qs.get("fresh") === "1"; // logout'tan geldiysek sessiz refresh DENEME
+
+    // 0) LocalStorage’ta geçerli accessToken varsa direkt geçir
     const t = localStorage.getItem("accessToken");
     const r = localStorage.getItem("role");
     if (t && !isExpired(t) && r) {
@@ -62,24 +65,23 @@ export default function Login() {
       return;
     }
 
-    // 1) Cookie varsa sessiz refresh (BEARER’sız, interceptor’suz)
-    (async () => {
-      try {
-        const { data } = await apiNoRefresh({
-          method: "post",
-          url: "/auth/refresh",
-        });
-        if (data?.accessToken) {
-          localStorage.setItem("accessToken", data.accessToken);
-          const payload = parseJwt(data.accessToken);
-          if (payload?.role) localStorage.setItem("role", payload.role);
-          try { await fetchProfile?.(); } catch {}
-          safeNavigate(pickTarget(payload?.role));
+    // 1) Cookie varsa sessiz refresh — AMA ?fresh=1 değilse
+    if (!skipRefresh) {
+      (async () => {
+        try {
+          const { data } = await apiNoRefresh.post("/auth/refresh"); // withCredentials: true
+          if (data?.accessToken) {
+            localStorage.setItem("accessToken", data.accessToken);
+            const payload = parseJwt(data.accessToken);
+            if (payload?.role) localStorage.setItem("role", payload.role);
+            try { await fetchProfile?.(); } catch {}
+            safeNavigate(pickTarget(payload?.role));
+          }
+        } catch {
+          // cookie yok/expired → login’de kal
         }
-      } catch {
-        // cookie yok/expired → login’de kal
-      }
-    })();
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -89,10 +91,14 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await api.post("/auth/login", {
-        email: email.trim().toLowerCase(),
-        password,
-      });
+      const res = await api.post(
+        "/auth/login",
+        {
+          email: email.trim().toLowerCase(),
+          password,
+        }
+        // axios instance withCredentials:true zaten açık
+      );
 
       const { accessToken, role, fullName, email: serverEmail } = res.data || {};
       localStorage.setItem("accessToken", accessToken);

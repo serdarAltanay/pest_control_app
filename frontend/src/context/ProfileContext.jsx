@@ -58,8 +58,13 @@ export function ProfileProvider({ children }) {
       localStorage.removeItem("accessOwnerRole");
     }
 
-    const absUrl = getAvatarUrl?.(data?.profileImage, { bust: true }) || "/noavatar.jpg";
-    localStorage.setItem("profileImage", absUrl);
+    // ÖNEMLİ: profileImage yoksa localStorage'a yazma (kırık yol saklanmasın)
+    if (data?.profileImage) {
+      const absUrl = getAvatarUrl(data.profileImage, { bust: true });
+      localStorage.setItem("profileImage", absUrl);
+    } else {
+      localStorage.removeItem("profileImage");
+    }
   };
 
   const fetchProfile = async () => {

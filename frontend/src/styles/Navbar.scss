@@ -16,6 +16,43 @@
     display:flex; align-items:center; gap: 10px;
     margin-right: 8px;           /* butonu hafif içeri al */
   }
+
+  /* 🔔 NotificationBell navbar varyantı */
+  .navbar-right .notif-bell {
+    position: relative;
+    height: 36px;
+    min-width: 36px;
+    padding: 0 10px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 10px;
+    background: rgba(255,255,255,.12);
+    color: var(--primary-contrast);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .2s ease, transform .08s ease, border-color .2s ease;
+
+    &:hover { background: rgba(255,255,255,.18); }
+    &:active { transform: translateY(1px) scale(.99); }
+
+    .icon { font-size: 16px; line-height: 1; }
+    .badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #fff;
+      background: #ef4444; /* kırmızı uyarı */
+      display: inline-flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+  }
 }
 
 /* PROFILE DROPDOWN */

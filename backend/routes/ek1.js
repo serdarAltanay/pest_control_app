@@ -1,4 +1,3 @@
-// routes/ek1.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
@@ -7,8 +6,15 @@ const prisma = new PrismaClient();
 const router = Router();
 
 /* ───────── helpers ───────── */
-const toId = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
-const normalizeMethod = (m) => { if (!m) return m; const up = String(m).toUpperCase(); return up === "PULVERIZE" ? "PULVERİZE" : up; };
+const toId = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+const normalizeMethod = (m) => {
+  if (!m) return m;
+  const up = String(m).toUpperCase();
+  return up === "PULVERIZE" ? "PULVERİZE" : up;
+};
 
 /* ───────── ACCESS SCOPE (müşteri hangi mağazalara erişir?) ─────────
    Not: FE’de “customer” rolü, gerçekte AccessOwner kullanıcısını temsil eder. */
@@ -18,14 +24,17 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
   // 0) NEW PATH: AccessOwner → AccessGrant (öncelik)
   let ownerId = Number(
     user?.accessOwnerId ??
-    user?.ownerId ??
-    ((user?.role || "").toLowerCase() === "customer" ? user?.id : null)
+      user?.ownerId ??
+      ((user?.role || "").toLowerCase() === "customer" ? user?.id : null)
   );
 
   if ((!Number.isFinite(ownerId) || ownerId <= 0) && prisma.accessOwner?.findUnique) {
     const email = (user?.email || "").trim().toLowerCase();
     if (email) {
-      const owner = await prisma.accessOwner.findUnique({ where: { email }, select: { id: true } });
+      const owner = await prisma.accessOwner.findUnique({
+        where: { email },
+        select: { id: true },
+      });
       if (owner?.id) ownerId = owner.id;
     }
   }
@@ -42,8 +51,11 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
         if (g.scopeType === "CUSTOMER" && g.customerId) customerIds.push(g.customerId);
       }
       if (customerIds.length) {
-        const stores = await prisma.store.findMany({ where: { customerId: { in: customerIds } }, select: { id: true } });
-        stores.forEach(s => storeIds.add(s.id));
+        const stores = await prisma.store.findMany({
+          where: { customerId: { in: customerIds } },
+          select: { id: true },
+        });
+        stores.forEach((s) => storeIds.add(s.id));
       }
     }
   }
@@ -55,12 +67,17 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
       where: { userId: uid, isEnabled: true },
       select: { storeId: true, customerId: true },
     });
-    const orgCustomerIds = mems.filter(m => !m.storeId && m.customerId).map(m => m.customerId);
-    const explicitStoreIds = mems.filter(m => m.storeId).map(m => m.storeId);
-    explicitStoreIds.forEach(id => storeIds.add(id));
+    const orgCustomerIds = mems
+      .filter((m) => !m.storeId && m.customerId)
+      .map((m) => m.customerId);
+    const explicitStoreIds = mems.filter((m) => m.storeId).map((m) => m.storeId);
+    explicitStoreIds.forEach((id) => storeIds.add(id));
     if (orgCustomerIds.length) {
-      const stores = await prisma.store.findMany({ where: { customerId: { in: orgCustomerIds } }, select: { id: true } });
-      stores.forEach(s => storeIds.add(s.id));
+      const stores = await prisma.store.findMany({
+        where: { customerId: { in: orgCustomerIds } },
+        select: { id: true },
+      });
+      stores.forEach((s) => storeIds.add(s.id));
     }
   }
 
@@ -76,20 +93,22 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
         where: { customerId: cu.customerId },
         select: { id: true },
       });
-      stores.forEach(s => storeIds.add(s.id));
+      stores.forEach((s) => storeIds.add(s.id));
     }
   }
 
   // 3) BACK-COMPAT: token içeriği
   if (Array.isArray(user?.storeIds)) {
-    user.storeIds.forEach((x) => Number.isFinite(Number(x)) && storeIds.add(Number(x)));
+    user.storeIds.forEach(
+      (x) => Number.isFinite(Number(x)) && storeIds.add(Number(x))
+    );
   }
   if (user?.customerId && !storeIds.size) {
     const stores = await prisma.store.findMany({
       where: { customerId: Number(user.customerId) },
       select: { id: true },
     });
-    stores.forEach(s => storeIds.add(s.id));
+    stores.forEach((s) => storeIds.add(s.id));
   }
 
   return Array.from(storeIds);
@@ -313,8 +332,12 @@ async function hSign(kind, req, res) {
     }
 
     await ensureReport(visitId);
-    const name =
-      (req.body?.name || req.user?.fullName || req.user?.email || (kind === "provider" ? "Uygulayıcı" : "Müşteri")).toString();
+    const name = (
+      req.body?.name ||
+      req.user?.fullName ||
+      req.user?.email ||
+      (kind === "provider" ? "Uygulayıcı" : "Müşteri")
+    ).toString();
 
     const data =
       kind === "provider"
@@ -395,7 +418,8 @@ async function hCreateFreeEk1(req, res) {
 
     // flat veya nested payload desteği
     const customerTitle = b.customerTitle ?? b.freeCustomer?.title ?? "";
-    const customerContactName = b.customerContactName ?? b.freeCustomer?.contactName ?? null;
+    const customerContactName =
+      b.customerContactName ?? b.freeCustomer?.contactName ?? null;
     const customerEmail = b.customerEmail ?? b.freeCustomer?.email ?? null;
     const customerPhone = b.customerPhone ?? b.freeCustomer?.phone ?? null;
 
@@ -416,7 +440,9 @@ async function hCreateFreeEk1(req, res) {
     const ncrsRaw = Array.isArray(b.ncrs) ? b.ncrs : [];
 
     if (!customerTitle || !storeName || !date) {
-      return res.status(400).json({ message: "customerTitle, storeName ve date zorunludur" });
+      return res
+        .status(400)
+        .json({ message: "customerTitle, storeName ve date zorunludur" });
     }
 
     const freeStore = await ensureFreeContainerStore();
@@ -484,7 +510,9 @@ async function hCreateFreeEk1(req, res) {
       );
     }
 
-    return res.status(201).json({ message: "Serbest EK-1 oluşturuldu", visitId: visit.id });
+    return res
+      .status(201)
+      .json({ message: "Serbest EK-1 oluşturuldu", visitId: visit.id });
   } catch (e) {
     console.error("POST /ek1/free", e);
     return res.status(500).json({ message: "Sunucu hatası" });
@@ -497,7 +525,10 @@ async function hListEk1(req, res) {
 
     let where = {};
     if (role === "customer") {
-      const allowedStoreIds = await getAccessibleStoreIdsForCustomer(prisma, req.user);
+      const allowedStoreIds = await getAccessibleStoreIdsForCustomer(
+        prisma,
+        req.user
+      );
       if (!allowedStoreIds.length) return res.json([]);
       where = { visit: { storeId: { in: allowedStoreIds } } };
     }
@@ -514,8 +545,10 @@ async function hListEk1(req, res) {
       const cust = st.customer || {};
       const meta = r.freeMeta || {};
 
-      const customerName = cust.name || cust.fullName || cust.title || meta.customerTitle || "-";
-      const storeName = st.name || meta.storeName || (v.storeId ? `Mağaza #${v.storeId}` : "-");
+      const customerName =
+        cust.name || cust.fullName || cust.title || meta.customerTitle || "-";
+      const storeName =
+        st.name || meta.storeName || (v.storeId ? `Mağaza #${v.storeId}` : "-");
 
       return {
         id: r.visitId,
@@ -537,8 +570,16 @@ async function hListEk1(req, res) {
     });
 
     mapped.sort((a, b) => {
-      const A = a.createdAt ? new Date(a.createdAt).getTime() : (a.start ? new Date(a.start).getTime() : 0);
-      const B = b.createdAt ? new Date(b.createdAt).getTime() : (b.start ? new Date(b.start).getTime() : 0);
+      const A = a.createdAt
+        ? new Date(a.createdAt).getTime()
+        : a.start
+        ? new Date(a.start).getTime()
+        : 0;
+      const B = b.createdAt
+        ? new Date(b.createdAt).getTime()
+        : b.start
+        ? new Date(b.start).getTime()
+        : 0;
       return B - A;
     });
 
@@ -566,8 +607,18 @@ router.delete("/visit/:visitId/lines/:lineId", auth, roleCheck(["admin", "employ
 router.post("/visit/:visitId/submit", auth, roleCheck(["admin", "employee"]), hSubmit);
 
 // Sign
-router.post("/visit/:visitId/sign/provider", auth, roleCheck(["admin", "employee"]), (req, res) => hSign("provider", req, res));
-router.post("/visit/:visitId/sign/customer", auth, roleCheck(["customer", "admin", "employee"]), (req, res) => hSign("customer", req, res));
+router.post(
+  "/visit/:visitId/sign/provider",
+  auth,
+  roleCheck(["admin", "employee"]),
+  (req, res) => hSign("provider", req, res)
+);
+router.post(
+  "/visit/:visitId/sign/customer",
+  auth,
+  roleCheck(["customer", "admin"]), // employee çıkarıldı
+  (req, res) => hSign("customer", req, res)
+);
 router.post("/:visitId/sign", auth, roleCheck(["admin", "employee", "customer"]), hSignAuto);
 
 // Approve & PDF (+ alias)
@@ -584,8 +635,18 @@ router.get("/visits/:visitId/ek1/lines", auth, roleCheck(["admin", "employee", "
 router.post("/visits/:visitId/ek1/lines", auth, roleCheck(["admin", "employee"]), hCreateLine);
 router.delete("/visits/:visitId/ek1/lines/:lineId", auth, roleCheck(["admin", "employee"]), hDeleteLine);
 router.post("/visits/:visitId/ek1/submit", auth, roleCheck(["admin", "employee"]), hSubmit);
-router.post("/visits/:visitId/ek1/sign/provider", auth, roleCheck(["admin", "employee"]), (req, res) => hSign("provider", req, res));
-router.post("/visits/:visitId/ek1/sign/customer", auth, roleCheck(["customer", "admin", "employee"]), (req, res) => hSign("customer", req, res));
+router.post(
+  "/visits/:visitId/ek1/sign/provider",
+  auth,
+  roleCheck(["admin", "employee"]),
+  (req, res) => hSign("provider", req, res)
+);
+router.post(
+  "/visits/:visitId/ek1/sign/customer",
+  auth,
+  roleCheck(["customer", "admin"]), // employee çıkarıldı
+  (req, res) => hSign("customer", req, res)
+);
 router.post("/visits/:visitId/ek1/approve", auth, roleCheck(["admin"]), hApprove);
 router.post("/visits/:visitId/ek1/pdf", auth, roleCheck(["admin", "employee"]), hPdf);
 

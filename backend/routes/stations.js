@@ -11,20 +11,15 @@ function parseId(val) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// Çalışan erişim kontrolü (kendi müşterileri)
+// Employee artık HER mağaza/istasyon üzerinde tam yetkili.
+// Bu helper'ı projede kullanan yerler kalsın; daima true döner.
 async function ensureEmployeeStoreAccess(req, storeId) {
-  if (req.user?.role !== "employee") return true;
-  const ok = await prisma.store.findFirst({
-    where: { id: storeId, customer: { employeeId: req.user.id } },
-    select: { id: true },
-  });
-  return !!ok;
+  return true;
 }
 
-// Customer (AccessOwner) grant kontrolü
-// routes/stations.js VE src/routes/activations.js içindeki aynı yardımcı fonksiyon
+// Customer (AccessOwner) grant kontrolü (okuma için)
 async function customerHasStoreAccess(req, storeId) {
-  if (["admin", "employee"].includes(req.user?.role)) return true;
+  if (["admin", "employee"].includes(req.user?.role)) return true; // employee → full read
   if (req.user?.role !== "customer") return false;
 
   const ownerId = Number(req.user.id);
@@ -36,13 +31,7 @@ async function customerHasStoreAccess(req, storeId) {
   });
   if (!store) return false;
 
-  // AccessGrant modeli yoksa veya çağrı başarısız olursa fallback: store.customerId === ownerId
   try {
-    // prisma.accessGrant bazı şemalarda olmayabilir
-    if (!prisma.accessGrant || !prisma.accessGrant.findFirst) {
-      return store.customerId === ownerId;
-    }
-
     const grant = await prisma.accessGrant.findFirst({
       where: {
         ownerId,
@@ -60,7 +49,6 @@ async function customerHasStoreAccess(req, storeId) {
   }
 }
 
-
 // Artık latitude/longitude yok
 function pickStationPayload(body) {
   const payload = {};
@@ -76,7 +64,7 @@ function pickStationPayload(body) {
 /** DÜZ ROUTER (/api/stations) */
 export const stationsRouter = Router();
 
-// GET /api/stations/store/:storeId  (müşteriye read-only)
+// GET /api/stations/store/:storeId  (müşteriye read-only, employee tam okuma)
 stationsRouter.get(
   "/store/:storeId",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -85,10 +73,7 @@ stationsRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      } else if (req.user.role === "customer") {
+      if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -105,7 +90,7 @@ stationsRouter.get(
   }
 );
 
-// GET /api/stations/metrics/store/:storeId  (müşteriye açık)
+// GET /api/stations/metrics/store/:storeId  (müşteriye açık, employee tam okuma)
 stationsRouter.get(
   "/metrics/store/:storeId",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -114,10 +99,7 @@ stationsRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      } else if (req.user.role === "customer") {
+      if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -140,7 +122,7 @@ stationsRouter.get(
   }
 );
 
-// GET /api/stations/:id  (müşteriye read-only + erişim kontrolü)
+// GET /api/stations/:id  (müşteriye read-only + grant, employee tam okuma)
 stationsRouter.get(
   "/:id",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -149,22 +131,17 @@ stationsRouter.get(
       const id = parseId(req.params.id);
       if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-      // 1) Önce sadece storeId çek → erişim kontrolü
       const head = await prisma.station.findUnique({
         where: { id },
         select: { storeId: true },
       });
       if (!head) return res.status(404).json({ message: "Bulunamadı" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, head.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      } else if (req.user.role === "customer") {
+      if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, head.storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
 
-      // 2) Tüm alanları getir (select’siz → şemada olmayan alan hatası riskini sıfırlar)
       const item = await prisma.station.findUnique({ where: { id } });
       res.json(item);
     } catch (e) {
@@ -174,11 +151,10 @@ stationsRouter.get(
   }
 );
 
-
-// POST /api/stations
+// POST /api/stations (YAZMA → admin + employee; employee sınırsız)
 stationsRouter.post(
   "/",
-  auth, roleCheck(["admin"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
       const sid = parseId(req.body?.storeId);
@@ -188,53 +164,70 @@ stationsRouter.post(
       if (!store) return res.status(404).json({ message: "Mağaza bulunamadı" });
 
       const data = pickStationPayload(req.body);
-      if (!data.type || !data.name || !data.code) return res.status(400).json({ message: "type, name, code zorunlu." });
+      if (!data.type || !data.name || !data.code)
+        return res.status(400).json({ message: "type, name, code zorunlu." });
       if (!("isActive" in data)) data.isActive = true;
 
       const created = await prisma.station.create({ data: { ...data, storeId: sid } });
       res.json({ message: "İstasyon eklendi", station: created });
     } catch (e) {
-      if (e.code === "P2002") return res.status(409).json({ message: "Bu barkod/kod zaten bu mağazada kayıtlı." });
+      if (e.code === "P2002")
+        return res.status(409).json({ message: "Bu barkod/kod zaten bu mağazada kayıtlı." });
       console.error("POST /stations", e);
       res.status(500).json({ message: "Sunucu hatası" });
     }
   }
 );
 
-// PUT /api/stations/:id
+// PUT /api/stations/:id (YAZMA → admin + employee; employee sınırsız)
 stationsRouter.put(
   "/:id",
-  auth, roleCheck(["admin"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
       const id = parseId(req.params.id);
       if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
+      const head = await prisma.station.findUnique({
+        where: { id },
+        select: { storeId: true },
+      });
+      if (!head) return res.status(404).json({ message: "İstasyon bulunamadı" });
+
       const data = pickStationPayload(req.body);
       const updated = await prisma.station.update({ where: { id }, data });
       res.json({ message: "İstasyon güncellendi", station: updated });
     } catch (e) {
-      if (e.code === "P2025") return res.status(404).json({ message: "İstasyon bulunamadı" });
-      if (e.code === "P2002") return res.status(409).json({ message: "Bu barkod/kod kullanımda." });
+      if (e.code === "P2025")
+        return res.status(404).json({ message: "İstasyon bulunamadı" });
+      if (e.code === "P2002")
+        return res.status(409).json({ message: "Bu barkod/kod kullanımda." });
       console.error("PUT /stations/:id", e);
       res.status(500).json({ message: "Sunucu hatası" });
     }
   }
 );
 
-// DELETE /api/stations/:id
+// DELETE /api/stations/:id (YAZMA → admin + employee; employee sınırsız)
 stationsRouter.delete(
   "/:id",
-  auth, roleCheck(["admin"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
       const id = parseId(req.params.id);
       if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
+      const head = await prisma.station.findUnique({
+        where: { id },
+        select: { storeId: true },
+      });
+      if (!head) return res.status(404).json({ message: "İstasyon bulunamadı" });
+
       await prisma.station.delete({ where: { id } });
       res.json({ message: "İstasyon silindi" });
     } catch (e) {
-      if (e.code === "P2025") return res.status(404).json({ message: "İstasyon bulunamadı" });
+      if (e.code === "P2025")
+        return res.status(404).json({ message: "İstasyon bulunamadı" });
       console.error("DELETE /stations/:id", e);
       res.status(500).json({ message: "Sunucu hatası" });
     }
@@ -244,7 +237,7 @@ stationsRouter.delete(
 /** NESTED ROUTER (/api/stores/:storeId/stations ...) */
 export const stationsNestedRouter = Router();
 
-// GET /api/stores/:storeId/stations  (müşteriye read-only)
+// GET /api/stores/:storeId/stations  (müşteriye read-only, employee tam okuma)
 stationsNestedRouter.get(
   "/:storeId/stations",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -253,10 +246,7 @@ stationsNestedRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      } else if (req.user.role === "customer") {
+      if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -273,7 +263,7 @@ stationsNestedRouter.get(
   }
 );
 
-// GET /api/stores/:storeId/stations/metrics  (müşteriye açık)
+// GET /api/stores/:storeId/stations/metrics  (müşteriye açık, employee tam okuma)
 stationsNestedRouter.get(
   "/:storeId/stations/metrics",
   auth, roleCheck(["admin", "employee", "customer"]),
@@ -282,10 +272,7 @@ stationsNestedRouter.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      } else if (req.user.role === "customer") {
+      if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -308,7 +295,7 @@ stationsNestedRouter.get(
   }
 );
 
-// GET /api/stores/:storeId/stations/:stationId  (müşteriye read-only tekil)
+// GET tekil
 stationsNestedRouter.get(
   "/:storeId/stations/:stationId",
   auth, roleCheck(["admin","employee","customer"]),
@@ -318,10 +305,7 @@ stationsNestedRouter.get(
       const stationId = parseId(req.params.stationId);
       if(!storeId || !stationId) return res.status(400).json({message:"Geçersiz id"});
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      } else if (req.user.role === "customer") {
+      if (req.user.role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -339,10 +323,10 @@ stationsNestedRouter.get(
   }
 );
 
-// POST /api/stores/:storeId/stations (admin)
+// POST /api/stores/:storeId/stations (YAZMA → admin + employee; employee sınırsız)
 stationsNestedRouter.post(
   "/:storeId/stations",
-  auth, roleCheck(["admin"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
       const storeId = parseId(req.params.storeId);
@@ -352,53 +336,63 @@ stationsNestedRouter.post(
       if (!store) return res.status(404).json({ message: "Mağaza bulunamadı" });
 
       const data = pickStationPayload(req.body);
-      if (!data.type || !data.name || !data.code) return res.status(400).json({ message: "type, name, code zorunlu." });
+      if (!data.type || !data.name || !data.code)
+        return res.status(400).json({ message: "type, name, code zorunlu." });
       if (!("isActive" in data)) data.isActive = true;
 
       const created = await prisma.station.create({ data: { ...data, storeId } });
       res.json({ message: "İstasyon eklendi", station: created });
     } catch (e) {
-      if (e.code === "P2002") return res.status(409).json({ message: "Bu barkod/kod zaten bu mağazada kayıtlı." });
+      if (e.code === "P2002")
+        return res.status(409).json({ message: "Bu barkod/kod zaten bu mağazada kayıtlı." });
       console.error("POST /stores/:storeId/stations", e);
       res.status(500).json({ message: "Sunucu hatası" });
     }
   }
 );
 
-// PUT /api/stores/:storeId/stations/:stationId (admin)
+// PUT /api/stores/:storeId/stations/:stationId (YAZMA → admin + employee; employee sınırsız)
 stationsNestedRouter.put(
   "/:storeId/stations/:stationId",
-  auth, roleCheck(["admin"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      const storeId = parseId(req.params.storeId);
       const stationId = parseId(req.params.stationId);
-      if (!stationId) return res.status(400).json({ message: "Geçersiz stationId" });
+      if (!storeId || !stationId) return res.status(400).json({ message: "Geçersiz id" });
 
       const data = pickStationPayload(req.body);
-      const updated = await prisma.station.update({ where: { id: stationId }, data });
+      const updated = await prisma.station.update({
+        where: { id: stationId },
+        data: { ...data, storeId },
+      });
       res.json({ message: "İstasyon güncellendi", station: updated });
     } catch (e) {
-      if (e.code === "P2025") return res.status(404).json({ message: "İstasyon bulunamadı" });
-      if (e.code === "P2002") return res.status(409).json({ message: "Bu barkod/kod kullanımda." });
+      if (e.code === "P2025")
+        return res.status(404).json({ message: "İstasyon bulunamadı" });
+      if (e.code === "P2002")
+        return res.status(409).json({ message: "Bu barkod/kod kullanımda." });
       console.error("PUT /stores/:storeId/stations/:stationId", e);
       res.status(500).json({ message: "Sunucu hatası" });
     }
   }
 );
 
-// DELETE /api/stores/:storeId/stations/:stationId (admin)
+// DELETE /api/stores/:storeId/stations/:stationId (YAZMA → admin + employee; employee sınırsız)
 stationsNestedRouter.delete(
   "/:storeId/stations/:stationId",
-  auth, roleCheck(["admin"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      const storeId = parseId(req.params.storeId);
       const stationId = parseId(req.params.stationId);
-      if (!stationId) return res.status(400).json({ message: "Geçersiz stationId" });
+      if (!storeId || !stationId) return res.status(400).json({ message: "Geçersiz id" });
 
       await prisma.station.delete({ where: { id: stationId } });
       res.json({ message: "İstasyon silindi" });
     } catch (e) {
-      if (e.code === "P2025") return res.status(404).json({ message: "İstasyon bulunamadı" });
+      if (e.code === "P2025")
+        return res.status(404).json({ message: "İstasyon bulunamadı" });
       console.error("DELETE /stores/:storeId/stations/:stationId", e);
       res.status(500).json({ message: "Sunucu hatası" });
     }

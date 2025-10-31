@@ -17,7 +17,7 @@ function getEnvApiOrigin() {
   const raw =
     (viteEnv && viteEnv.VITE_API_ORIGIN) ||
     (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_ORIGIN) ||
-    (typeof window !== "undefined" && window.__API_ORIGIN__) || // opsiyonel: window değişkeni
+    (typeof window !== "undefined" && window.__API_ORIGIN__) ||
     "";
   const cleaned = String(raw).replace(/\/+$/, "");
   dbg("ENV origin:", cleaned || "(empty)");
@@ -69,23 +69,28 @@ export function getApiOrigin() {
 // uploads/api yollarını absolute yap
 export function toAbsoluteUrl(path, { forceApi = false } = {}) {
   if (!path) return "";
-  const fixed = normalizeSlashes(path).replace(/^\/+/, "");
-  dbg("toAbsoluteUrl IN:", path, "fixed:", fixed, "forceApi:", forceApi);
+  const fixedNoLead = normalizeSlashes(path).replace(/^\/+/, "");
+  const hadLeading = String(path).startsWith("/");
+  dbg("toAbsoluteUrl IN:", path, "fixedNoLead:", fixedNoLead, "forceApi:", forceApi);
 
-  if (/^https?:\/\//i.test(fixed)) {
-    dbg("already absolute:", fixed);
-    return fixed;
+  // Zaten absolute
+  if (/^https?:\/\//i.test(path) || /^data:/i.test(path)) {
+    dbg("already absolute:", path);
+    return path;
   }
 
-  const backendish = forceApi || fixed.startsWith("uploads/") || fixed.startsWith("api/");
+  // backend’lik içerikler
+  const backendish = forceApi || fixedNoLead.startsWith("uploads/") || fixedNoLead.startsWith("api/");
+
   if (backendish) {
     const origin = getApiOrigin();
-    const out = `${origin}/${fixed}`;
+    const out = `${origin}/${fixedNoLead}`;
     dbg("→ backend URL:", out);
     return out;
   }
 
-  const out = `/${fixed}`;
+  // Frontend public (ör: /noavatar.jpg)
+  const out = `/${hadLeading ? fixedNoLead : fixedNoLead}`;
   dbg("→ frontend asset:", out);
   return out;
 }
@@ -97,10 +102,31 @@ export function addCacheBust(url) {
   return out;
 }
 
+/**
+ * Avatar URL’i üretir:
+ * - uploads/... → backend origin ile absolute
+ * - /noavatar.jpg gibi kök public asset → olduğu gibi
+ * - http(s)/data URL → dokunma
+ */
 export function getAvatarUrl(profileImage, { bust = false } = {}) {
-  const raw = profileImage
-    ? toAbsoluteUrl(profileImage, { forceApi: true })
-    : "/noavatar.jpg";
+  let raw;
+
+  if (!profileImage) {
+    raw = "/noavatar.jpg";
+  } else {
+    const s = String(profileImage);
+    if (/^https?:\/\//i.test(s) || /^data:/i.test(s)) {
+      raw = s; // Tam URL
+    } else if (s.startsWith("/uploads/") || s.startsWith("uploads/")) {
+      raw = toAbsoluteUrl(s, { forceApi: true }); // backend
+    } else if (s.startsWith("/")) {
+      raw = s; // frontend public (örn. /something.jpg)
+    } else {
+      // uz relative ise backend’e bağla
+      raw = toAbsoluteUrl(s, { forceApi: true });
+    }
+  }
+
   const out = bust ? addCacheBust(raw) : raw;
   dbg("getAvatarUrl:", { profileImage, raw, out, bust });
   return out;

@@ -16,20 +16,21 @@ const isIsoDate = (v) => !!v && !Number.isNaN(Date.parse(v));
 const asDate = (v) => (v instanceof Date ? v : new Date(v));
 const roleRank = { MAGAZA_SORUMLUSU:1, MAGAZA_MUDURU:2, GENEL_MUDUR:3, PATRON:4, CALISAN:5, DIGER:6 };
 
-// Çalışan ise sadece kendi müşterilerinin mağazalarına erişsin
-async function ensureEmployeeStoreAccess(req, storeId) {
-  if (req.user?.role !== "employee") return true;
-  const ok = await prisma.store.findFirst({
-    where: { id: storeId, customer: { employeeId: req.user.id } },
-    select: { id: true },
-  });
-  return !!ok;
+/**
+ * 🔓 ÇALIŞAN YAZMA KISITI KALDIRILDI
+ * Daha önce: çalışan sadece kendi müşterilerine yazabiliyordu (customer.employeeId).
+ * Artık çalışan her mağazada create/update/satır ekleme-silme yapabilir.
+ * İstersen ileride buraya AccessGrant vb. kontrol entegre ederiz.
+ */
+async function ensureEmployeeStoreAccess(_req, _storeId) {
+  return true;
 }
 
 /** Customer (AccessOwner) → store erişim kontrolü (grant) */
 async function customerHasStoreAccess(req, storeId) {
-  if (["admin", "employee"].includes(req.user?.role)) return true;
-  if (req.user?.role !== "customer") return false;
+  const role = String(req.user?.role || "").toLowerCase();
+  if (["admin", "employee"].includes(role)) return true; // employee → full read access
+  if (role !== "customer") return false;
 
   const ownerId = Number(req.user.id);
   if (!Number.isFinite(ownerId) || ownerId <= 0) return false;
@@ -58,7 +59,6 @@ function normalizeEmployeesField(employees) {
   if (!employees) return "—";
   if (typeof employees === "string") return employees.trim() || "—";
 
-  // Tekil nesne gelirse
   if (typeof employees === "object" && !Array.isArray(employees)) {
     const o = employees || {};
     const s =
@@ -70,7 +70,6 @@ function normalizeEmployeesField(employees) {
     return s || "—";
   }
 
-  // Dizi gelirse (karışık tipler olabilir)
   if (Array.isArray(employees)) {
     const names = employees
       .map((e) => {
@@ -141,10 +140,6 @@ async function loadVisitFullForMail(req, id) {
     },
   });
   if (!v) return null;
-  if (req.user.role === "employee") {
-    const ok = await ensureEmployeeStoreAccess(req, v.storeId);
-    if (!ok) return "NO_ACCESS";
-  }
   return v;
 }
 
@@ -234,30 +229,18 @@ router.get(
       if (storeId) {
         const sid = parseId(storeId);
         if (!sid) return res.status(400).json({ message: "Geçersiz storeId" });
-        if (req.user.role === "employee") {
-          const ok = await ensureEmployeeStoreAccess(req, sid);
-          if (!ok) return res.status(403).json({ message: "Erişim yok" });
-        }
         where.storeId = sid;
       }
 
       if (customerId) {
         const cid = parseId(customerId);
         if (!cid) return res.status(400).json({ message: "Geçersiz customerId" });
-        if (req.user.role === "employee") {
-          const own = await prisma.customer.findFirst({ where: { id: cid, employeeId: req.user.id }, select: { id: true }});
-          if (!own) return res.status(403).json({ message: "Erişim yok" });
-        }
         where.store = { customerId: cid };
-      }
-
-      if (req.user.role === "employee" && !where.store && !where.storeId) {
-        where.store = { customer: { employeeId: req.user.id } };
       }
 
       const rows = await prisma.visit.findMany({
         where,
-        orderBy: { date: "asc" }, // (liste sayfalarında istersen desc yap)
+        orderBy: { date: "asc" },
         select: {
           id: true, storeId: true, date: true, startTime: true, endTime: true,
           visitType: true, notes: true, employees: true,
@@ -296,10 +279,8 @@ router.get(
       const storeId = parseId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      } else if (req.user.role === "customer") {
+      const role = String(req.user.role || "").toLowerCase();
+      if (role === "customer") {
         const ok = await customerHasStoreAccess(req, storeId);
         if (!ok) return res.status(403).json({ message: "Yetkisiz" });
       }
@@ -313,7 +294,6 @@ router.get(
         },
       });
 
-      // 👇 FE’de [object Object] sorununu kökten bitir
       const data = items.map(v => ({
         ...v,
         employees: normalizeEmployeesField(v.employees),
@@ -353,11 +333,6 @@ router.get(
       });
       if (!v) return res.status(404).json({ message: "Bulunamadı" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, v.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
-
       res.json(v);
     } catch (e) {
       console.error("GET /visits/:id", e);
@@ -378,11 +353,8 @@ router.post(
       if (!sid || !date || !visitType) {
         return res.status(400).json({ message: "storeId, date, visitType zorunlu" });
       }
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, sid);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
 
+      // 🔓 çalışan yazma serbest
       const visit = await prisma.visit.create({
         data: {
           storeId: sid,
@@ -418,11 +390,7 @@ router.put(
       const existing = await prisma.visit.findUnique({ where: { id }, select: { storeId: true } });
       if (!existing) return res.status(404).json({ message: "Bulunamadı" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, existing.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
-
+      // 🔓 çalışan yazma serbest
       const data = {};
       ["date", "startTime", "endTime", "visitType", "targetPests", "notes", "employees"].forEach((k) => {
         if (k in req.body) data[k] = k === "date" ? new Date(req.body[k]) : req.body[k];
@@ -469,11 +437,7 @@ router.post(
       const v = await prisma.visit.findUnique({ where: { id: visitId }, select: { storeId: true } });
       if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, v.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
-
+      // 🔓 çalışan yazma serbest
       const { biosidalId, method, amount } = req.body;
       const bid = parseId(biosidalId);
       if (!bid || !method || typeof amount !== "number") {
@@ -509,11 +473,7 @@ router.delete(
       });
       if (!line || line.visit.id !== visitId) return res.status(404).json({ message: "Bulunamadı" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, line.visit.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
-
+      // 🔓 çalışan yazma serbest
       await prisma.ek1Line.delete({ where: { id: lineId } });
       res.json({ message: "EK-1 satırı silindi" });
     } catch (e) {
@@ -536,11 +496,7 @@ router.put(
       const v = await prisma.visit.findUnique({ where: { id }, select: { storeId: true, ek1: { select: { id: true } } } });
       if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, v.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
-
+      // 🔓 çalışan yazma serbest
       const data = {};
       const fields = ["status","pdfUrl","providerSignedAt","providerSignerName","customerSignedAt","customerSignerName"];
       fields.forEach((k) => {
@@ -586,11 +542,6 @@ router.get(
       });
       if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
 
-      if (req.user.role === "employee") {
-        const ok = await ensureEmployeeStoreAccess(req, v.storeId);
-        if (!ok) return res.status(403).json({ message: "Erişim yok" });
-      }
-
       const lines = (v.ek1Lines || []).map(l => ({
         name: l.biosidal?.name || "—",
         activeIngredient: l.biosidal?.activeIngredient || "—",
@@ -605,7 +556,7 @@ router.get(
         typeMap.set(key, (typeMap.get(key) || 0) + 1);
       });
       const activations = Array.from(typeMap.entries()).map(([k, count]) => ({
-        label: k.replace(/_/g," ").toLowerCase().replace(/\b\w/g, s=>s.toUpperCase()),
+        label: k.replace(/_/g," ").toLowerCase().replace(/\b\w/g, s=>s.ToUpperCase?.() ?? s),
         count,
       }));
 
@@ -651,7 +602,6 @@ router.post(
 
       const v = await loadVisitFullForMail(req, id);
       if (!v) return res.status(404).json({ message: "Ziyaret bulunamadı" });
-      if (v === "NO_ACCESS") return res.status(403).json({ message: "Erişim yok" });
 
       let recipients = [];
       if (req.body?.to) {
@@ -699,7 +649,7 @@ router.post(
 
         const html = baseBox(`
           <h2 style="margin:0 0 10px;font-size:18px;">Ziyaret Bilgilendirme</h2>
-          <p><b>${d.storeName}</b> lokasyonunda <b>${fmtDateTR(d.visitAt)}</b> tarihinde gerçekleştirilen ziyarete ait bilgiler aşağıdadır.</p>
+          <p><b>${d.storeName}</b> lokasyonunda <b>${fmtDateTR(d.visitAt)}</b> tarihinde gerçekleştirilen ziyareete ait bilgiler aşağıdadır.</p>
           <ul style="margin:8px 0 12px; padding-left:18px;">
             <li><b>Hizmet Saati:</b> ${d.startTime || "—"} – ${d.endTime || "—"}</li>
             <li><b>Hizmeti Veren Personel:</b> ${d.employees}</li>

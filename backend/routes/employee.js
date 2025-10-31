@@ -1,3 +1,4 @@
+// routes/employees.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
@@ -6,53 +7,64 @@ import { auth, roleCheck } from "../middleware/auth.js";
 const router = Router();
 const prisma = new PrismaClient();
 
-/** Liste (sadece admin görsün) */
-router.get("/", auth, roleCheck(["admin"]), async (_req, res) => {
+const EMP_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  jobTitle: true,
+  gsm: true,
+  profileImage: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+  lastSeenAt: true,
+  adminId: true,
+};
+
+/** Liste:
+ * - admin → TÜM çalışanlar
+ * - employee → SADECE KENDİSİ (güvenli varsayılan)
+ */
+router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
-    const employees = await prisma.employee.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        jobTitle: true,
-        gsm: true,
-        profileImage: true,
-        createdAt: true,
-        updatedAt: true,
-        lastLoginAt: true,
-        lastSeenAt: true, // <<< ÖNEMLİ
-        adminId: true,
-      },
+    const role = String(req.user?.role || "").toLowerCase();
+    if (role === "admin") {
+      const employees = await prisma.employee.findMany({
+        orderBy: { createdAt: "desc" },
+        select: EMP_SELECT,
+      });
+      return res.json(employees);
+    }
+
+    // employee → sadece kendi kaydı
+    const me = await prisma.employee.findUnique({
+      where: { id: req.user.id },
+      select: EMP_SELECT,
     });
-    res.json(employees);
+    return res.json(me ? [me] : []);
   } catch (e) {
     console.error("GET /employees", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });
 
-/** Tekil detay */
-router.get("/:id", auth, roleCheck(["admin"]), async (req, res) => {
+/** Tekil detay:
+ * - admin → herkesin detayını görebilir
+ * - employee → SADECE KENDİ id'sini görebilir
+ */
+router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
+    const role = String(req.user?.role || "").toLowerCase();
+    if (role === "employee" && req.user.id !== id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     const emp = await prisma.employee.findUnique({
       where: { id },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        jobTitle: true,
-        gsm: true,
-        profileImage: true,
-        createdAt: true,
-        updatedAt: true,
-        lastLoginAt: true,
-        lastSeenAt: true, // <<< ÖNEMLİ
-        adminId: true,
-      },
+      select: EMP_SELECT,
     });
     if (!emp) return res.status(404).json({ message: "Kayıt bulunamadı" });
     res.json(emp);
@@ -62,7 +74,7 @@ router.get("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Oluştur */
+/** Oluştur (admin) */
 router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const { fullName, jobTitle, gsm, email, password, adminId } = req.body || {};
@@ -91,7 +103,7 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Güncelle */
+/** Güncelle (admin) */
 router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -109,11 +121,7 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     const updated = await prisma.employee.update({
       where: { id },
       data,
-      select: {
-        id: true,
-        updatedAt: true,
-        lastSeenAt: true, // <<< ÖNEMLİ
-      },
+      select: { id: true, updatedAt: true, lastSeenAt: true },
     });
     res.json({ ok: true, employee: updated });
   } catch (e) {
@@ -124,7 +132,7 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Sil */
+/** Sil (admin) */
 router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);

@@ -37,8 +37,16 @@ api.interceptors.request.use((config) => {
   const url = String(config.url || "");
   const t = localStorage.getItem("accessToken");
 
-  // login/refresh/logout'a Bearer ekleme (401 zincirini tetiklemeyelim)
-  if (!isAuthPath(url) && t) {
+  // AUTH rotalarında BEARER GÖNDERME: defaults'taki Authorization'ı da override et
+  if (isAuthPath(url)) {
+    config.headers = config.headers || {};
+    // Boş string ile default Authorization'ı ez → sunucuya Bearer gitmez
+    config.headers.Authorization = "";
+    return config;
+  }
+
+  // Diğer tüm isteklerde access token'ı ekle
+  if (t) {
     config.headers = config.headers || {};
     if (!config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${t}`;
@@ -114,7 +122,10 @@ api.interceptors.response.use(
         isRefreshing = false;
         flushWaiters(e, null);
 
-        // Sert redirect yok, sadece temizlik
+        // BEST-EFFORT: refresh cookie'yi sunucudan temizlet (Authorization'sız)
+        try { await apiBare.post("/auth/logout", {}, { headers: { Authorization: "" } }); } catch {}
+
+        // FE temizliği
         try {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("role");

@@ -126,6 +126,10 @@ model AccessOwner {
   grants    AccessGrant[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+
+  Complaint Complaint[]
+
+  Suggestion Suggestion[]
 }
 
 model AccessGrant {
@@ -146,6 +150,82 @@ model AccessGrant {
   @@unique([ownerId, scopeType, customerId, storeId], map: "unique_access_grant")
   @@index([ownerId])
   @@index([scopeType, customerId, storeId])
+}
+
+enum ComplaintType {
+  PERSONEL
+  UYGULAMA
+  ISTASYONLAR
+  DIGER
+}
+
+enum NotificationRecipientRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum NotificationType {
+  COMPLAINT_NEW
+  SUGGESTION_NEW
+  COMPLAINT_SEEN
+}
+
+model Complaint {
+  id      Int         @id @default(autoincrement())
+  ownerId Int
+  owner   AccessOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  type         ComplaintType
+  title        String
+  message      String        @db.Text
+  employeeName String? // type=PERSONEL ise opsiyonel alan
+  image        String? // uploads/complaints/...
+
+  adminSeenAt DateTime? // admin ilk kez detay açtığında işaretlenir
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@index([storeId, createdAt])
+  @@index([adminSeenAt])
+}
+
+model Suggestion {
+  id      Int         @id @default(autoincrement())
+  ownerId Int
+  owner   AccessOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  title   String
+  message String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, createdAt])
+}
+
+model Notification {
+  id            Int                       @id @default(autoincrement())
+  type          NotificationType
+  title         String
+  body          String?
+  link          String? // FE path (örn: /admin/complaints/12)
+  recipientRole NotificationRecipientRole // ADMIN / CUSTOMER
+  recipientId   Int? // CUSTOMER için ownerId atanabilir (opsiyonel)
+
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([recipientRole, isRead, createdAt])
+  @@index([recipientRole, recipientId, isRead])
 }
 
 model StationActivation {
@@ -289,6 +369,8 @@ model Customer {
   employee   Employee? @relation(fields: [employeeId], references: [id])
 
   AccessGrant AccessGrant[]
+
+  Complaint Complaint[]
 }
 
 model Store {
@@ -324,6 +406,7 @@ model Store {
   reports        Report[]
   scheduleEvents ScheduleEvent[]
   AccessGrant    AccessGrant[]
+  Complaint      Complaint[]
 
   @@unique([customerId, code], map: "store_customer_code_unique")
 }

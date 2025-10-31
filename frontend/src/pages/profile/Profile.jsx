@@ -77,8 +77,9 @@ export default function Profile() {
     profile.email ||
     "—";
 
+  // Avatar URL (admin/employee için server’dan gelecek; yoksa noavatar)
   const avatarUrl = isAdminOrEmployee
-    ? (getAvatarUrl(profile?.profileImage) || "/noavatar.jpg")
+    ? (getAvatarUrl(profile?.profileImage, { bust: true }) || "/noavatar.jpg")
     : "/noavatar.jpg";
 
   const handleAvatarClick = () => setEditModalOpen(true);
@@ -126,7 +127,8 @@ export default function Profile() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const abs = getAvatarUrl(res.data.profileImage);
+      // Backend'in döndüğü yol uploads/... ise absolute'e çevir
+      const abs = getAvatarUrl(res.data.profileImage, { bust: true });
       const nextUrl = addCacheBust(abs);
 
       setProfile((prev) => ({
@@ -231,7 +233,14 @@ export default function Profile() {
             {isAdminOrEmployee && (
               <div className="profile-avatar-block">
                 <div className="profile-avatar" onClick={handleAvatarClick} role="button" tabIndex={0}>
-                  <img src={avatarUrl} alt="Profil Fotoğrafı" />
+                  <img
+                    src={avatarUrl}
+                    alt="Profil Fotoğrafı"
+                    onError={(e) => {
+                      if (e.currentTarget.src.endsWith("/noavatar.jpg")) return;
+                      e.currentTarget.src = "/noavatar.jpg";
+                    }}
+                  />
                   <div className="avatar-overlay">
                     <span>Düzenle</span>
                   </div>

@@ -38,6 +38,11 @@ import analyticsRouter from "./routes/analytics.js";
 import scheduleRouter from "./routes/schedule.js";
 import accessRouter from "./routes/access.js";
 
+import feedbackRouter from "./routes/feedback.js";
+import notificationsRouter from "./routes/notifications.js";
+
+import contactsRouter from "./routes/contacts.js";
+
 dotenv.config();
 
 const app = express();
@@ -129,6 +134,11 @@ app.use("/api/access", accessRouter);
 
 // Takvim
 app.use("/api/schedule", scheduleRouter);
+
+app.use("/api/feedback", feedbackRouter);
+app.use("/api/notifications", notificationsRouter);
+
+app.use("/api/contacts", contactsRouter);
 
 /* ------------ 404 & Error Handlers ------------ */
 app.use((req, res, _next) => {

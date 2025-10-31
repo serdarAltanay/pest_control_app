@@ -1,4 +1,4 @@
-﻿// routes/auth.js
+﻿// backend/routes/auth.js
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -88,7 +88,7 @@ router.post("/login", async (req, res) => {
       if (user) userType = "employee";
     }
 
-    // 3) AccessOwner (erişim sahibi) -> müşteri rolüyle oturum
+    // 3) AccessOwner (müşteri paneli)
     if (!user) {
       user = await prisma.accessOwner.findUnique({ where: { email } });
       if (user) userType = "accessOwner";
@@ -100,28 +100,24 @@ router.post("/login", async (req, res) => {
     if (!valid) return res.status(401).json({ message: "Şifre hatalı" });
 
     const now = new Date();
-    // lastLoginAt / lastSeenAt güncelle
     if (userType === "admin") {
       await prisma.admin.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
     } else if (userType === "employee") {
       await prisma.employee.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
     } else if (userType === "accessOwner") {
       await prisma.accessOwner.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
-    } else if (userType === "customer") {
-      await prisma.customer.update({ where: { id: user.id }, data: { lastLoginAt: now, lastSeenAt: now } });
     }
 
-    // FE yönlendirmesi için: accessOwner da "customer" gibi davransın
+    // FE yönlendirmesi için (accessOwner → customer gibi davranır)
     const jwtRole = userType === "accessOwner" ? "customer" : userType;
-    // RefreshToken tablosunda çakışmayı önlemek için DB'de tutulan rol:
-    const dbRole = userType === "accessOwner" ? "accessOwner" : userType;
+    const dbRole  = userType === "accessOwner" ? "accessOwner" : userType;
 
-    // Access token (15 dk) — FE bu role ile route eder
+    // Access (15 dk)
     const accessToken = jwt.sign({ id: user.id, role: jwtRole }, JWT_SECRET, { expiresIn: "15m" });
-    // Refresh token (7 gün) — payload role'ü yine jwtRole (customer) olsun ki refresh sonrası da FE aynı kalsın
+    // Refresh (7 gün) — payload.role = jwtRole (customer)
     const refreshToken = jwt.sign({ id: user.id, role: jwtRole }, JWT_SECRET, { expiresIn: "7d" });
 
-    // DB'ye kaydet (unique: userId+role) — role için dbRole kullan
+    // DB'ye kaydet (unique userId+role)
     await prisma.refreshToken.upsert({
       where: { userId_role_unique: { userId: user.id, role: dbRole } },
       update: {
@@ -139,15 +135,12 @@ router.post("/login", async (req, res) => {
     // Cookie olarak refresh token
     res.cookie("refreshToken", refreshToken, cookieOpts);
 
-    // Görünen ad — tabloya göre normalize et
+    // Görünen ad normalize
     let fullName = "";
     if (userType === "admin" || userType === "employee") {
       fullName = user.fullName || "";
     } else if (userType === "accessOwner") {
       fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-    } else if (userType === "customer") {
-      // şemanıza göre uyarlayın; title ya da contactFullName olabilir
-      fullName = user.fullName || user.title || user.contactFullName || user.email;
     }
 
     res.json({
@@ -176,7 +169,6 @@ router.post("/refresh", async (req, res) => {
     jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
       if (err) return res.status(403).json({ message: "Token doğrulanamadı" });
 
-      // Yeni access: refresh içindeki role neyse aynısını veriyoruz (accessOwner da "customer" olarak kalır)
       const newAccessToken = jwt.sign(
         { id: decoded.id, role: decoded.role },
         JWT_SECRET,
@@ -198,8 +190,10 @@ router.post("/logout", async (req, res) => {
   try {
     const rt = req.cookies.refreshToken;
 
+    // ÇEREZİ SİL — set ederken kullandığın cookieOpts ile AYNI
     res.clearCookie("refreshToken", cookieOpts);
 
+    // DB'deki kaydı da sil
     if (rt) {
       await prisma.refreshToken.deleteMany({ where: { token: rt } });
     }

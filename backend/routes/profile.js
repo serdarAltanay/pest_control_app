@@ -20,7 +20,8 @@ profileRouter.get("/", auth, async (req, res) => {
         role,
         email: u.email,
         fullName: u.fullName || "",
-        profileImage: u.profileImage || "/noavatar.jpg",
+        // ÖNEMLİ: default görsel döndürmeyelim; FE fallback kullanacak
+        profileImage: u.profileImage || null,
       });
     }
 
@@ -33,7 +34,7 @@ profileRouter.get("/", auth, async (req, res) => {
         role,
         email: u.email,
         fullName: u.fullName || "",
-        profileImage: u.profileImage || "/noavatar.jpg",
+        profileImage: u.profileImage || null,
       });
     }
 
@@ -50,7 +51,7 @@ profileRouter.get("/", auth, async (req, res) => {
           firstName: ao.firstName || null,
           lastName: ao.lastName || null,
           fullName,
-          profileImage: ao.profileImage || "/noavatar.jpg",
+          profileImage: ao.profileImage || null,
         });
       }
 
@@ -64,7 +65,7 @@ profileRouter.get("/", auth, async (req, res) => {
         fullName: c.contactFullName || c.title || "",
         contactFullName: c.contactFullName || null,
         company: c.title || null,
-        profileImage: c.profileImage || "/noavatar.jpg",
+        profileImage: c.profileImage || null,
       });
     }
 

@@ -10,8 +10,13 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const role = (localStorage.getItem("role") || "").toLowerCase();
 
+  const isAdmin = role === "admin";
+  const isEmployee = role === "employee";
+  const isCustomer = role === "customer";
+  const canManageBasic = isAdmin || isEmployee; // müşteri/mağaza/biocide menüleri
+
   useEffect(() => {
-    if (role !== "customer") return;
+    if (!isCustomer) return;
     (async () => {
       try {
         let arr = [];
@@ -19,7 +24,7 @@ export default function Sidebar() {
           const { data } = await api.get("/customer/stores"); // tercih edilen
           arr = Array.isArray(data) ? data : [];
         } catch {
-          // yedek uçlar: backend hangi isimdeyse ona döner
+          // yedek uçlar
           try {
             const { data } = await api.get("/stores/mine");
             arr = Array.isArray(data) ? data : [];
@@ -33,7 +38,7 @@ export default function Sidebar() {
         setMyStores([]);
       }
     })();
-  }, [role]);
+  }, [isCustomer]);
 
   const goMyStore = () => {
     if (!myStores || myStores.length === 0) {
@@ -55,7 +60,7 @@ export default function Sidebar() {
       {open && (
         <ul className="sidebar-menu">
           {/* MÜŞTERİ İŞLERİ */}
-          {role === "customer" && (
+          {isCustomer && (
             <>
               <li className="section-title">Pest işlerim</li>
               <li className="sidebar-item" onClick={() => navigate("/customer")}>Anasayfa</li>
@@ -63,11 +68,15 @@ export default function Sidebar() {
               <li className="sidebar-item" onClick={() => navigate("/customer/agenda")}>Ziyaret Ajandam</li>
               <li className="sidebar-item" onClick={() => navigate("/customer/reports")}>Dosyalar/Raporlar</li>
               <li className="section-title">iletişim</li>
+              {/* ⇩⇩ Yeni linkler (müşteri) ⇩⇩ */}
+              <li className="sidebar-item" onClick={() => navigate("/customer/feedback/new")}>Şikayet / Öneri Oluştur</li>
+              <li className="sidebar-item" onClick={() => navigate("/customer/feedback")}>Şikayet & Önerilerim</li>
+              <li className="sidebar-item" onClick={() => navigate("/customer/contacts")}>İletişim Kanalları</li>
             </>
           )}
 
-          {/* PERSONEL İŞLERİ (App.js ile uyumlu) */}
-          {(role === "employee" || role === "admin") && (
+          {/* PERSONEL İŞLERİ (admin + employee) */}
+          {(isEmployee || isAdmin) && (
             <>
               <li className="section-title">İşler</li>
               <li className="sidebar-item" onClick={() => navigate("/work")}>İş Paneli</li>
@@ -76,21 +85,32 @@ export default function Sidebar() {
             </>
           )}
 
-          {/* YÖNETİM İŞLERİ */}
-          {role === "admin" && (
+          {/* YÖNETİM — TEMEL (admin + employee görür) */}
+          {canManageBasic && (
             <>
               <li className="section-title">Yönetim İşleri</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/customers/new")}>Müşteri Ekle</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/customers")}>Müşteri Listesi</li>
+              {/* Mağaza ekleme menüsü eklendi */}
               <li className="sidebar-item" onClick={() => navigate("/admin/stores")}>Mağaza Listesi</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/admins/new")}>Admin Ekle</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/biocides")}>Biyosidallar</li>
+            </>
+          )}
+
+          {/* YÖNETİM — İLERİ (sadece admin) */}
+          {isAdmin && (
+            <>
               <li className="section-title">Personel İşleri</li>
               <li className="sidebar-item" onClick={() => navigate("/tracking/employees")}>Personel Takip</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/employees/new")}>Personel Ekle</li>
+
               <li className="section-title">Erişim İşleri</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/access")}>Erişim Listesi</li>
               <li className="sidebar-item" onClick={() => navigate("/admin/access/new")}>Yeni Erişim Ver</li>
+
+              <li className="section-title">İletişim</li>
+              <li className="sidebar-item" onClick={() => navigate("/admin/complaints")}>Şikayetler</li>
+              <li className="sidebar-item" onClick={() => navigate("/admin/suggestions")}>Öneriler</li>
             </>
           )}
         </ul>

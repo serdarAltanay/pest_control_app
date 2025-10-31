@@ -1,4 +1,4 @@
-// src/routes/activations.js
+// routes/activations.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
@@ -6,23 +6,25 @@ import { auth, roleCheck } from "../middleware/auth.js";
 const prisma = new PrismaClient();
 const router = Router();
 
-/** ---- helpers ---- */
+/** Helpers */
 const parseId = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
-const BOOL = (v) => typeof v === "boolean" ? v : v === "true" ? true : v === "false" ? false : undefined;
-const INT  = (v) => (v === "" || v == null) ? undefined : (Number.isFinite(+v) ? Math.max(0, Math.trunc(+v)) : undefined);
-const RISK = new Set(["RISK_YOK", "DUSUK", "ORTA", "YUKSEK"]);
+const parseISO = (v) => { if (!v) return null; const d = new Date(v); return Number.isFinite(+d) ? d : null; };
+const parseLimit = (v, def=20, max=200) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return def;
+  return Math.min(n, max);
+};
+const parseOffset = (v, def=0) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : def;
+};
 
-// Çalışan erişim kontrolü (kendi müşterileri)
+// Employee → her mağazaya/istasyona sınırsız
 async function ensureEmployeeStoreAccess(req, storeId) {
-  if (req.user?.role !== "employee") return true;
-  const ok = await prisma.store.findFirst({
-    where: { id: storeId, customer: { employeeId: req.user.id } },
-    select: { id: true },
-  });
-  return !!ok;
+  return true;
 }
 
-// routes/stations.js VE src/routes/activations.js içindeki aynı yardımcı fonksiyon
+// Customer (AccessOwner) grant kontrolü (okuma için)
 async function customerHasStoreAccess(req, storeId) {
   if (["admin", "employee"].includes(req.user?.role)) return true;
   if (req.user?.role !== "customer") return false;
@@ -36,260 +38,229 @@ async function customerHasStoreAccess(req, storeId) {
   });
   if (!store) return false;
 
-  // AccessGrant modeli yoksa veya çağrı başarısız olursa fallback: store.customerId === ownerId
-  try {
-    // prisma.accessGrant bazı şemalarda olmayabilir
-    if (!prisma.accessGrant || !prisma.accessGrant.findFirst) {
-      return store.customerId === ownerId;
-    }
-
-    const grant = await prisma.accessGrant.findFirst({
-      where: {
-        ownerId,
-        OR: [
-          { scopeType: "STORE", storeId },
-          { scopeType: "CUSTOMER", customerId: store.customerId },
-        ],
-      },
-      select: { id: true },
-    });
-    return !!grant || store.customerId === ownerId;
-  } catch (err) {
-    console.error("customerHasStoreAccess fallback:", err);
-    return store.customerId === ownerId;
-  }
+  const grant = await prisma.accessGrant.findFirst({
+    where: {
+      ownerId,
+      OR: [
+        { scopeType: "STORE", storeId },
+        { scopeType: "CUSTOMER", customerId: store.customerId },
+      ],
+    },
+    select: { id: true },
+  });
+  return !!grant;
 }
 
-
-function buildActivationData(body, stationType) {
-  const type = String(body?.type || stationType);
-  const risk = RISK.has(String(body?.risk)) ? String(body.risk) : "RISK_YOK";
-  const out = { type, aktiviteVar: BOOL(body?.aktiviteVar), risk, notes: body?.notes ? String(body.notes).slice(0, 1000) : undefined };
-
-  if (type === "FARE_YEMLEME") Object.assign(out, {
-    deformeYem: BOOL(body?.deformeYem), yemDegisti: BOOL(body?.yemDegisti),
-    deformeMonitor: BOOL(body?.deformeMonitor), monitorDegisti: BOOL(body?.monitorDegisti),
-    ulasilamayanMonitor: BOOL(body?.ulasilamayanMonitor),
-  });
-  if (type === "CANLI_YAKALAMA") Object.assign(out, {
-    deformeMonitor: BOOL(body?.deformeMonitor), yapiskanDegisti: BOOL(body?.yapiskanDegisti),
-    monitorDegisti: BOOL(body?.monitorDegisti), ulasilamayanMonitor: BOOL(body?.ulasilamayanMonitor),
-  });
-  if (type === "ELEKTRIKLI_SINEK_TUTUCU") Object.assign(out, {
-    sariBantDegisim: BOOL(body?.sariBantDegisim), arizaliEFK: BOOL(body?.arizaliEFK),
-    tamirdeEFK: BOOL(body?.tamirdeEFK), uvLambaDegisim: BOOL(body?.uvLambaDegisim),
-    uvLambaAriza: BOOL(body?.uvLambaAriza), ulasilamayanMonitor: BOOL(body?.ulasilamayanMonitor),
-    karasinek: INT(body?.karasinek), sivrisinek: INT(body?.sivrisinek), diger: INT(body?.diger),
-  });
-  if (type === "BOCEK_MONITOR") Object.assign(out, {
-    monitorDegisti: BOOL(body?.monitorDegisti), hedefZararliSayisi: INT(body?.hedefZararliSayisi),
-  });
-  if (type === "GUVE_TUZAGI") Object.assign(out, {
-    feromonDegisti: BOOL(body?.feromonDegisti), deformeTuzak: BOOL(body?.deformeTuzak),
-    tuzakDegisti: BOOL(body?.tuzakDegisti), ulasilamayanTuzak: BOOL(body?.ulasilamayanTuzak),
-    guve: INT(body?.guve), diger: INT(body?.diger),
-  });
-
-  if (out.aktiviteVar === undefined) {
-    const anyCount = (out.karasinek||0) + (out.sivrisinek||0) + (out.diger||0) + (out.guve||0) + (out.hedefZararliSayisi||0);
-    if (anyCount > 0) out.aktiviteVar = true;
-  }
-  try { out.data = body && typeof body === "object" ? body : undefined; } catch {}
-  return out;
-}
-
-/* ---------------- CREATE ---------------- */
-
-// POST /api/activations/stations/:stationId
-router.post("/stations/:stationId", auth, roleCheck(["admin", "employee"]), async (req, res) => {
-  try {
+/** ---------------- LISTE: STATION ----------------
+ * GET /api/activations/stations/:stationId?limit&offset&from&to&type&risk&activity=0|1
+ * admin/employee/customer
+ */
+router.get("/stations/:stationId", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
+  try{
     const stationId = parseId(req.params.stationId);
-    if (!stationId) return res.status(400).json({ message: "Geçersiz stationId" });
+    if(!stationId) return res.status(400).json({message:"Geçersiz stationId"});
 
-    const station = await prisma.station.findUnique({ where: { id: stationId } });
-    if (!station) return res.status(404).json({ message: "İstasyon bulunamadı" });
+    const st = await prisma.station.findUnique({ where: { id: stationId }, select:{ storeId:true }});
+    if(!st) return res.status(404).json({message:"İstasyon bulunamadı"});
 
-    const payload = buildActivationData(req.body, station.type);
-    const created = await prisma.stationActivation.create({
-      data: { storeId: station.storeId, stationId, type: station.type, observedAt: new Date(), ...payload },
-    });
-    res.json({ message: "Aktivasyon kaydedildi", activation: created });
-  } catch (e) {
-    console.error("POST /activations/stations/:stationId", e);
-    res.status(500).json({ message: "Sunucu hatası" });
-  }
-});
-
-// POST /api/activations/visits/:visitId/stations/:stationId
-router.post("/visits/:visitId/stations/:stationId", auth, roleCheck(["admin", "employee"]), async (req, res) => {
-  try {
-    const visitId = parseId(req.params.visitId);
-    const stationId = parseId(req.params.stationId);
-    if (!visitId || !stationId) return res.status(400).json({ message: "Geçersiz id" });
-
-    const [visit, station] = await Promise.all([
-      prisma.visit.findUnique({ where: { id: visitId } }),
-      prisma.station.findUnique({ where: { id: stationId } }),
-    ]);
-    if (!visit) return res.status(404).json({ message: "Ziyaret bulunamadı" });
-    if (!station) return res.status(404).json({ message: "İstasyon bulunamadı" });
-    if (visit.storeId !== station.storeId) return res.status(409).json({ message: "Ziyaret ile istasyon farklı mağazalara ait" });
-
-    const payload = buildActivationData(req.body, station.type);
-    const created = await prisma.stationActivation.create({
-      data: { storeId: station.storeId, stationId, visitId, type: station.type, observedAt: visit.date ?? new Date(), ...payload },
-    });
-    res.json({ message: "Aktivasyon kaydedildi", activation: created });
-  } catch (e) {
-    console.error("POST /activations/visits/:visitId/stations/:stationId", e);
-    res.status(500).json({ message: "Sunucu hatası" });
-  }
-});
-
-/* ---------------- READ ---------------- */
-
-// GET /api/activations/stations/:stationId?limit=20&offset=0  (müşteriye read-only)
-router.get("/stations/:stationId", auth, roleCheck(["admin", "employee", "customer"]), async (req, res) => {
-  try {
-    const stationId = parseId(req.params.stationId);
-    if (!stationId) return res.status(400).json({ message: "Geçersiz stationId" });
-
-    const st = await prisma.station.findUnique({ where: { id: stationId }, select: { storeId: true } });
-    if (!st) return res.status(404).json({ message: "İstasyon yok" });
-
-    if (req.user.role === "employee") {
-      const ok = await ensureEmployeeStoreAccess(req, st.storeId);
-      if (!ok) return res.status(403).json({ message: "Erişim yok" });
-    } else if (req.user.role === "customer") {
+    if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, st.storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
+    // employee/admin → serbest
 
-    const take = Math.min(parseInt(req.query.limit ?? "20"), 100);
-    const skip = Math.max(parseInt(req.query.offset ?? "0"), 0);
+    const limit = parseLimit(req.query.limit, 20);
+    const offset = parseOffset(req.query.offset, 0);
+    const from = parseISO(req.query.from);
+    const to   = parseISO(req.query.to);
+    const type = req.query.type ? String(req.query.type) : undefined;
+    const risk = req.query.risk ? String(req.query.risk) : undefined;
+    const activity = (req.query.activity === "0" || req.query.activity === "1")
+      ? req.query.activity === "1"
+      : undefined;
 
-    const [items, total] = await Promise.all([
+    const where = {
+      stationId,
+      ...(from || to ? { observedAt: {
+        ...(from ? { gte: from } : {}),
+        ...(to   ? { lte: to }   : {}),
+      }} : {}),
+      ...(type ? { type } : {}),
+      ...(risk ? { risk } : {}),
+      ...(activity !== undefined ? { aktiviteVar: activity } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
       prisma.stationActivation.findMany({
-        where: { stationId },
-        orderBy: { observedAt: "desc" },
-        skip, take,
+        where, orderBy: { observedAt: "desc" }, skip: offset, take: limit
       }),
-      prisma.stationActivation.count({ where: { stationId } }),
+      prisma.stationActivation.count({ where })
     ]);
-    res.json({ total, items });
-  } catch (e) {
+
+    res.json({ total, limit, offset, items: rows });
+  }catch(e){
     console.error("GET /activations/stations/:stationId", e);
-    res.status(500).json({ message: "Sunucu hatası" });
+    res.status(500).json({message:"Sunucu hatası"});
   }
 });
 
-// GET /api/activations/:id  (admin/employee)
-router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
-  try {
-    const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ message: "Geçersiz id" });
-    const item = await prisma.stationActivation.findUnique({ where: { id } });
-    if (!item) return res.status(404).json({ message: "Bulunamadı" });
-    res.json(item);
-  } catch (e) {
-    console.error("GET /activations/:id", e);
-    res.status(500).json({ message: "Sunucu hatası" });
-  }
-});
-
-// GET /api/activations/stations/:stationId/last  (müşteriye read-only)
-router.get("/stations/:stationId/last", auth, roleCheck(["admin", "employee", "customer"]), async (req, res) => {
-  try {
-    const stationId = parseId(req.params.stationId);
-    if (!stationId) return res.status(400).json({ message: "Geçersiz stationId" });
-
-    const st = await prisma.station.findUnique({ where: { id: stationId }, select: { storeId: true } });
-    if (!st) return res.status(404).json({ message: "İstasyon yok" });
-
-    if (req.user.role === "employee") {
-      const ok = await ensureEmployeeStoreAccess(req, st.storeId);
-      if (!ok) return res.status(403).json({ message: "Erişim yok" });
-    } else if (req.user.role === "customer") {
-      const ok = await customerHasStoreAccess(req, st.storeId);
-      if (!ok) return res.status(403).json({ message: "Yetkisiz" });
-    }
-
-    const last = await prisma.stationActivation.findFirst({
-      where: { stationId },
-      orderBy: { observedAt: "desc" },
-    });
-    res.json(last || null);
-  } catch (e) {
-    console.error("GET /activations/stations/:stationId/last", e);
-    res.status(500).json({ message: "Sunucu hatası" });
-  }
-});
-
-// GET /api/activations/stores/:storeId/last  (müşteriye read-only)  => { [stationId]: activation }
-router.get("/stores/:storeId/last", auth, roleCheck(["admin", "employee", "customer"]), async (req, res) => {
-  try {
+/** ---------------- LISTE: STORE ----------------
+ * GET /api/activations/stores/:storeId?limit&offset&from&to&type&risk&activity=0|1
+ * admin/employee/customer
+ */
+router.get("/stores/:storeId", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
+  try{
     const storeId = parseId(req.params.storeId);
-    if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
+    if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
-    if (req.user.role === "employee") {
-      const ok = await ensureEmployeeStoreAccess(req, storeId);
-      if (!ok) return res.status(403).json({ message: "Erişim yok" });
-    } else if (req.user.role === "customer") {
+    if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
+    // employee/admin → serbest
 
-    const list = await prisma.stationActivation.findMany({
-      where: { storeId },
-      orderBy: { observedAt: "desc" },
-      select: {
-        id: true, stationId: true, type: true, aktiviteVar: true, risk: true,
-        observedAt: true, karasinek: true, sivrisinek: true, diger: true,
-        guve: true, hedefZararliSayisi: true,
-      },
+    const limit = parseLimit(req.query.limit, 20);
+    const offset = parseOffset(req.query.offset, 0);
+    const from = parseISO(req.query.from);
+    const to   = parseISO(req.query.to);
+    const type = req.query.type ? String(req.query.type) : undefined;
+    const risk = req.query.risk ? String(req.query.risk) : undefined;
+    const activity = (req.query.activity === "0" || req.query.activity === "1")
+      ? req.query.activity === "1"
+      : undefined;
+
+    const where = {
+      storeId,
+      ...(from || to ? { observedAt: {
+        ...(from ? { gte: from } : {}),
+        ...(to   ? { lte: to }   : {}),
+      }} : {}),
+      ...(type ? { type } : {}),
+      ...(risk ? { risk } : {}),
+      ...(activity !== undefined ? { aktiviteVar: activity } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      prisma.stationActivation.findMany({
+        where, orderBy: { observedAt: "desc" }, skip: offset, take: limit
+      }),
+      prisma.stationActivation.count({ where })
+    ]);
+
+    res.json({ total, limit, offset, items: rows });
+  }catch(e){
+    console.error("GET /activations/stores/:storeId", e);
+    res.status(500).json({message:"Sunucu hatası"});
+  }
+});
+
+/** ---------------- GET ONE ----------------
+ * GET /api/activations/:id
+ * admin/employee/customer (customer grant: activation.storeId üzerinden)
+ */
+router.get("/:id", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
+  try{
+    const id = parseId(req.params.id);
+    if(!id) return res.status(400).json({message:"Geçersiz id"});
+
+    const act = await prisma.stationActivation.findUnique({ where: { id }});
+    if(!act) return res.status(404).json({message:"Bulunamadı"});
+
+    if (req.user.role === "customer") {
+      const ok = await customerHasStoreAccess(req, act.storeId);
+      if (!ok) return res.status(403).json({ message: "Yetkisiz" });
+    }
+    // employee/admin → serbest
+
+    res.json(act);
+  }catch(e){
+    console.error("GET /activations/:id", e);
+    res.status(500).json({message:"Sunucu hatası"});
+  }
+});
+
+/** ---------------- CREATE ----------------
+ * POST /api/activations
+ * body: { stationId, storeId?, type, risk, aktiviteVar, observedAt?, notes? }
+ * admin/employee
+ */
+router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
+  try{
+    const stationId = parseId(req.body?.stationId);
+    if(!stationId) return res.status(400).json({message:"stationId zorunlu"});
+
+    const st = await prisma.station.findUnique({
+      where: { id: stationId }, select: { id:true, storeId:true }
     });
+    if(!st) return res.status(404).json({message:"İstasyon bulunamadı"});
 
-    const map = {};
-    for (const a of list) if (!map[a.stationId]) map[a.stationId] = a;
-    res.json(map);
-  } catch (e) {
-    console.error("GET /activations/stores/:storeId/last", e);
-    res.status(500).json({ message: "Sunucu hatası" });
+    const payload = {
+      stationId: st.id,
+      storeId: st.storeId,
+      type: String(req.body?.type || ""),
+      risk: String(req.body?.risk || ""),
+      aktiviteVar: !!req.body?.aktiviteVar,
+      observedAt: parseISO(req.body?.observedAt) || new Date(),
+      notes: req.body?.notes ? String(req.body.notes).trim() : null,
+    };
+    if (!payload.type || !payload.risk)
+      return res.status(400).json({message:"type ve risk zorunlu"});
+
+    const created = await prisma.stationActivation.create({ data: payload });
+    res.json({ message: "Aktivasyon eklendi", activation: created });
+  }catch(e){
+    console.error("POST /activations", e);
+    res.status(500).json({message:"Sunucu hatası"});
   }
 });
 
-/* --------------- UPDATE / DELETE --------------- */
-
-// PUT /api/activations/:id
-router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
-  try {
+/** ---------------- UPDATE ----------------
+ * PUT /api/activations/:id
+ * admin/employee
+ */
+router.put("/:id", auth, roleCheck(["admin","employee"]), async (req,res)=>{
+  try{
     const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ message: "Geçersiz id" });
+    if(!id) return res.status(400).json({message:"Geçersiz id"});
 
-    const current = await prisma.stationActivation.findUnique({ where: { id } });
-    if (!current) return res.status(404).json({ message: "Bulunamadı" });
+    const old = await prisma.stationActivation.findUnique({ where: { id }});
+    if(!old) return res.status(404).json({message:"Bulunamadı"});
 
-    const payload = buildActivationData(req.body, current.type);
-    const updated = await prisma.stationActivation.update({ where: { id }, data: { ...payload } });
+    const data = {};
+    if ("type" in req.body) data.type = String(req.body.type);
+    if ("risk" in req.body) data.risk = String(req.body.risk);
+    if ("aktiviteVar" in req.body) data.aktiviteVar = !!req.body.aktiviteVar;
+    if ("observedAt" in req.body) {
+      const d = parseISO(req.body.observedAt);
+      if (!d) return res.status(400).json({message:"observedAt geçersiz"});
+      data.observedAt = d;
+    }
+    if ("notes" in req.body) data.notes = req.body.notes ? String(req.body.notes).trim() : null;
+
+    const updated = await prisma.stationActivation.update({ where: { id }, data });
     res.json({ message: "Aktivasyon güncellendi", activation: updated });
-  } catch (e) {
+  }catch(e){
+    if (e.code === "P2025") return res.status(404).json({message:"Bulunamadı"});
     console.error("PUT /activations/:id", e);
-    res.status(500).json({ message: "Sunucu hatası" });
+    res.status(500).json({message:"Sunucu hatası"});
   }
 });
 
-// DELETE /api/activations/:id
-router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
-  try {
+/** ---------------- DELETE ----------------
+ * DELETE /api/activations/:id
+ * admin/employee
+ */
+router.delete("/:id", auth, roleCheck(["admin","employee"]), async (req,res)=>{
+  try{
     const id = parseId(req.params.id);
-    if (!id) return res.status(400).json({ message: "Geçersiz id" });
+    if(!id) return res.status(400).json({message:"Geçersiz id"});
 
-    await prisma.stationActivation.delete({ where: { id } });
+    await prisma.stationActivation.delete({ where: { id }});
     res.json({ message: "Aktivasyon silindi" });
-  } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ message: "Bulunamadı" });
+  }catch(e){
+    if (e.code === "P2025") return res.status(404).json({message:"Bulunamadı"});
     console.error("DELETE /activations/:id", e);
-    res.status(500).json({ message: "Sunucu hatası" });
+    res.status(500).json({message:"Sunucu hatası"});
   }
 });
 

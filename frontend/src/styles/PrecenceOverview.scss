@@ -1,4 +1,4 @@
-/* src/components/PresenceOverview.scss */
+/* src/styles/PrecenceOverview.scss */
 @import "../styles/variables";
 
 $ink: #0f172a;
@@ -8,53 +8,104 @@ $muted: #64748b;
   background: #fff;
   border: 1px solid rgba(30, 25, 25, 0.06);
   border-radius: $border-radius;
-  padding: 14px;
+  padding: 12px;
   margin: 12px 0;
 
   .header {
     display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
-    h3 { margin: 0; font-size: 16px; font-weight: 700; color: $ink; }
+    h3 { margin: 0; font-size: 15px; font-weight: 700; color: $ink; }
     button {
-      height: 32px; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer;
+      height: 30px; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer;
       &:disabled { opacity: .6; cursor: not-allowed; }
     }
   }
 
-  /* 4 kolonluk grid (Admins, Employees, Customers, Totals) */
+  /* Kartlar ALT ALTA (tek kolon) */
   .grid {
-    display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
+  /* Kart: başlık solda, içerik sağda aynı satırda; dar ekranda nazikçe kayar */
   .presence-card {
-    border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #fafafa;
-    .title { font-weight: 700; margin-bottom: 8px; color: #111; }
-    .stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .pill { padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; color: #fff; }
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px 12px;           /* kısa, kompakt */
+    background: #fafafa;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;             /* yer daralınca ikinci satıra geçsin */
+    row-gap: 6px;
+
+    .title {
+      margin: 0;
+      font-weight: 700;
+      color: #111;
+      font-size: 14px;
+      flex: 0 1 auto;            /* başlık genişler ama taşırmaz */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 40%;            /* çok uzun başlık sağa taşmasın */
+    }
+
+    .stats {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1 1 auto;
+      justify-content: flex-end; /* içerikler sağda hizalı */
+      min-width: 220px;
+    }
+
+    .pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      color: #fff;
+      line-height: 1.2;
+    }
     .online { background: #10b981; }  /* yeşil */
-    .idle { background: #f59e0b; }    /* sarı */
-    .offline { background: #ef4444; } /* kırmızı */
-    .total { margin-left: auto; color: $muted; font-size: 12px; }
+    .idle   { background: #f59e0b; }  /* sarı  */
+    .offline{ background: #ef4444; }  /* kırmızı */
+    .total  { margin-left: 6px; color: $muted; font-size: 12px; white-space: nowrap; }
   }
 
-  /* Toplamlar kartı özel görünüm */
+  /* Toplamlar kartı: başlık solda, iki kutucuk sağda, çok taşarsa alt satıra iner */
   .presence-card.total-card {
     background: #f8fafc;
+
     .totals {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
-      .tile {
-        border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #fff;
-        .k { font-size: 12px; color: $muted; margin-bottom: 4px; }
-        .v { font-size: 18px; font-weight: 800; color: $ink; }
-      }
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;           /* dar alanda alt satır */
+    }
+
+    .tile {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 6px 10px;
+      background: #fff;
+      .k { font-size: 12px; color: $muted; }
+      .v { font-size: 16px; font-weight: 800; color: $ink; }
     }
   }
 
-  .updated-at { margin-top: 8px; font-size: 12px; color: $muted; }
+  .updated-at { margin-top: 6px; font-size: 12px; color: $muted; }
 }
 
-@media (max-width: 1100px) {
-  .presence-overview .grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 640px) {
-  .presence-overview .grid { grid-template-columns: 1fr; }
+/* Mobil uyum: başlık ve içerik gerektiğinde iki satır olur */
+@media (max-width: 520px) {
+  .presence-overview .presence-card .title { max-width: 100%; }
+  .presence-overview .presence-card .stats { justify-content: flex-start; }
 }

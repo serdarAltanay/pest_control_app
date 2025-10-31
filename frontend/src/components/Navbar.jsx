@@ -1,3 +1,4 @@
+// frontend/src/components/Navbar.jsx
 import "../styles/Navbar.scss";
 import { useNavigate } from "react-router-dom";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -6,14 +7,14 @@ import { toast } from "react-toastify";
 import api from "../api/axios";
 import { getAvatarUrl } from "../utils/getAssetUrl";
 import { useTheme } from "../context/ThemeContext";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const { profile, setProfile } = useContext(ProfileContext);
   const { theme, setTheme } = useTheme();
 
-  const roleLower =
-    (profile?.role || profile?.userRole || "").toString().toLowerCase();
+  const roleLower = (profile?.role || profile?.userRole || "").toString().toLowerCase();
 
   // CUSTOMER (access owner) için her zaman noavatar.jpg göster
   const rawAvatar =
@@ -30,6 +31,7 @@ export default function Navbar() {
 
   const [open, setOpen] = useState(false);
   const ddRef = useRef(null);
+
   useEffect(() => {
     const onClickOutside = (e) => { if (ddRef.current && !ddRef.current.contains(e.target)) setOpen(false); };
     const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
@@ -43,12 +45,14 @@ export default function Navbar() {
 
   const handleLogoutClick = async () => {
     try {
+      // ÇEREZ TEMİZLENSİN DİYE withCredentials:true (instance'da açık)
       await api.post("/auth/logout");
-      localStorage.removeItem("profileImage");
-      setProfile(null);
+      // FE tarafı temizliği
       localStorage.clear();
+      setProfile(null);
       toast.success("Başarıyla çıkış yaptınız!");
-      navigate("/");
+      // Login sayfasına "sessiz refresh yapma" işaretiyle gönder
+      navigate("/?fresh=1", { replace: true });
     } catch {
       toast.error("Çıkış yapılamadı ❌");
     }
@@ -62,10 +66,19 @@ export default function Navbar() {
       <div className="navbar-left">Pest Control</div>
 
       <div className="navbar-right">
-        {/* PROFIL DROPDOWN */}
+        {/* PROFİL DROPDOWN */}
         <div className="profile-dropdown" ref={ddRef}>
           <button className="profile-trigger" onClick={() => setOpen((v) => !v)}>
-            <span className="avatar"><img src={imgSrc} alt="Profil" /></span>
+            <span className="avatar">
+              <img
+                src={imgSrc}
+                alt="Profil"
+                onError={(e) => {
+                  if (e.currentTarget.src.endsWith("/noavatar.jpg")) return;
+                  e.currentTarget.src = "/noavatar.jpg";
+                }}
+              />
+            </span>
             <span className="who">
               <span className="name">{displayName}</span>
               <span className="role">{displayRole}</span>
@@ -86,7 +99,7 @@ export default function Navbar() {
 
             <div className="sep" />
 
-            {/* TEMA SATIRI — DROPDOWN İÇİNDE */}
+            {/* TEMA SATIRI */}
             <div className="row">
               <span className="row-label">Karanlık Mod</span>
               <button
@@ -112,6 +125,9 @@ export default function Navbar() {
             <button className="item danger" onClick={handleLogoutClick}>Çıkış</button>
           </div>
         </div>
+
+        {/* 🔔 Bildirim Çanı */}
+        <NotificationBell />
       </div>
     </nav>
   );

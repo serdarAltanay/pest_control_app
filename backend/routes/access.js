@@ -41,7 +41,7 @@ const grantInclude = {
       firstName: true,
       lastName: true,
       phone: true,
-      // profileImage: true,  // ← KALDIRILDI
+      // profileImage: true,  // ← BİLEREK YOK
       role: true,
       isActive: true,
       lastLoginAt: true,
@@ -56,9 +56,9 @@ const grantInclude = {
 
 /* -------------------- ensure owner (with mail) -------------------- */
 /**
- * POST /api/access/owners/ensure   (ANA)
- * body: { email*, role?, firstName?, lastName?, phone?, forceReset? }
+ * POST /api/access/owners/ensure   (KANONİK)
  * Alias: /api/access-owners/ensure
+ * body: { email*, role?, firstName?, lastName?, phone?, forceReset? }
  */
 async function ensureOwnerHandler(req, res) {
   try {
@@ -145,7 +145,8 @@ async function ensureOwnerHandler(req, res) {
   }
 }
 router.post("/owners/ensure", auth, roleCheck(["admin", "employee"]), ensureOwnerHandler);
-router.post("/../access-owners/ensure", auth, roleCheck(["admin", "employee"]), ensureOwnerHandler);
+// ✅ Alias rotası düzeltildi (önceden '/../...' idi)
+router.post("/access-owners/ensure", auth, roleCheck(["admin", "employee"]), ensureOwnerHandler);
 
 /* -------------------- owner detail + grants -------------------- */
 /**
@@ -166,7 +167,7 @@ router.get(
       const grants = await prisma.accessGrant.findMany({
         where: { ownerId: id },
         orderBy: { createdAt: "desc" },
-        include: grantInclude, // profileImage zaten include edilmiyor
+        include: grantInclude, // profileImage dahil değil
       });
 
       res.json({ owner, grants });
@@ -177,7 +178,7 @@ router.get(
   }
 );
 
-/* -------------------- reset password -------------------- */
+/* -------------------- reset password (yalnız admin) -------------------- */
 router.post(
   "/owner/:ownerId/reset-password",
   auth,
@@ -237,7 +238,7 @@ router.get(
       const rows = await prisma.accessGrant.findMany({
         where,
         orderBy: { updatedAt: "desc" },
-        include: grantInclude, // profileImage yok
+        include: grantInclude,
       });
       res.json(rows);
     } catch (e) {
@@ -320,7 +321,7 @@ router.get(
   }
 );
 
-/* -------------------- create grant -------------------- */
+/* -------------------- create grant (admin + employee) -------------------- */
 router.post(
   "/grant",
   auth,
@@ -389,7 +390,7 @@ router.post(
   }
 );
 
-/* -------------------- delete grant -------------------- */
+/* -------------------- delete grant (admin + employee) -------------------- */
 router.delete(
   "/:id",
   auth,

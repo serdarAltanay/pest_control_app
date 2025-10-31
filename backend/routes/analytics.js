@@ -26,14 +26,9 @@ function bucketKey(d, bucket){
   return ymd(d);
 }
 
-// Çalışan erişim kontrolü (kendi müşterileri)
+// Employee → tüm mağazalarda serbest
 async function ensureEmployeeStoreAccess(req, storeId) {
-  if (req.user?.role !== "employee") return true;
-  const ok = await prisma.store.findFirst({
-    where: { id: storeId, customer: { employeeId: req.user.id } },
-    select: { id: true },
-  });
-  return !!ok;
+  return true;
 }
 
 // Customer (AccessOwner) grant kontrolü
@@ -65,20 +60,18 @@ async function customerHasStoreAccess(req, storeId) {
 
 /** ---------------- STORE-BAZLI TREND ----------------
  * GET /api/analytics/stores/:storeId/trend?from&to&bucket=day|week|month&type=&risk=
- * admin/employee/customer → read-only (grant/assign kontrolü)
+ * admin/employee/customer → read-only
  */
 router.get("/stores/:storeId/trend", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
   try{
     const storeId = parseId(req.params.storeId);
     if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
-    if (req.user.role === "employee") {
-      const ok = await ensureEmployeeStoreAccess(req, storeId);
-      if (!ok) return res.status(403).json({ message: "Erişim yok" });
-    } else if (req.user.role === "customer") {
+    if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
+    // employee/admin → serbest
 
     const now = new Date();
     const to = parseISO(req.query.to) || now;
@@ -123,13 +116,11 @@ router.get("/stores/:storeId/summary", auth, roleCheck(["admin","employee","cust
     const storeId = parseId(req.params.storeId);
     if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
-    if (req.user.role === "employee") {
-      const ok = await ensureEmployeeStoreAccess(req, storeId);
-      if (!ok) return res.status(403).json({ message: "Erişim yok" });
-    } else if (req.user.role === "customer") {
+    if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
+    // employee/admin → serbest
 
     const now = new Date();
     const to = parseISO(req.query.to) || now;
@@ -164,7 +155,7 @@ router.get("/stores/:storeId/summary", auth, roleCheck(["admin","employee","cust
 
 /** ---------------- STATION-BAZLI TREND ----------------
  * GET /api/analytics/stations/:stationId/trend?from&to&bucket=
- * admin/employee/customer → read-only (grant/assign kontrolü)
+ * admin/employee/customer → read-only
  */
 router.get("/stations/:stationId/trend", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
   try{
@@ -174,13 +165,11 @@ router.get("/stations/:stationId/trend", auth, roleCheck(["admin","employee","cu
     const st = await prisma.station.findUnique({ where:{ id: stationId }, select:{ storeId:true }});
     if(!st) return res.status(404).json({message:"İstasyon yok"});
 
-    if (req.user.role === "employee") {
-      const ok = await ensureEmployeeStoreAccess(req, st.storeId);
-      if (!ok) return res.status(403).json({ message: "Erişim yok" });
-    } else if (req.user.role === "customer") {
+    if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, st.storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
     }
+    // employee/admin → serbest
 
     const now = new Date();
     const to = parseISO(req.query.to) || now;

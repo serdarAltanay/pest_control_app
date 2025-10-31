@@ -8,15 +8,11 @@ const prisma = new PrismaClient();
 
 /**
  * LIST (admin + employee)
- * - Employee ise sadece kendi customers
- * - Presence alanları YOK (customer için presence tutulmuyor)
+ * - Her iki rol de TÜM müşterileri görür.
  */
 router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
-    const where = req.user.role === "employee" ? { employeeId: req.user.id } : {};
-
     const customers = await prisma.customer.findMany({
-      where,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -43,7 +39,8 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 });
 
 /**
- * DETAIL (admin + employee kendi kaydı)
+ * DETAIL (admin + employee)
+ * - Her iki rol de herhangi bir müşterinin detayını görebilir.
  * - Presence alanları YOK
  * - Store’lar placeType/areaM2 artık Store’da
  */
@@ -52,10 +49,8 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-    const where = req.user.role === "employee" ? { id, employeeId: req.user.id } : { id };
-
     const c = await prisma.customer.findFirst({
-      where,
+      where: { id },
       select: {
         id: true,
         code: true,
@@ -103,10 +98,10 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 });
 
 /**
- * CREATE (admin)
+ * CREATE (admin + employee)
  * - password yok; email sadece iletişim için
  */
-router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
+router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     const {
       code,
@@ -161,10 +156,10 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
 });
 
 /**
- * UPDATE (admin)
+ * UPDATE (admin + employee)
  * - password yok; presence alanı yok
  */
-router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
+router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });

@@ -1,0 +1,110 @@
+.contacts-page {
+  display: grid;
+  gap: 16px;
+
+  .topbar.card {
+    display: grid;
+    gap: 6px;
+    align-items: center;
+
+    .actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .search {
+        flex: 1;
+        padding: 8px 10px;
+        border: 1px solid var(--border, #ddd);
+        border-radius: 8px;
+        outline: none;
+      }
+    }
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+
+    @media (max-width: 900px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .section-head {
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .empty {
+    padding: 16px;
+    border: 1px dashed #ccc;
+    border-radius: 12px;
+    color: #888;
+    background: #fafafa;
+  }
+
+  .contact-card {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--border, #e6e6e6);
+    border-radius: 14px;
+    background: var(--card, #fff);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.04));
+    align-items: center;
+    margin-bottom: 10px;
+
+    .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+
+    .meta {
+      display: grid;
+      gap: 6px;
+
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .name { font-weight: 600; }
+
+        .badge {
+          font-size: 12px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          border: 1px solid #ddd;
+          background: #f7f7f7;
+
+          &.admin { border-color: #d0b; background: #fde7ff; }
+          &.emp   { border-color: #0ab; background: #e7f9ff; }
+        }
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        gap: 8px;
+        align-items: center;
+
+        .label { color: #666; }
+        .muted { color: #aaa; }
+
+        .link {
+          text-decoration: none;
+          color: var(--link, #0b76d1);
+          word-break: break-all;
+        }
+      }
+    }
+  }
+}

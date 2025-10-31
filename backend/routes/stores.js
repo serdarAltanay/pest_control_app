@@ -122,7 +122,7 @@ async function collectAccessibleStoreIds(ownerId) {
 }
 
 async function customerCanAccessStore(req, storeId) {
-  if (["admin", "employee"].includes(req.user?.role)) return true;
+  if (["admin", "employee"].includes(req.user?.role)) return true; // employee → full read access
   if (req.user?.role === "customer") {
     const ownerId = await resolveOwnerId(req);
     const ids = await collectAccessibleStoreIds(ownerId);
@@ -364,19 +364,15 @@ router.get("/:id", auth, async (req, res) => {
 
 /** 🆕 CUSTOMER/EMPLOYEE/ADMIN: mağaza ziyaretleri (alias’sız) 
  * GET /api/stores/:storeId/visits
+ * employee → kısıt YOK (tam okuma)
  */
 router.get("/:storeId/visits", auth, async (req, res) => {
   try {
     const storeId = Number(req.params.storeId);
     if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
-    if (req.user.role === "employee") {
-      const ok = await prisma.store.findFirst({
-        where: { id: storeId, customer: { employeeId: req.user.id } },
-        select: { id: true },
-      });
-      if (!ok) return res.status(403).json({ message: "Erişim yok" });
-    } else if (!(await customerCanAccessStore(req, storeId))) {
+    // employee serbest, customer grant kontrolü:
+    if (!(await customerCanAccessStore(req, storeId))) {
       return res.status(403).json({ message: "Yetkisiz" });
     }
 

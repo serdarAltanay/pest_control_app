@@ -1,5 +1,11 @@
 /* src/pages/workDashboard/WorkDashboard.scss */
 .work-dashboard {
+  h1 {
+    margin: 0 0 14px;
+    font-size: 22px;
+    font-weight: 800;
+  }
+
   .admin-tools {
     display: flex;
     gap: 10px;
@@ -27,10 +33,83 @@
     }
   }
 
-  /* en alttaki üç kartın yerleşimi */
-  .calendar-section {
-    margin-top: 28px;
+  /* ------- Shortcuts (sol) + Presence (sağ) ------- */
+  .customer-section {
+    h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      font-weight: 700;
+    }
 
+    .ps-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr; /* SOL: kısayollar | SAĞ: Presence (geniş) */
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .ps-left { display: block; }   /* Kısayollar */
+    .ps-right { display: block; }  /* PresenceOverview */
+
+    .qa-card {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: #fff;
+      padding: 12px;
+
+      .qa-head {
+        margin-bottom: 8px;
+        h3 {
+          margin: 0 0 2px;
+          font-size: 16px;
+          font-weight: 700;
+        }
+        .qa-sub {
+          margin: 0;
+          font-size: 12px;
+          color: #6b7280;
+        }
+      }
+
+      .qa-actions {
+        display: grid;
+        grid-template-columns: 1fr; /* dikey buton listesi */
+        gap: 8px;
+
+        .qa-btn {
+          width: 100%;
+          height: 38px;
+          padding: 0 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          background: #f9fafb;
+          color: #111827;
+          text-align: left;
+          font-weight: 600;
+          cursor: pointer;
+          transition: box-shadow .2s ease, transform .08s ease, background .2s ease;
+
+          &:hover {
+            background: #ffffff;
+            box-shadow: 0 8px 18px rgba(0,0,0,.06);
+          }
+          &:active { transform: translateY(1px) scale(.99); }
+        }
+      }
+    }
+  }
+
+  /* ------- EK-1 ve Ziyaret özetleri ------- */
+  .ek1-wrap,
+  .calendar-section {
+    margin-top: 20px;
+  }
+
+  .calendar-section {
     h2 {
       margin: 0 0 10px;
       font-size: 18px;
@@ -44,17 +123,20 @@
       align-items: stretch;
     }
 
-    /* kartların eşit yükseklik alması için */
     .dash-cal.card {
       height: 100%;
       display: flex;
       flex-direction: column;
-
       .list { flex: 1 1 auto; }
     }
   }
 
-  /* responsive kırılımlar */
+  /* ------- responsive ------- */
+  @media (max-width: 1100px) {
+    .customer-section .ps-grid {
+      grid-template-columns: 1fr; /* alt alta */
+    }
+  }
   @media (max-width: 1200px) {
     .calendar-section .dash-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -65,4 +147,12 @@
       grid-template-columns: 1fr;
     }
   }
+}
+
+/* Global .card (projenizde varsa tekrar etmeyin) */
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
 }
