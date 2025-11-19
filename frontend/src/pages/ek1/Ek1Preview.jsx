@@ -133,11 +133,28 @@ export default function Ek1Preview() {
           .join("  |  ")
     : "—";
 
+  /* -------- İMZA ADI SEÇİMİ (yalnızca admin/employee için seçenek) -------- */
+  const selfName = getCurrentUserDisplayName();
+  const managerName = store?.manager || null;
+
+  // Admin/Employee: provider imzası için isim seçimi
+  const [providerSigner, setProviderSigner] = useState("self"); // "self" | "manager"
+  // Admin: müşteri onayı için isim seçimi
+  const [customerSigner, setCustomerSigner] = useState(isAdminRole ? "manager" : "self"); // "self" | "manager"
+
+  const resolveProviderSignName = () =>
+    providerSigner === "manager" && managerName ? managerName : selfName;
+
+  const resolveCustomerSignName = () => {
+    if (isCustomerRole) return selfName; // Müşteri daima kendi adıyla
+    // Admin için seçim, Employee zaten müşteri onayı veremez
+    return customerSigner === "manager" && managerName ? managerName : selfName;
+  };
+
   const handleProviderSign = async () => {
     setBusy(true);
     try {
-      // İmzalayan personelin adını backend’e gönder
-      const signerName = getCurrentUserDisplayName();
+      const signerName = resolveProviderSignName();
       await api.post(`/ek1/visit/${visitId}/sign/provider`, { name: signerName });
       await loadAll();
       toast.success("Dijital imza eklendi");
@@ -154,25 +171,10 @@ export default function Ek1Preview() {
       toast.error("Employee rolü müşteri onayı veremez.");
       return;
     }
-
     setBusy(true);
     try {
-      // Müşteri (AccessOwner) imzalarken kendi adını kullan
-      const accessOwnerName = localStorage.getItem("name") || undefined;
-      const fallbackOrgName =
-        customer?.contactFullName ||
-        customer?.title ||
-        customer?.name ||
-        undefined;
-
-      const namePayload = isCustomerRole
-        ? accessOwnerName || undefined
-        : accessOwnerName || fallbackOrgName || undefined;
-
-      await api.post(
-        `/ek1/visit/${visitId}/sign/customer`,
-        namePayload ? { name: namePayload } : {}
-      );
+      const signerName = resolveCustomerSignName();
+      await api.post(`/ek1/visit/${visitId}/sign/customer`, { name: signerName });
       await loadAll();
       toast.success("Müşteri onayı eklendi");
     } catch (e) {
@@ -182,18 +184,13 @@ export default function Ek1Preview() {
     }
   };
 
-  // İmza görüntülemede, kaydedilmiş isim varsa onu göster
+  // İmza görüntüleme metinleri — backend’den gelen isimler öncelikli
   const displayCustomerSignerName =
     report?.customerSignerName ||
     (isCustomerRole
-      ? localStorage.getItem("name") || "Yetkili"
-      : customer?.contactFullName ||
-        customer?.title ||
-        customer?.name ||
-        localStorage.getItem("name") ||
-        "Yetkili");
+      ? selfName
+      : managerName || selfName);
 
-  // Listeye dönüş: müşteri için farklı bir path’in yoksa /ek1/visit listene dönersin.
   const backListHref = isCustomerRole ? "/customer/stores" : "/admin/ek1";
 
   return (
@@ -207,26 +204,57 @@ export default function Ek1Preview() {
             YAZDIR
           </button>
 
-          {/* Provider imzası: sadece admin/employee görsün */}
-          {!report?.providerSignedAt && !isCustomerRole && (
-            <button
-              className="btn primary"
-              onClick={handleProviderSign}
-              disabled={busy}
-            >
-              {busy ? "İmzalanıyor..." : "Dijital İmzala (Admin/Personel)"}
-            </button>
+          {/* Provider (Admin/Employee) — müşteri görmez */}
+          {!report?.providerSignedAt && (isAdminRole || isEmployeeRole) && (
+            <>
+              {managerName ? (
+                <select
+                  className="btn ghost"
+                  value={providerSigner}
+                  onChange={(e) => setProviderSigner(e.target.value)}
+                  style={{ marginRight: 8 }}
+                  aria-label="Provider imza adı seçimi"
+                >
+                  <option value="self">İmza Adı: Kendi Adım ({selfName})</option>
+                  <option value="manager">İmza Adı: Mağaza Sorumlusu ({managerName})</option>
+                </select>
+              ) : null}
+              <button className="btn primary" onClick={handleProviderSign} disabled={busy}>
+                {busy ? "İmzalanıyor..." : "Dijital İmzala (Admin/Personel)"}
+              </button>
+            </>
           )}
 
-          {/* Müşteri onayı: sadece customer veya admin görsün */}
-          {!report?.customerSignedAt && (isCustomerRole || isAdminRole) && (
-            <button className="btn warn" onClick={handleCustomerSign} disabled={busy}>
-              {busy
-                ? "Onay Alınıyor..."
-                : isCustomerRole
-                ? "Onayla (Müşteri)"
-                : "Müşteri Onayı Al"}
-            </button>
+          {/* Customer Sign */}
+          {!report?.customerSignedAt && (
+            <>
+              {/* Müşteri: yalnızca kendi adıyla onay */}
+              {isCustomerRole && (
+                <button className="btn warn" onClick={handleCustomerSign} disabled={busy}>
+                  {busy ? "Onay Alınıyor..." : `Onayla (Müşteri: ${selfName})`}
+                </button>
+              )}
+              {/* Admin: müşteri onayı verebilir; imza adı seçilebilir */}
+              {isAdminRole && (
+                <>
+                  {managerName ? (
+                    <select
+                      className="btn ghost"
+                      value={customerSigner}
+                      onChange={(e) => setCustomerSigner(e.target.value)}
+                      style={{ marginLeft: 8, marginRight: 8 }}
+                      aria-label="Müşteri onayı imza adı seçimi"
+                    >
+                      <option value="manager">Onay Adı: Mağaza Sorumlusu ({managerName})</option>
+                      <option value="self">Onay Adı: Kendi Adım ({selfName})</option>
+                    </select>
+                  ) : null}
+                  <button className="btn warn" onClick={handleCustomerSign} disabled={busy}>
+                    {busy ? "Onay Alınıyor..." : "Müşteri Onayı Ver"}
+                  </button>
+                </>
+              )}
+            </>
           )}
         </div>
 
@@ -375,7 +403,7 @@ export default function Ek1Preview() {
                   <td>{visit?.notes || "—"}</td>
                 </tr>
 
-                {/* İmzalayan PERSONEL ismi görünsün */}
+                {/* İmzalayan PERSONEL ismi */}
                 <tr>
                   <th>Uygulamayı Yapan (İmzalayan Personel)</th>
                   <td>
@@ -401,7 +429,7 @@ export default function Ek1Preview() {
                     {report?.customerSignedAt ? (
                       <>
                         {fmtTRDate(report.customerSignedAt)} tarihinde{" "}
-                        <b>{displayCustomerSignerName}</b> tarafından dijital onay
+                        <b>{report?.customerSignerName || displayCustomerSignerName}</b> tarafından dijital onay
                         verilmiştir.
                       </>
                     ) : (

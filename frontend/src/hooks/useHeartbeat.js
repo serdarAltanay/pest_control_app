@@ -27,34 +27,82 @@ export default function useHeartbeat(enabled = true, intervalMs = 60_000, geoEna
 
     const hasToken = () => !!localStorage.getItem("accessToken");
 
+    // ESLint: no-restricted-globals → 'location' yerine window.location kullan
+    const host =
+      typeof window !== "undefined" && window.location
+        ? window.location.hostname
+        : "";
+    const secureContext =
+      typeof window !== "undefined" && "isSecureContext" in window
+        ? window.isSecureContext
+        : false;
+    const secureOk = secureContext || host === "localhost";
+
     // --- GEO (yalnızca çalışanlarda) ---
     if (geoEnabled && "geolocation" in navigator) {
-      // Son konumu güncel tut
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords || {};
-          lastPosRef.current = {
-            lat,
-            lng,
-            accuracy: accuracy != null ? Math.round(accuracy) : undefined,
-            speed: typeof speed === "number" ? speed : undefined,
-            heading: typeof heading === "number" ? heading : undefined,
-            at: Date.now(),
-          };
-        },
-        () => {
-          /* sessizce yoksay */
-        },
-        {
-          enableHighAccuracy: false, // pil tasarrufu
-          maximumAge: 60_000, // 1 dk cache
-          timeout: 10_000,
+      // İlk değer hızlı dolsun diye: tek seferlik currentPosition
+      if (secureOk) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords || {};
+            lastPosRef.current = {
+              lat,
+              lng,
+              accuracy: accuracy != null ? Math.round(accuracy) : undefined,
+              speed: typeof speed === "number" ? speed : undefined,
+              heading: typeof heading === "number" ? heading : undefined,
+              at: Date.now(),
+            };
+            if (process.env.NODE_ENV !== "production") {
+              console.log("[heartbeat] first position:", lastPosRef.current);
+            }
+          },
+          (err) => {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[heartbeat] getCurrentPosition error:", err?.code, err?.message);
+              if (!secureOk) console.warn("[heartbeat] Geolocation için HTTPS şart (ya da localhost).");
+            }
+          },
+          { enableHighAccuracy: false, maximumAge: 60_000, timeout: 10_000 }
+        );
+      }
+
+      // Sürekli izleme
+      if (secureOk) {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords || {};
+            lastPosRef.current = {
+              lat,
+              lng,
+              accuracy: accuracy != null ? Math.round(accuracy) : undefined,
+              speed: typeof speed === "number" ? speed : undefined,
+              heading: typeof heading === "number" ? heading : undefined,
+              at: Date.now(),
+            };
+          },
+          (err) => {
+            // Hata sebebini görün: permission denied / insecure context / timeout…
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[heartbeat] watchPosition error:", err?.code, err?.message);
+              if (!secureOk) console.warn("[heartbeat] Geolocation için HTTPS şart (ya da localhost).");
+            }
+          },
+          {
+            enableHighAccuracy: false, // pil tasarrufu
+            maximumAge: 60_000,        // 1 dk cache
+            timeout: 10_000,
+          }
+        );
+      } else {
+        // Güvensiz bağlamda (localhost hariç) konum üretmeyiz
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[heartbeat] Insecure context: konum verisi gönderilmeyecek.");
         }
-      );
+      }
     }
 
     const ping = async () => {
-      // Token yoksa ya da mute süresi dolmadıysa deneme.
       if (!hasToken()) return;
       const now = Date.now();
       if (now < mutedUntilRef.current) return;
@@ -65,8 +113,11 @@ export default function useHeartbeat(enabled = true, intervalMs = 60_000, geoEna
         // Son konum çok eski değilse (<= 2 dk), isteğe ekle
         const p = lastPosRef.current;
         if (geoEnabled && p && now - p.at <= 120_000) {
-          payload.lat = p.lat;
-          payload.lng = p.lng;
+          // NaN/Infinity guard
+          if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
+            payload.lat = p.lat;
+            payload.lng = p.lng;
+          }
           if (p.accuracy != null) payload.accuracy = p.accuracy;
           if (p.speed != null) payload.speed = p.speed;
           if (p.heading != null) payload.heading = p.heading;
@@ -88,14 +139,12 @@ export default function useHeartbeat(enabled = true, intervalMs = 60_000, geoEna
           failCountRef.current = Math.min(failCountRef.current + 1, 6); // tavan: 2^6=64s
           const waitMs = Math.min(1000 * 2 ** (failCountRef.current - 1), 60_000);
           mutedUntilRef.current = Date.now() + waitMs;
-          // Not: refresh denemesi interceptor içinde yapılıyor;
-          // burada sadece spam'i kesiyoruz.
         }
         // Diğer hataları sessizce geç
       }
     };
 
-    // İlk ping: sadece token varsa
+    // İlk ping (token varsa)
     if (hasToken()) ping();
 
     // Periyodik ping
@@ -103,9 +152,7 @@ export default function useHeartbeat(enabled = true, intervalMs = 60_000, geoEna
 
     // Tab görünür/odaklanınca ve internet gelince dene (token varsa)
     const onFocus = () => hasToken() && ping();
-    const onVis = () => {
-      if (document.visibilityState === "visible" && hasToken()) ping();
-    };
+    const onVis = () => { if (document.visibilityState === "visible" && hasToken()) ping(); };
     const onOnline = () => hasToken() && ping();
 
     window.addEventListener("focus", onFocus);
@@ -115,7 +162,6 @@ export default function useHeartbeat(enabled = true, intervalMs = 60_000, geoEna
     // Diğer sekmeden login olursa (storage event), token gelince hızlı ping
     const onStorage = (e) => {
       if (e.key === "accessToken" && e.newValue) {
-        // Muteyi sıfırla ve hemen ping at
         failCountRef.current = 0;
         mutedUntilRef.current = 0;
         ping();

@@ -1,3 +1,4 @@
+// src/pages/tracking/EmployeeTracking.jsx
 import { useEffect, useMemo, useState } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
@@ -8,7 +9,7 @@ import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker1x from "leaflet/dist/images/marker-icon.png";
 import markerSh from "leaflet/dist/images/marker-shadow.png";
 
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Leaflet marker icon fix (bundler)
@@ -19,7 +20,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerSh,
 });
 
-const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
+const COLORS = ["#1f77b4","#2ca02c","#d62728","#9467bd","#ff7f0e","#17becf","#e377c2","#8c564b","#bcbd22","#7f7f7f"];
 const hashColorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
 
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
@@ -235,7 +236,25 @@ export default function EmployeeRoutes() {
                 if (!visible.has(empId)) return null;
                 const emp = v.employee || { id: empId, color: hashColorFromId(empId) };
                 const pts = (v.points || []).map(p => [p.lat, p.lng]);
-                if (pts.length < 2) return null;
+
+                if (pts.length < 2) {
+                  const only = v.points?.[0];
+                  if (!only) return null;
+                  return (
+                    <CircleMarker
+                      key={`cm-${empId}`}
+                      center={[only.lat, only.lng]}
+                      radius={6}
+                      pathOptions={{ color: emp.color, weight: 6, opacity: 1 }}
+                    >
+                      <Popup>
+                        <div style={{ fontWeight: 600 }}>{emp.name}</div>
+                        <div>Tek kayıt: {new Date(only.at).toLocaleString("tr-TR")}</div>
+                        {only.accuracy != null && <div>Doğruluk: ±{only.accuracy} m</div>}
+                      </Popup>
+                    </CircleMarker>
+                  );
+                }
 
                 const last = v.points[v.points.length - 1]; // son nokta
                 return (
@@ -243,7 +262,7 @@ export default function EmployeeRoutes() {
                     <Polyline
                       key={`pl-${empId}`}
                       positions={pts}
-                      pathOptions={{ color: emp.color, weight: 4, opacity: 0.8 }}
+                      pathOptions={{ color: emp.color, weight: 5, opacity: 1, lineCap: "round" }}
                     />
                     {last && Number.isFinite(last.lat) && Number.isFinite(last.lng) && (
                       <Marker

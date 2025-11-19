@@ -22,6 +22,7 @@ const CITY_COORDS = {
 /** ------------------------------- Helpers ---------------------------- */
 const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pick = (arr) => arr[randInt(0, arr.length - 1)];
+const lerp = (a, b, t) => a + (b - a) * t;
 
 function addMeters(lat, lng, dxMeters, dyMeters) {
   const dLat = dyMeters / 111_111;
@@ -52,11 +53,29 @@ const VisitTypes = [
   "DIGER",
 ];
 
-const PestTypes = ["KEMIRGEN", "HACCADI", "UCAN", "BELIRTILMEDI"];
+const PestTypes  = ["KEMIRGEN", "HACCADI", "UCAN", "BELIRTILMEDI"];
 const PlaceTypes = ["OFIS", "DEPO", "MAGAZA", "FABRIKA", "BELIRTILMEDI"];
 const VisitPeriods = ["HAFTALIK", "IKIHAFTALIK", "AYLIK", "IKIAYLIK", "UCAYLIK", "BELIRTILMEDI"];
 
-const AppMethods = ["ULV", "PUSKURTME", "JEL", "SISLEME", "YENILEME", "ATOMIZER", "YEMLEME", "PULVERİZE"];
+/* ApplicationMethod enum ile birebir */
+const AppMethods = [
+  "ULV",
+  "PUSKURTME",
+  "JEL",
+  "SISLEME",
+  "YENILEME",
+  "ATOMIZER",
+  "YEMLEME",
+  "PULVERİZE", // DİKKAT: Türkçe büyük İ (U+0130)
+];
+
+/* Güvence: yanlış yazımların normalize edilmesi (örn. PULVERIZE -> PULVERİZE) */
+function normalizeMethod(m) {
+  if (!m) return m;
+  const s = String(m).toUpperCase().trim();
+  if (s === "PULVERIZE") return "PULVERİZE";
+  return s;
+}
 
 /** Aktivasyon payload’ı (istasyon tipine uygun) */
 function makeActivationPayload(type) {
@@ -119,8 +138,8 @@ function makeActivationPayload(type) {
   return base;
 }
 
-/** 7 günlük çalışan rotası */
-async function seedTracksForEmployee(empId, baseLat, baseLng) {
+/** 7 günlük çalışan rotası — son 3 gün yoğun ve mağaza-temelli */
+async function seedTracksForEmployee(empId, baseLat, baseLng, storesForEmp = []) {
   const start = new Date();
   start.setUTCHours(0, 0, 0, 0);
   start.setDate(start.getDate() - 7);
@@ -131,28 +150,54 @@ async function seedTracksForEmployee(empId, baseLat, baseLng) {
   });
 
   const batch = [];
+  const waypointsBase = (storesForEmp || [])
+    .map(s => [Number(s.latitude), Number(s.longitude)])
+    .filter(([la, ln]) => Number.isFinite(la) && Number.isFinite(ln));
+
   for (let d = 0; d < 7; d++) {
     const day = new Date();
     day.setDate(day.getDate() - d);
     day.setHours(9, 0, 0, 0);
 
-    let [lat, lng] = jitterAround(baseLat, baseLng, 500);
-    const steps = randInt(18, 30);
-    for (let i = 0; i < steps; i++) {
-      day.setMinutes(day.getMinutes() + 10);
-      const dx = randInt(120, 420) * (Math.random() > 0.5 ? 1 : -1);
-      const dy = randInt(120, 420) * (Math.random() > 0.5 ? 1 : -1);
-      [lat, lng] = addMeters(lat, lng, dx, dy);
+    const dense = d < 3; // son 3 gün daha yoğun
+    const wpCount = dense ? randInt(3, 4) : randInt(2, 3);
 
-      batch.push({
-        employeeId: empId,
-        lat, lng,
-        accuracy: randInt(5, 25),
-        speed: null,
-        heading: null,
-        source: "seed",
-        at: new Date(day),
-      });
+    let waypoints = [];
+    if (waypointsBase.length >= 2) {
+      const shuffled = [...waypointsBase].sort(() => Math.random() - 0.5);
+      waypoints = shuffled.slice(0, wpCount);
+    } else {
+      let cur = [baseLat, baseLng];
+      for (let i = 0; i < wpCount; i++) {
+        cur = jitterAround(cur[0], cur[1], dense ? 1000 : 1600);
+        waypoints.push(cur);
+      }
+    }
+
+    let current = waypoints[0] || jitterAround(baseLat, baseLng, 800);
+    for (let w = 1; w < waypoints.length; w++) {
+      const target = waypoints[w];
+      const steps = dense ? randInt(18, 26) : randInt(12, 18); // segment başına 3–4 saat
+      for (let i = 1; i <= steps; i++) {
+        day.setMinutes(day.getMinutes() + 10);
+        const t = i / steps;
+        const lat = lerp(current[0], target[0], t);
+        const lng = lerp(current[1], target[1], t);
+        const [jLat, jLng] = addMeters(lat, lng, randInt(-20, 20), randInt(-20, 20));
+        batch.push({
+          employeeId: empId,
+          lat: jLat,
+          lng: jLng,
+          accuracy: randInt(5, 25),
+          speed: null,
+          heading: null,
+          source: "seed",
+          at: new Date(day),
+        });
+      }
+      current = target;
+      // mola
+      day.setMinutes(day.getMinutes() + randInt(20, 40));
     }
   }
 
@@ -315,7 +360,7 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         city: "İZMİR",
         showBalance: true,
         visitPeriod: "IKIAYLIK",
-        employeeId: pickEmployee(0).id, // seed içi yardımcı alan
+        employeeId: pickEmployee(0).id,
       },
       {
         code: "CUST-0002",
@@ -351,14 +396,13 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
       },
     ];
 
-    // Müşteri -> çalışan eşleşmesi (seed içi)
     const custEmpMap = new Map();
 
     const customers = [];
     for (const c of customersSeed) {
-      const { employeeId, ...rest } = c; // Prisma'ya employeeId göndermiyoruz
+      const { employeeId, ...rest } = c;
       const rel = employeeId ? { employee: { connect: { id: employeeId } } } : {};
-      const dataBase = { ...rest }; // <-- Customer'da password yok!
+      const dataBase = { ...rest };
 
       const cd = await prisma.customer.upsert({
         where: { code: c.code },
@@ -495,7 +539,8 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
         const lineCount = randInt(1, 3);
         for (let li = 0; li < lineCount; li++) {
           const bio = pick(allBiocides);
-          const method = pick(AppMethods);
+          const methodRaw = pick(AppMethods);
+          const method = normalizeMethod(methodRaw);
           const amount = (bio.unit === "ML" || bio.unit === "LT") ? randInt(50, 250) : randInt(10, 120);
 
           await prisma.ek1Line.create({
@@ -554,13 +599,17 @@ router.post("/run", auth, roleCheck(["admin"]), async (_req, res) => {
 
     /* ------------------ 11) Çalışan rotaları ------------------- */
     for (const emp of employees) {
+      const empStoreList = await prisma.store.findMany({
+        where: { customer: { employee: { is: { id: emp.id } } } },
+        select: { id: true, latitude: true, longitude: true },
+      });
       const anyCustomer = await prisma.customer.findFirst({
         where: { employee: { is: { id: emp.id } } },
         orderBy: { createdAt: "asc" },
       });
       const base = CITY_COORDS[String(anyCustomer?.city || "").toUpperCase()] || CITY_COORDS[""];
       const [bLat, bLng] = base;
-      await seedTracksForEmployee(emp.id, bLat, bLng);
+      await seedTracksForEmployee(emp.id, bLat, bLng, empStoreList);
     }
 
     /* ------------------ 12) Ziyaret planları ------------------- */

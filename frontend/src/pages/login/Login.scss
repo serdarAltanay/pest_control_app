@@ -1,5 +1,8 @@
 /* src/pages/login/Login.scss */
 :root {
+  /* her zaman light */
+  color-scheme: light;
+
   --bg: #f6f8fb;
   --card-bg: #ffffff;
   --text: #0f172a;
@@ -11,6 +14,7 @@
   --shadow: 0 8px 28px rgba(2, 6, 23, .08);
 }
 
+/* DARK MODE DEVRE DIŞI — ileriye saklıyoruz
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0b1220;
@@ -24,6 +28,7 @@
     --shadow: 0 10px 30px rgba(0,0,0,.35);
   }
 }
+*/
 
 html, body {
   background: var(--bg);

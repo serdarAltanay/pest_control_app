@@ -32,7 +32,6 @@ async function tryUpdateByRole(role, id, now) {
       return await prisma.accessOwner.update({ where: { id }, data: { lastSeenAt: now } });
     } catch (e) {
       if (e?.code !== "P2025") throw e; // kayıt yoksa P2025, yoksa farklı hata
-      // Gerçek Customer tablonuzda lastSeenAt yoksa bu çağrı ValidationError atar — sessiz geçiyoruz
       try { return await prisma.customer.update({ where: { id }, data: { lastSeenAt: now } }); }
       catch { return null; }
     }
@@ -186,13 +185,12 @@ router.get("/summary", auth, async (_req, res) => {
       prisma.store.count(),
     ]);
 
-    // FE geriye uyumluluk: customers = accessOwners
     return res.json({
       ok: true,
       updatedAt: now.toISOString(),
       admins,
       employees,
-      customers: accessOwners,
+      customers: accessOwners, // FE geriye uyumluluk
       accessOwners,
       totals: {
         customers: customersTotal,
@@ -201,6 +199,58 @@ router.get("/summary", auth, async (_req, res) => {
     });
   } catch (err) {
     console.error("GET /presence/summary error:", err);
+    return res.status(500).json({ ok: false, message: "Sunucu hatası" });
+  }
+});
+
+/**
+ * GET /api/presence/tracks?day=YYYY-MM-DD
+ * Sonuç: { ok: true, data: { [empId]: { employee:{id,name}, points:[{lat,lng,at,accuracy?}] } } }
+ */
+router.get("/tracks", auth, async (req, res) => {
+  try {
+    // admin + employee + accessowner görsün
+    const role = (req.user?.role || "").toLowerCase();
+    if (!["admin", "employee", "accessowner"].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Yetkisiz" });
+    }
+
+    const dayKey = String(req.query.day || "").trim();
+    const m = dayKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return res.status(400).json({ ok: false, message: "Geçersiz 'day' (YYYY-MM-DD)" });
+    const [_, y, mo, d] = m.map(Number);
+
+    const start = new Date(y, mo - 1, d, 0, 0, 0, 0);
+    const end   = new Date(y, mo - 1, d + 1, 0, 0, 0, 0);
+
+    const rows = await prisma.employeeTrackPoint.findMany({
+      where: { at: { gte: start, lt: end } },
+      orderBy: [{ employeeId: "asc" }, { at: "asc" }],
+      select: {
+        employeeId: true,
+        lat: true, lng: true, at: true, accuracy: true,
+        employee: { select: { id: true, fullName: true, email: true } },
+      },
+    });
+
+    const data = {};
+    for (const r of rows) {
+      const empId = r.employeeId;
+      if (!data[empId]) {
+        const name = r.employee?.fullName || r.employee?.email || `Personel #${empId}`;
+        data[empId] = { employee: { id: empId, name }, points: [] };
+      }
+      data[empId].points.push({
+        lat: Number(r.lat),
+        lng: Number(r.lng),
+        at:  r.at,
+        accuracy: r.accuracy ?? undefined,
+      });
+    }
+
+    return res.json({ ok: true, day: dayKey, data });
+  } catch (err) {
+    console.error("GET /presence/tracks error:", err);
     return res.status(500).json({ ok: false, message: "Sunucu hatası" });
   }
 });

@@ -238,8 +238,6 @@ export default function VisitDetail() {
             <div className="kv"><div className="k">Tarih</div><div className="v">{fmtDate(event.start)}</div></div>
             <div className="kv"><div className="k">Saat</div><div className="v">{fmtTime(event.start)} – {fmtTime(event.end)} ({durationMin} dk)</div></div>
 
-            {/* Personel satırı BURADAN kaldırıldı; ayrı kartta gösteriliyor */}
-
             {/* Planlayan bilgisi müşteri görmesin */}
             {!isCustomer && (
               <>
@@ -255,7 +253,7 @@ export default function VisitDetail() {
               <div className="v"><span className={`badge ${statusClass(event.status)}`}>{statusLabel(event.status)}</span></div>
             </div>
 
-            {/* Admin/Employee durumu değiştirebilir */}
+            {/* Admin/Employee durumu değiştirebilir — müşteri asla görmez */}
             {!isCustomer && (
               <div className="kv">
                 <div className="k">Durumu Değiştir</div>
@@ -301,7 +299,7 @@ export default function VisitDetail() {
             ) : <div>Mağaza bilgisi bulunamadı.</div>}
           </div>
 
-          {/* Personel Kartı (yeni) */}
+          {/* Personel Kartı */}
           <div className="card person-card">
             <div className="sec-title">Personel</div>
             <div className="person">

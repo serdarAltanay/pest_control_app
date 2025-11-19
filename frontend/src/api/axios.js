@@ -51,7 +51,7 @@ api.interceptors.request.use((config) => {
 
   if (isAuthPath(url)) {
     config.headers = config.headers || {};
-    config.headers.Authorization = "";
+    config.headers.Authorization = ""; // Bearer'i özellikle SIFIRLA
     return config;
   }
 
@@ -82,6 +82,8 @@ api.interceptors.response.use(
     const original = error.config || {};
     const status = error.response?.status;
     const url = String(original.url || "");
+
+    // Heartbeat gibi isteklerde refresh denemesi yapma
     const suppressRefresh =
       original._isHeartbeat === true || /\/presence\/heartbeat$/.test(url);
 
