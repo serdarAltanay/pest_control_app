@@ -38,11 +38,11 @@ export default function EditNameModal({ currentName, onClose, onSave }) {
       setLoading(true);
       const res = await api.put("/profile/update-info", { fullName: trimmed });
       onSave(res.data.user);             // ProfileContext'i güncelle
-      toast.success("İsim güncellendi 🎉");
+      toast.success("İsim başarıyla güncellendi.");
       onClose();
     } catch (err) {
       console.error("İsim güncelleme hatası:", err);
-      toast.error(err.response?.data?.error || "Güncellenemedi ❌");
+      toast.error(err.response?.data?.error || "İsim güncellenemedi.");
     } finally {
       setLoading(false);
     }

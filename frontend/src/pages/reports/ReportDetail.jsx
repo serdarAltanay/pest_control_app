@@ -51,7 +51,7 @@ export default function ReportDetail() {
     try {
       setDeleting(true);
       await api.delete(`/reports/${reportId}`);
-      toast.success("Silindi");
+      toast.success("Rapor başarıyla silindi.");
       navigate(backHref);
     } catch {
       toast.error("Silinemedi");

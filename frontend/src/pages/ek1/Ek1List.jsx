@@ -3,17 +3,27 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import SignatureModal from "../../components/SignatureModal.jsx";
 import "./Ek1List.scss";
 
-/* ───────── helpers ───────── */
+/* ───────── Helpers ───────── */
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
 const fmtDT = (d) => {
   if (!(d instanceof Date)) d = d ? new Date(d) : null;
   if (!d || isNaN(d)) return "—";
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 };
-const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
-const colorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
+
+const COLORS = [
+  "#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa",
+  "#22d3ee", "#f472b6", "#f97316", "#84cc16", "#e879f9", "#38bdf8",
+];
+const colorFromId = (id) =>
+  COLORS[
+  String(id ?? "x")
+    .split("")
+    .reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length
+  ];
 
 const VISIT_TYPE_LABEL = {
   PERIYODIK: "Periyodik",
@@ -27,7 +37,6 @@ const visitTypeLabel = (v) => VISIT_TYPE_LABEL[v] || "Diğer";
 const role = (localStorage.getItem("role") || "").toLowerCase();
 const isCustomer = role === "customer";
 
-/* Personel alanını güvenle string'e çevir */
 const joinSafe = (arr, sep = ", ") =>
   (Array.isArray(arr) ? arr : [])
     .map((x) => (typeof x === "string" ? x : x?.fullName || x?.name || x?.email || ""))
@@ -45,42 +54,25 @@ function normalizeEmployees(e) {
   return "";
 }
 
-/* ───────── YENİ: FREE placeholder ayıklama ───────── */
 const isFreeToken = (s) =>
-  typeof s === "string" &&
-  s.trim().toUpperCase().replace(/\[|\]/g, "") === "FREE";
+  typeof s === "string" && s.trim().toUpperCase().replace(/\[|\]/g, "") === "FREE";
 
-/** Müşteri adını seç: gerçek ad alanları → mağaza adı → fallback → "—" */
 const pickCustomerName = (customerObj, storeObj, fallback) => {
   const candidates = [
-    customerObj?.title,
-    customerObj?.fullName,
-    customerObj?.name,
-    customerObj?.companyName,
-    customerObj?.legalName,
-    customerObj?.displayName,
-    fallback,
+    customerObj?.title, customerObj?.fullName, customerObj?.name,
+    customerObj?.companyName, customerObj?.legalName, customerObj?.displayName, fallback,
   ].filter(Boolean);
-
   const picked = candidates.find((v) => v && !isFreeToken(v) && v !== "—");
   return picked || storeObj?.name || fallback || "—";
 };
 
-/* ───────── api helpers ───────── */
+/* ───────── API ───────── */
 async function listEk1() {
   const { data } = await api.get("/ek1", { params: { scope: "mine" } });
   return Array.isArray(data) ? data : [];
 }
 async function getBundle(visitId) {
   const { data } = await api.get(`/ek1/visit/${visitId}`);
-  return data;
-}
-async function signProvider(visitId, name) {
-  const { data } = await api.post(`/ek1/visit/${visitId}/sign/provider`, name ? { name } : {});
-  return data;
-}
-async function signCustomer(visitId, name) {
-  const { data } = await api.post(`/ek1/visit/${visitId}/sign/customer`, name ? { name } : {});
   return data;
 }
 async function deleteEk1(visitId) {
@@ -92,19 +84,32 @@ async function deleteEk1(visitId) {
   }
 }
 
-/* ───────── component ───────── */
+/* ───────── Badge ───────── */
+const Badge = ({ ok, textOk = "Onaylandı", textNo = "Bekliyor" }) => (
+  <span className={`appr-badge ${ok ? "ok" : "pending"}`}>
+    {ok ? textOk : textNo}
+  </span>
+);
+
+/* ───────── Component ───────── */
 export default function Ek1List() {
   const navigate = useNavigate();
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
 
-  // sıralama & sayfalama
   const [sortKey, setSortKey] = useState("updatedAt");
   const [sortDir, setSortDir] = useState("desc");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
 
+  /* İmza Modal State'leri */
+  const [sigModalOpen, setSigModalOpen] = useState(false);
+  const [sigTarget, setSigTarget] = useState(null); // { row, kind }
+  const [sigBusy, setSigBusy] = useState(false);
+
+  /* ─ Yükleme ─ */
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -114,19 +119,14 @@ export default function Ek1List() {
         base.map(async (r) => {
           const visitId = r.visitId ?? r.id ?? r?.visit?.id ?? null;
 
-          // İlk değerler (fallback)
           let createdAt = r.createdAt || r?.visit?.createdAt || null;
           let start = r.start || r?.visit?.date || null;
           let providerSignedAt = r.providerSignedAt || r?.report?.providerSignedAt || null;
           let customerSignedAt = r.customerSignedAt || r?.report?.customerSignedAt || null;
           let visitType = r.visitType || r?.visit?.visitType || "DIGER";
           let employeeName = r.employeeName || "";
-
-          // Görünen adlar
           let storeName = r.storeName ?? r?.visit?.store?.name ?? (r.storeId ? `Mağaza #${r.storeId}` : "-");
           let customerNameRaw = r.customerName ?? r?.visit?.store?.customer?.title ?? "-";
-
-          // Nesne referansları (daha sonra pick için)
           let storeObj = r?.visit?.store || null;
           let customerObj = r?.visit?.store?.customer || null;
 
@@ -135,8 +135,8 @@ export default function Ek1List() {
               const b = await getBundle(visitId);
               const rep = b?.report || {};
               const vis = b?.visit || {};
-              const st  = vis?.store || {};
-              const cu  = st?.customer || {};
+              const st = vis?.store || {};
+              const cu = st?.customer || {};
 
               if (vis?.date) start = vis.date;
               if (vis?.createdAt) createdAt = vis.createdAt;
@@ -146,25 +146,17 @@ export default function Ek1List() {
               providerSignedAt = providerSignedAt || rep.providerSignedAt || null;
               customerSignedAt = customerSignedAt || rep.customerSignedAt || null;
 
-              // Nesne/baslıkları bundle ile iyileştir
               storeObj = st || storeObj;
               customerObj = cu || customerObj;
               storeName = st?.name || storeName;
               customerNameRaw = cu?.title ?? customerNameRaw;
-            } catch {}
+            } catch { }
           }
 
-          // FREE / [FREE] placeholder'ını kullanıcı-dostu isme dönüştür
           const customerName = pickCustomerName(customerObj, storeObj, customerNameRaw);
-
           const updatedAt =
-            r.updatedAt ||
-            r?.visit?.updatedAt ||
-            providerSignedAt ||
-            customerSignedAt ||
-            createdAt ||
-            start ||
-            null;
+            r.updatedAt || r?.visit?.updatedAt ||
+            providerSignedAt || customerSignedAt || createdAt || start || null;
 
           return {
             visitId,
@@ -202,28 +194,25 @@ export default function Ek1List() {
 
   useEffect(() => { load(); }, [load]);
 
-  // filtre + sıralama
+  /* ─ Filtre + Sıralama ─ */
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let list = rows;
     if (needle) {
       list = list.filter((r) =>
         [r.customerName, r.storeName, r.employeeName, visitTypeLabel(r.visitType)]
-          .join(" ")
-          .toLowerCase()
-          .includes(needle)
+          .join(" ").toLowerCase().includes(needle)
       );
     }
     const dir = sortDir === "asc" ? 1 : -1;
-    const sorted = [...list].sort((a, b) => {
+    return [...list].sort((a, b) => {
       const A = a[sortKey], B = b[sortKey];
       if (A instanceof Date && B instanceof Date) return (A - B) * dir;
       return String(A ?? "").localeCompare(String(B ?? "")) * dir;
     });
-    return sorted;
   }, [rows, q, sortKey, sortDir]);
 
-  // sayfalama
+  /* ─ Sayfalama ─ */
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * pageSize;
@@ -235,6 +224,7 @@ export default function Ek1List() {
     else { setSortKey(key); setSortDir("asc"); }
   };
 
+  /* ─ Görüntüle ─ */
   const onView = (row) => {
     if (row.pdfUrl) return window.open(row.pdfUrl, "_blank", "noopener,noreferrer");
     if (!row.visitId) return toast.info("visitId yok");
@@ -243,35 +233,86 @@ export default function Ek1List() {
     return toast.info("Önizleme için mağaza/ziyaret bilgisi eksik");
   };
 
-  const onSignAdmin = async (row) => {
+  /* ─ İmzalama: Modal Aç ─ */
+  const startSign = (row, kind) => {
     if (!row.visitId) return toast.error("visitId yok");
-    const name = window.prompt("İmzalayan isim (opsiyonel):", "") || undefined;
-    await signProvider(row.visitId, name);
-    toast.success("Admin onayı verildi");
-    setRows((prev) => prev.map((r) => (r.visitId === row.visitId ? { ...r, providerSignedAt: new Date() } : r)));
+    setSigTarget({ row, kind });
+    setSigModalOpen(true);
   };
 
-  const onSignCustomer = async (row) => {
-    if (!row.visitId) return toast.error("visitId yok");
-    const accessOwnerName = localStorage.getItem("name") || undefined;
-    await signCustomer(row.visitId, isCustomer ? accessOwnerName : (accessOwnerName || undefined));
-    toast.success("Müşteri onayı verildi");
-    setRows((prev) => prev.map((r) => (r.visitId === row.visitId ? { ...r, customerSignedAt: new Date() } : r)));
+  /* ─ İmzalama: Biyometrik Onay ─ */
+  const onConfirmSign = async (signatureBase64) => {
+    setSigModalOpen(false);
+    if (!sigTarget) return;
+    const { row, kind } = sigTarget;
+    setSigBusy(true);
+
+    let coords = null;
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+      );
+      coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    } catch { /* GPS opsiyonel */ }
+
+    try {
+      const signerName =
+        kind === "customer"
+          ? localStorage.getItem("name") || undefined
+          : localStorage.getItem("name") || undefined;
+
+      await api.post(`/ek1/visit/${row.visitId}/sign/${kind}`, {
+        name: signerName,
+        signature: signatureBase64,
+        coords,
+        deviceInfo:
+          navigator.userAgent.includes("Tablet") || navigator.userAgent.includes("iPad")
+            ? "Şirket Tableti"
+            : "Masaüstü / Web",
+      });
+
+      toast.success(
+        kind === "customer"
+          ? "Müşteri biyometrik onayı verildi."
+          : "Admin/personel imzası kaydedildi."
+      );
+
+      setRows((prev) =>
+        prev.map((r) =>
+          r.visitId === row.visitId
+            ? {
+              ...r,
+              providerSignedAt: kind === "provider" ? new Date() : r.providerSignedAt,
+              customerSignedAt: kind === "customer" ? new Date() : r.customerSignedAt,
+            }
+            : r
+        )
+      );
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "İmza kaydedilemedi.");
+    } finally {
+      setSigBusy(false);
+      setSigTarget(null);
+    }
   };
 
+  /* ─ Sil ─ */
   const onDelete = async (row) => {
     if (!row.visitId) return toast.error("visitId yok");
     if (!window.confirm("Bu EK-1 kaydını silmek istiyor musunuz?")) return;
-    await deleteEk1(row.visitId);
-    toast.success("Kayıt silindi");
-    setRows((prev) => prev.filter((r) => r.visitId !== row.visitId));
+    try {
+      await deleteEk1(row.visitId);
+      toast.success("Kayıt silindi.");
+      setRows((prev) => prev.filter((r) => r.visitId !== row.visitId));
+    } catch (e) {
+      toast.error(e.message);
+    }
   };
 
-  const Badge = ({ ok, textOk = "Onaylandı", textNo = "Onaylanmadı" }) =>
-    <span className={`appr-badge ${ok ? "ok" : "pending"}`}>{ok ? textOk : textNo}</span>;
-
+  /* ─ Render ─ */
   return (
     <div className="ek1-list card">
+      {/* Header */}
       <div className="ek1-head">
         <div className="title">Ziyaret Kayıtları (EK-1)</div>
         {!isCustomer && (
@@ -279,60 +320,68 @@ export default function Ek1List() {
             <input
               className="search"
               type="text"
-              placeholder="Ara: müşteri, mağaza, ziyaret türü, personel…"
+              placeholder="Müşteri, mağaza, ziyaret türü, personel…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
             <div className="page-size">
               <label>Göster</label>
               <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-                {[10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+                {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
             <button className="refresh" onClick={load} disabled={loading}>
-              {loading ? "Yükleniyor…" : "Yenile"}
+              {loading ? "Yükleniyor…" : "↻ Yenile"}
             </button>
           </div>
         )}
       </div>
 
+      {/* Kolon Başlıkları */}
       <div className="grid head-row">
         <div className="c dt" onClick={() => toggleSort("visitDate")}>
-          Tarih/Saat <span className="sort">{sortKey === "visitDate" ? (sortDir === "asc" ? "↑" : "↓") : ""}</span>
+          Tarih {sortKey === "visitDate" ? (sortDir === "asc" ? "↑" : "↓") : ""}
         </div>
         <div className="c vtype" onClick={() => toggleSort("visitType")}>
-          Ziyaret Türü <span className="sort">{sortKey === "visitType" ? (sortDir === "asc" ? "↑" : "↓") : ""}</span>
+          Tür {sortKey === "visitType" ? (sortDir === "asc" ? "↑" : "↓") : ""}
         </div>
         {!isCustomer && (
           <div className="c customer" onClick={() => toggleSort("customerName")}>
-            Müşteri <span className="sort">{sortKey === "customerName" ? (sortDir === "asc" ? "↑" : "↓") : ""}</span>
+            Müşteri {sortKey === "customerName" ? (sortDir === "asc" ? "↑" : "↓") : ""}
           </div>
         )}
         <div className="c store" onClick={() => toggleSort("storeName")}>
-          Mağaza <span className="sort">{sortKey === "storeName" ? (sortDir === "asc" ? "↑" : "↓") : ""}</span>
+          Mağaza {sortKey === "storeName" ? (sortDir === "asc" ? "↑" : "↓") : ""}
         </div>
         {!isCustomer && (
           <div className="c emp" onClick={() => toggleSort("employeeName")}>
-            Personel <span className="sort">{sortKey === "employeeName" ? (sortDir === "asc" ? "↑" : "↓") : ""}</span>
+            Personel {sortKey === "employeeName" ? (sortDir === "asc" ? "↑" : "↓") : ""}
           </div>
         )}
         <div className="c appr">Müşteri Onayı</div>
-        {!isCustomer && <div className="c appr">Admin Onayı</div>}
+        {!isCustomer && <div className="c appr">Admin İmzası</div>}
         <div className="c actions">İşlemler</div>
       </div>
 
+      {/* Satırlar */}
       {loading ? (
-        <div className="loading">Veriler getiriliyor…</div>
+        <div className="loading">
+          <span className="loading-spinner" />
+          Veriler yükleniyor…
+        </div>
       ) : filtered.length === 0 ? (
         <div className="empty">Kayıt bulunamadı.</div>
       ) : (
         pageItems.map((r) => (
-          <div className="grid data-row" key={`${r.visitId}-${r.updatedAt?.getTime?.() || ""}`}>
+          <div
+            className="grid data-row"
+            key={`${r.visitId}-${r.updatedAt?.getTime?.() || ""}`}
+          >
             <div className="c dt">
               <div className="dt-main">{fmtDT(r.visitDate)}</div>
               <div className="dt-sub">Güncelleme: {fmtDT(r.updatedAt)}</div>
             </div>
-            <div className="c vtype"><div className="title-main">{visitTypeLabel(r.visitType)}</div></div>
+            <div className="c vtype">{visitTypeLabel(r.visitType)}</div>
             {!isCustomer && <div className="c customer">{r.customerName}</div>}
             <div className="c store">{r.storeName}</div>
             {!isCustomer && (
@@ -341,29 +390,53 @@ export default function Ek1List() {
                 {r.employeeName || "-"}
               </div>
             )}
-            <div className="c appr"><Badge ok={!!r.customerSignedAt} /></div>
-            {!isCustomer && <div className="c appr"><Badge ok={!!r.providerSignedAt} /></div>}
+            <div className="c appr">
+              <Badge ok={!!r.customerSignedAt} />
+            </div>
+            {!isCustomer && (
+              <div className="c appr">
+                <Badge ok={!!r.providerSignedAt} textOk="İmzalandı" textNo="Bekliyor" />
+              </div>
+            )}
             <div className="c actions">
-              <button className="btn ghost" onClick={() => onView(r)}>Görüntüle</button>
+              <button className="btn ghost" onClick={() => onView(r)}>
+                Görüntüle
+              </button>
               {isCustomer ? (
                 <button
-                  className="btn"
-                  onClick={() => onSignCustomer(r)}
-                  disabled={!r.visitId || !!r.customerSignedAt}
-                  title="AccessOwner adıyla onay verilir"
+                  className="btn primary"
+                  onClick={() => startSign(r, "customer")}
+                  disabled={!r.visitId || !!r.customerSignedAt || sigBusy}
                 >
-                  İmzala (Müşteri)
+                  İmzala
                 </button>
               ) : (
                 <>
+                  {!r.providerSignedAt && (
+                    <button
+                      className="btn primary"
+                      onClick={() => startSign(r, "provider")}
+                      disabled={!r.visitId || sigBusy}
+                    >
+                      İmzala
+                    </button>
+                  )}
+                  {!r.customerSignedAt && (
+                    <button
+                      className="btn warn"
+                      onClick={() => startSign(r, "customer")}
+                      disabled={!r.visitId || sigBusy}
+                    >
+                      Müşteri Onayı
+                    </button>
+                  )}
                   <button
-                    className="btn"
-                    onClick={() => onSignAdmin(r)}
-                    disabled={!r.visitId || !!r.providerSignedAt}
+                    className="btn danger"
+                    onClick={() => onDelete(r)}
+                    disabled={!r.visitId}
                   >
-                    İmzala (Admin)
+                    Sil
                   </button>
-                  <button className="btn danger" onClick={() => onDelete(r)} disabled={!r.visitId}>Sil</button>
                 </>
               )}
             </div>
@@ -371,20 +444,45 @@ export default function Ek1List() {
         ))
       )}
 
+      {/* Sayfalama */}
       <div className="ek1-pagination">
-        <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          Prev
+        <button
+          className="page-btn"
+          disabled={currentPage <= 1}
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+        >
+          ‹ Önceki
         </button>
-        <span className="page-indicator">{currentPage}</span>
-        <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-          Next
+        <span className="page-indicator">
+          {currentPage} / {totalPages}
+        </span>
+        <button
+          className="page-btn"
+          disabled={currentPage >= totalPages}
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+        >
+          Sonraki ›
         </button>
         <div className="count-info">
           {filtered.length === 0
-            ? "0"
-            : `${startIdx + 1}-${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length}`}
+            ? "0 kayıt"
+            : `${startIdx + 1}–${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length} kayıt`}
         </div>
       </div>
+
+      {/* Biyometrik İmza Modalı */}
+      <SignatureModal
+        isOpen={sigModalOpen}
+        onClose={() => { setSigModalOpen(false); setSigTarget(null); }}
+        onConfirm={onConfirmSign}
+        title={
+          sigTarget?.kind === "customer"
+            ? "Müşteri Onay İmzası"
+            : "Personel / Admin İmzası"
+        }
+        subtitle="İmzanız zaman damgası ve GPS ile kayıt altına alınacaktır"
+        signerName={localStorage.getItem("name") || undefined}
+      />
     </div>
   );
 }

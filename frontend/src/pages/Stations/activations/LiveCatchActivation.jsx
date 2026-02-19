@@ -50,7 +50,7 @@ export default function LiveCatchActivation() {
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
       await api.post(url, { type: "CANLI_YAKALAMA", ...form });
-      toast.success("Kaydedildi");
+      toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       navigate(-1);
     } catch (e) {
       console.error(e);
@@ -92,7 +92,7 @@ export default function LiveCatchActivation() {
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
                     <label className="switch">
-                      <input type="checkbox" checked={!!form[key]} onChange={e=>set(key, e.target.checked)} />
+                      <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked)} />
                       <span className="slider" />
                     </label>
                   </div>
@@ -100,7 +100,7 @@ export default function LiveCatchActivation() {
 
                 <div className="field">
                   <div className="label">Risk Değeri</div>
-                  <select className="select" value={form.risk} onChange={e=>set("risk", e.target.value)}>
+                  <select className="select" value={form.risk} onChange={e => set("risk", e.target.value)}>
                     {RISK.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>

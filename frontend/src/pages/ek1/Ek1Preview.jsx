@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import SignatureModal from "../../components/SignatureModal.jsx";
 import "./Ek1Preview.scss";
 
 import trHealthLogo from "../../assets/saglıkb_logo.png";
@@ -25,7 +26,7 @@ const METHOD_TR = {
   YENILEME: "Yenileme",
   ATOMIZER: "Atomizer",
   YEMLEME: "Yemleme",
-  PULVERİZE: "Pulverize",
+  "PULVERİZE": "Pulverize",
   PULVERIZE: "Pulverize",
 };
 
@@ -35,11 +36,17 @@ const isAdminRole = role === "admin";
 const isEmployeeRole = role === "employee";
 
 const fmtTRDate = (d) => (d ? new Date(d).toLocaleDateString("tr-TR") : "—");
+const fmtTRDateTime = (d) =>
+  d
+    ? new Date(d).toLocaleString("tr-TR", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    })
+    : "—";
+
 const joinSafe = (arr, sep = ", ") =>
   (Array.isArray(arr) ? arr : [])
-    .map((x) =>
-      typeof x === "string" ? x : x?.fullName || x?.name || x?.email || ""
-    )
+    .map((x) => (typeof x === "string" ? x : x?.fullName || x?.name || x?.email || ""))
     .filter(Boolean)
     .join(sep) || "—";
 
@@ -53,6 +60,7 @@ function normalizeEmployees(e) {
   }
   return "—";
 }
+
 function normalizeTargetPests(v) {
   if (!v) return "—";
   if (typeof v === "string") return v;
@@ -64,7 +72,6 @@ function normalizeTargetPests(v) {
   return "—";
 }
 
-/* Oturumdaki görünen isim (imza sırasında backend'e gönderilecek) */
 function getCurrentUserDisplayName() {
   return (
     localStorage.getItem("name") ||
@@ -74,30 +81,83 @@ function getCurrentUserDisplayName() {
   );
 }
 
+/* ────────────────────────────────────────
+   İmza Kutusu — sade, resmi, renksiz
+   ──────────────────────────────────────── */
+function SignatureBox({ signedAt, signerName, signatureBase64, signLog, description }) {
+  // Audit cümlesini oluştur
+  let auditSentence = null;
+  if (signedAt) {
+    const d = new Date(signedAt);
+    const tarih = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const saat = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+
+    const parts = [`${tarih} tarihinde ${saat} saatinde`];
+
+    if (signLog?.coords?.lat && signLog?.coords?.lng) {
+      parts.push(`${signLog.coords.lat.toFixed(5)}, ${signLog.coords.lng.toFixed(5)} konumunda`);
+    }
+
+    if (signLog?.ip) {
+      parts.push(`${signLog.ip} IP'li cihazdan`);
+    }
+
+    auditSentence = parts.join(" ") + " imza alınmıştır.";
+  }
+
+  return (
+    <div className="sig-box">
+      {/* İmza alanı — kenarlıksız */}
+      <div className="sig-box__area">
+        {signedAt && signatureBase64 ? (
+          <img src={signatureBase64} alt="imza" className="sig-box__img" />
+        ) : null}
+      </div>
+
+      {/* İmzalayan adı — ortada */}
+      <div className="sig-box__name">{signedAt ? (signerName || "—") : ""}</div>
+
+      {/* Açıklama */}
+      <div className="sig-box__description">{description}</div>
+
+      {/* Audit cümlesi — silik yazı */}
+      {auditSentence && (
+        <div className="sig-box__audit-sentence">{auditSentence}</div>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────
+   Ana Bileşen
+   ──────────────────────────────────────── */
 export default function Ek1Preview() {
   const { visitId } = useParams();
+  const navigate = useNavigate();
   const [bundle, setBundle] = useState(null);
   const [busy, setBusy] = useState(false);
   const docUrl = useMemo(() => window.location.href, [visitId]);
 
+  const [isSigModalOpen, setIsSigModalOpen] = useState(false);
+  const [sigKind, setSigKind] = useState(null);
+
   const loadAll = async () => {
     try {
       const { data } = await api.get(`/ek1/visit/${visitId}`);
+      console.log("[EK1] loadAll report:", {
+        providerSignedAt: data?.report?.providerSignedAt,
+        customerSignedAt: data?.report?.customerSignedAt,
+        status: data?.report?.status,
+      });
       setBundle(data);
     } catch (e) {
       toast.error(e?.response?.data?.message || "EK-1 verisi alınamadı");
     }
   };
-  useEffect(() => {
-    loadAll(); // eslint-disable-next-line
-  }, [visitId]);
 
-  const visit = bundle?.visit;
-  const store = bundle?.store;
-  const customer = bundle?.customer;
-  const provider = bundle?.provider;
-  const lines = bundle?.lines || [];
-  const report = bundle?.report;
+  useEffect(() => { loadAll(); }, [visitId]);
+
+  const { visit, store, provider, lines = [], report } = bundle || {};
 
   const isFree = report?.freeMeta?.type === "FREE";
   const fm = report?.freeMeta || {};
@@ -113,230 +173,199 @@ export default function Ek1Preview() {
 
   const dateTR = useMemo(() => fmtTRDate(visit?.date), [visit]);
   const employeesStr = useMemo(() => normalizeEmployees(visit?.employees), [visit]);
-  const targetPestsStr = useMemo(
-    () => normalizeTargetPests(visit?.targetPests),
-    [visit]
-  );
+  const targetPestsStr = useMemo(() => normalizeTargetPests(visit?.targetPests), [visit]);
 
-  const freeNcrs = (Array.isArray(fm.ncrs) ? fm.ncrs : []).filter(
-    (n) => n?.title || n?.notes
-  );
+  const freeNcrs = (Array.isArray(fm.ncrs) ? fm.ncrs : []).filter((n) => n?.title || n?.notes);
   const ncrText = isFree
     ? freeNcrs.length === 0
       ? "—"
       : freeNcrs
-          .map((n, i) => {
-            const t = (n.title || "").trim();
-            const s = (n.notes || "").trim();
-            return `${i + 1}) ${t}${s ? " – " + s : ""}`;
-          })
-          .join("  |  ")
+        .map((n, i) => `${i + 1}) ${(n.title || "").trim()}${n.notes ? " – " + n.notes : ""}`)
+        .join(" | ")
     : "—";
 
-  /* -------- İMZA ADI SEÇİMİ (yalnızca admin/employee için seçenek) -------- */
   const selfName = getCurrentUserDisplayName();
   const managerName = store?.manager || null;
 
-  // Admin/Employee: provider imzası için isim seçimi
-  const [providerSigner, setProviderSigner] = useState("self"); // "self" | "manager"
-  // Admin: müşteri onayı için isim seçimi
-  const [customerSigner, setCustomerSigner] = useState(isAdminRole ? "manager" : "self"); // "self" | "manager"
+  const [providerSigner, setProviderSigner] = useState("self");
+  const [customerSigner, setCustomerSigner] = useState(isAdminRole ? "manager" : "self");
 
   const resolveProviderSignName = () =>
     providerSigner === "manager" && managerName ? managerName : selfName;
+  const resolveCustomerSignName = () =>
+    isCustomerRole
+      ? selfName
+      : customerSigner === "manager" && managerName
+        ? managerName
+        : selfName;
 
-  const resolveCustomerSignName = () => {
-    if (isCustomerRole) return selfName; // Müşteri daima kendi adıyla
-    // Admin için seçim, Employee zaten müşteri onayı veremez
-    return customerSigner === "manager" && managerName ? managerName : selfName;
+  const startSigning = (kind) => {
+    setSigKind(kind);
+    setIsSigModalOpen(true);
   };
 
-  const handleProviderSign = async () => {
-    setBusy(true);
-    try {
-      const signerName = resolveProviderSignName();
-      await api.post(`/ek1/visit/${visitId}/sign/provider`, { name: signerName });
-      await loadAll();
-      toast.success("Dijital imza eklendi");
-    } catch (e) {
-      toast.error(e?.response?.data?.message || "İmzalanamadı");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const onConfirmSignature = async (base64) => {
+    const currentSigKind = sigKind; // capture at call time to prevent stale closure
+    console.log("[EK1] onConfirmSignature called, sigKind:", currentSigKind);
 
-  const handleCustomerSign = async () => {
-    // Employee rolü müşteri onayı veremez (FE emniyet)
-    if (isEmployeeRole) {
-      toast.error("Employee rolü müşteri onayı veremez.");
+    if (!currentSigKind || !["provider", "customer"].includes(currentSigKind)) {
+      toast.error("İmza türü belirsiz, lütfen tekrar deneyin.");
       return;
     }
+
     setBusy(true);
+    setIsSigModalOpen(false);
+
+    let coords = null;
     try {
-      const signerName = resolveCustomerSignName();
-      await api.post(`/ek1/visit/${visitId}/sign/customer`, { name: signerName });
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 })
+      );
+      coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    } catch {
+      console.warn("Konum alınamadı.");
+    }
+
+    try {
+      const signerName =
+        currentSigKind === "customer" ? resolveCustomerSignName() : resolveProviderSignName();
+
+      console.log("[EK1] Posting to:", `/ek1/visit/${visitId}/sign/${currentSigKind}`, "signer:", signerName);
+
+      await api.post(`/ek1/visit/${visitId}/sign/${currentSigKind}`, {
+        name: signerName,
+        signature: base64,
+        coords,
+        deviceInfo:
+          navigator.userAgent.includes("Tablet") || navigator.userAgent.includes("iPad")
+            ? "Şirket Tableti"
+            : "Mobil Cihaz",
+      });
+
       await loadAll();
-      toast.success("Müşteri onayı eklendi");
+      toast.success(
+        currentSigKind === "customer"
+          ? "Müşteri imzası kaydedildi."
+          : "Personel imzası kaydedildi."
+      );
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Onay alınamadı");
+      console.error("[EK1] Sign error:", e);
+      toast.error(e?.response?.data?.message || "İmza kaydedilemedi.");
     } finally {
       setBusy(false);
+      setSigKind(null); // reset for next use
     }
   };
 
-  // İmza görüntüleme metinleri — backend’den gelen isimler öncelikli
-  const displayCustomerSignerName =
-    report?.customerSignerName ||
-    (isCustomerRole
-      ? selfName
-      : managerName || selfName);
+  const providerSigned = !!report?.providerSignedAt;
+  const customerSigned = !!report?.customerSignedAt;
 
-  const backListHref = isCustomerRole ? "/customer/stores" : "/admin/ek1";
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(isCustomerRole ? "/customer/stores" : "/work");
+    }
+  };
 
   return (
     <Layout>
       <div className="ek1-print">
-        <div className="toolbar no-print">
-          <Link className="btn ghost" to={backListHref}>
-            Geri
-          </Link>
-          <button className="btn" onClick={() => window.print()}>
-            YAZDIR
-          </button>
 
-          {/* Provider (Admin/Employee) — müşteri görmez */}
-          {!report?.providerSignedAt && (isAdminRole || isEmployeeRole) && (
-            <>
-              {managerName ? (
-                <select
-                  className="btn ghost"
-                  value={providerSigner}
-                  onChange={(e) => setProviderSigner(e.target.value)}
-                  style={{ marginRight: 8 }}
-                  aria-label="Provider imza adı seçimi"
-                >
-                  <option value="self">İmza Adı: Kendi Adım ({selfName})</option>
-                  <option value="manager">İmza Adı: Mağaza Sorumlusu ({managerName})</option>
+        {/* ── Araç Çubuğu ── */}
+        <div className="toolbar no-print">
+          <button className="btn ghost" onClick={handleBack}>Geri</button>
+
+          <span className={`status-pill status-pill--${(report?.status || "draft").toLowerCase()}`}>
+            {report?.status === "APPROVED" && "Onaylandı"}
+            {report?.status === "SUBMITTED" && "Onay Bekliyor"}
+            {(report?.status === "DRAFT" || !report?.status) && "Taslak"}
+          </span>
+
+          <button className="btn" onClick={() => window.print()}>Yazdır / PDF</button>
+
+          {!providerSigned && (isAdminRole || isEmployeeRole) && (
+            <div className="btn-group">
+              {managerName && (
+                <select className="btn ghost" value={providerSigner} onChange={(e) => setProviderSigner(e.target.value)}>
+                  <option value="self">{selfName}</option>
+                  <option value="manager">{managerName}</option>
                 </select>
-              ) : null}
-              <button className="btn primary" onClick={handleProviderSign} disabled={busy}>
-                {busy ? "İmzalanıyor..." : "Dijital İmzala (Admin/Personel)"}
+              )}
+              <button className="btn primary" onClick={() => startSigning("provider")} disabled={busy}>
+                {busy ? "İşleniyor…" : "Personel İmzası"}
               </button>
-            </>
+            </div>
           )}
 
-          {/* Customer Sign */}
-          {!report?.customerSignedAt && (
-            <>
-              {/* Müşteri: yalnızca kendi adıyla onay */}
-              {isCustomerRole && (
-                <button className="btn warn" onClick={handleCustomerSign} disabled={busy}>
-                  {busy ? "Onay Alınıyor..." : `Onayla (Müşteri: ${selfName})`}
-                </button>
+          {!customerSigned && (isAdminRole || isEmployeeRole || isCustomerRole) && (
+            <div className="btn-group">
+              {isAdminRole && managerName && (
+                <select className="btn ghost" value={customerSigner} onChange={(e) => setCustomerSigner(e.target.value)}>
+                  <option value="manager">{managerName}</option>
+                  <option value="self">{selfName}</option>
+                </select>
               )}
-              {/* Admin: müşteri onayı verebilir; imza adı seçilebilir */}
-              {isAdminRole && (
-                <>
-                  {managerName ? (
-                    <select
-                      className="btn ghost"
-                      value={customerSigner}
-                      onChange={(e) => setCustomerSigner(e.target.value)}
-                      style={{ marginLeft: 8, marginRight: 8 }}
-                      aria-label="Müşteri onayı imza adı seçimi"
-                    >
-                      <option value="manager">Onay Adı: Mağaza Sorumlusu ({managerName})</option>
-                      <option value="self">Onay Adı: Kendi Adım ({selfName})</option>
-                    </select>
-                  ) : null}
-                  <button className="btn warn" onClick={handleCustomerSign} disabled={busy}>
-                    {busy ? "Onay Alınıyor..." : "Müşteri Onayı Ver"}
-                  </button>
-                </>
-              )}
-            </>
+              <button className="btn warn" onClick={() => startSigning("customer")} disabled={busy}>
+                {busy ? "İşleniyor…" : "Müşteri Onayı Al"}
+              </button>
+            </div>
           )}
         </div>
 
+        {/* ── A4 Belge ── */}
         <div className="page A4">
+
+          {/* Başlık */}
           <header className="doc-head">
-            <img src={trHealthLogo} alt="T.C. Sağlık Bakanlığı" />
-            <h1>EK-1 BİYOSİDAL UYGULAMA İŞLEM FORMU</h1>
-            <div className="qr" aria-label="Belge QR">
+            <img src={trHealthLogo} alt="T.C. Sağlık Bakanlığı" className="doc-head__logo" />
+            <div className="doc-head__center">
+              <div className="doc-head__sup">T.C. SAĞLIK BAKANLIĞI</div>
+              <h1 className="doc-head__title">EK-1 BİYOSİDAL UYGULAMA İŞLEM FORMU</h1>
+              <div className="doc-head__meta">
+                Belge No: EK1-{visitId}&nbsp;&nbsp;|&nbsp;&nbsp;Tarih: {dateTR}&nbsp;&nbsp;|&nbsp;&nbsp;Durum: {report?.status || "DRAFT"}
+              </div>
+            </div>
+            <div className="doc-head__qr">
               <QRCode value={docUrl} size={60} level="M" />
+              <div className="doc-head__qr-label">Doğrulama QR</div>
             </div>
           </header>
 
+          {/* BÖLÜM 1 */}
           <section className="block">
-            <div className="block-title">UYGULAMAYI YAPANA AİT BİLGİLER</div>
+            <div className="block-title">1. UYGULAMAYI YAPANA AİT BİLGİLER</div>
             <table className="kv">
-              <colgroup>
-                <col style={{ width: "42%" }} />
-                <col />
-              </colgroup>
+              <colgroup><col style={{ width: "42%" }} /><col /></colgroup>
               <tbody>
-                <tr>
-                  <th>Belge Seri No</th>
-                  <td>{provider?.certificateSerial || "—"}</td>
-                </tr>
-                <tr>
-                  <th>Uygulamayı Yapan Firma Adı</th>
-                  <td>{provider?.companyName || "—"}</td>
-                </tr>
-                <tr>
-                  <th>Açık Adresi</th>
-                  <td>{provider?.address || "—"}</td>
-                </tr>
-                <tr>
-                  <th>Mesul Müdür</th>
-                  <td>
-                    {provider?.responsibleTitle ||
-                      provider?.responsibleName ||
-                      "—"}
-                  </td>
-                </tr>
-                <tr>
-                  <th>Uygulayıcı/lar Adı, Soyadı</th>
-                  <td>{employeesStr}</td>
-                </tr>
-                <tr>
-                  <th>Telefon, Faks Numarası</th>
-                  <td>{provider?.phoneFax || "—"}</td>
-                </tr>
-                <tr>
-                  <th>Müdürlük İzin Tarih ve Sayısı</th>
-                  <td>{provider?.permissionNo || "—"}</td>
-                </tr>
+                <tr><th>Belge Seri No</th><td>{provider?.certificateSerial || "—"}</td></tr>
+                <tr><th>Uygulamayı Yapan Firma Adı</th><td>{provider?.companyName || "—"}</td></tr>
+                <tr><th>Açık Adresi</th><td>{provider?.address || "—"}</td></tr>
+                <tr><th>Mesul Müdür</th><td>{provider?.responsibleTitle || provider?.responsibleName || "—"}</td></tr>
+                <tr><th>Uygulayıcı/lar Adı Soyadı</th><td>{employeesStr}</td></tr>
+                <tr><th>Telefon / Faks Numarası</th><td>{provider?.phoneFax || "—"}</td></tr>
+                <tr><th>Müdürlük İzin Tarih ve Sayısı</th><td>{provider?.permissionNo || "—"}</td></tr>
               </tbody>
             </table>
           </section>
 
+          {/* BÖLÜM 2 */}
           <section className="block">
-            <div className="block-title">KULLANILAN BİYOSİDAL ÜRÜNE AİT BİLGİLER</div>
+            <div className="block-title">2. KULLANILAN BİYOSİDAL ÜRÜNE AİT BİLGİLER</div>
             <table className="list">
-              <colgroup>
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "26%" }} />
-                <col style={{ width: "20%" }} />
-                <col style={{ width: "20%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "14%" }} />
-              </colgroup>
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th style={{ width: "4%" }}>#</th>
                   <th>Ürün Adı</th>
                   <th>Aktif Madde</th>
                   <th>Ürün Antidotu</th>
                   <th>Uygulama Şekli</th>
-                  <th>Miktar</th>
+                  <th style={{ width: "12%" }}>Miktar</th>
                 </tr>
               </thead>
               <tbody>
                 {lines.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="center">—</td>
-                  </tr>
+                  <tr><td colSpan={6} className="center">—</td></tr>
                 ) : (
                   lines.map((l, i) => (
                     <tr key={l.id ?? i}>
@@ -345,9 +374,7 @@ export default function Ek1Preview() {
                       <td>{l.biosidal?.activeIngredient || "—"}</td>
                       <td>{l.biosidal?.antidote || "—"}</td>
                       <td>{METHOD_TR[l.method] || l.method || "—"}</td>
-                      <td>
-                        {l.amount} {UNIT_TR[l.biosidal?.unit] || l.biosidal?.unit || ""}
-                      </td>
+                      <td>{l.amount} {UNIT_TR[l.biosidal?.unit] || l.biosidal?.unit || ""}</td>
                     </tr>
                   ))
                 )}
@@ -355,106 +382,96 @@ export default function Ek1Preview() {
             </table>
           </section>
 
+          {/* BÖLÜM 3 */}
           <section className="block">
-            <div className="block-title">UYGULAMA YAPILAN YER HAKKINDA BİLGİLER</div>
+            <div className="block-title">3. UYGULAMA YAPILAN YER HAKKINDA BİLGİLER</div>
             <table className="kv">
-              <colgroup>
-                <col style={{ width: "42%" }} />
-                <col />
-              </colgroup>
+              <colgroup><col style={{ width: "42%" }} /><col /></colgroup>
               <tbody>
                 <tr>
-                  <th>Uygulama Yapılan Yerin Adı ve Açık Adresi</th>
-                  <td>
-                    {displayStoreName}
-                    {displayAddress && displayAddress !== "—"
-                      ? ` / ${displayAddress}`
-                      : ""}
-                  </td>
+                  <th>Uygulama Yapılan Yerin Adı / Adresi</th>
+                  <td>{displayStoreName} / {displayAddress}</td>
                 </tr>
                 <tr>
-                  <th>Ziyaret Tipi</th>
-                  <td>{visitTypeTR}</td>
+                  <th>Ziyaret Tipi / Hedef Zararlı</th>
+                  <td>{visitTypeTR} / {targetPestsStr}</td>
                 </tr>
                 <tr>
-                  <th>Uygulamaya Yapılan Hedef Zararlı Türü / Adı</th>
-                  <td>{targetPestsStr}</td>
-                </tr>
-                <tr>
-                  <th>Gözlemlenen Uygunsuzluk(lar)</th>
+                  <th>Gözlemlenen Uygunsuzluklar</th>
                   <td>{isFree ? ncrText || "—" : "—"}</td>
                 </tr>
                 <tr>
-                  <th>Uygulama Tarihi, Başlangıç ve Bitiş Saati</th>
-                  <td>
-                    {dateTR} | {visit?.startTime || "—"} - {visit?.endTime || "—"}
-                  </td>
+                  <th>Uygulama Zamanı</th>
+                  <td>{dateTR} | {visit?.startTime || "—"} – {visit?.endTime || "—"}</td>
                 </tr>
                 <tr>
-                  <th>Mesken &amp; İşyeri</th>
-                  <td>{displayPlaceType || "—"}</td>
+                  <th>Mesken / İşyeri – Alan (m²)</th>
+                  <td>{displayPlaceType || "—"} / {displayAreaM2}</td>
                 </tr>
                 <tr>
-                  <th>Uygulama Yapılan Yerin Alanı (m²)</th>
-                  <td>{displayAreaM2}</td>
-                </tr>
-                <tr>
-                  <th>Alınan Güvenlik Önlemleri, yapılan uyarı ve öneriler</th>
+                  <th>Uyarı ve Öneriler</th>
                   <td>{visit?.notes || "—"}</td>
-                </tr>
-
-                {/* İmzalayan PERSONEL ismi */}
-                <tr>
-                  <th>Uygulamayı Yapan (İmzalayan Personel)</th>
-                  <td>
-                    {report?.providerSignedAt ? (
-                      <>
-                        {fmtTRDate(report.providerSignedAt)} tarihinde{" "}
-                        <b>
-                          {report?.providerSignerName ||
-                            provider?.responsibleName ||
-                            "Yetkili"}
-                        </b>{" "}
-                        tarafından dijital onay verilmiştir.
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-
-                <tr>
-                  <th>Uygulama Yapılan Yerin Yetkili / Sorumlusu</th>
-                  <td>
-                    {report?.customerSignedAt ? (
-                      <>
-                        {fmtTRDate(report.customerSignedAt)} tarihinde{" "}
-                        <b>{report?.customerSignerName || displayCustomerSignerName}</b> tarafından dijital onay
-                        verilmiştir.
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
                 </tr>
               </tbody>
             </table>
           </section>
 
-          <section className="note">
-            <b>Not:</b> ZEHİRLENME DURUMLARINDA ULUSAL ZEHİR DANIŞMA MERKEZİ 114 VE
-            ACİL SAĞLIK HİZMETLERİ 112 NOLU TELEFONU ARAYINIZ.
-            <br />
-            Bu belgede yer alan bilgiler {provider?.companyName || "uygulayıcı firma"}{" "}
-            tarafından üretilmiştir.
+          {/* BÖLÜM 4 – İmzalar */}
+          <section className="block">
+            <div className="block-title">4. İMZALAR</div>
+            <div className="sig-grid">
+
+              <div className="sig-col">
+                <div className="sig-col__header">Uygulamayı Yapan</div>
+                <SignatureBox
+                  signedAt={report?.providerSignedAt}
+                  signerName={report?.providerSignerName}
+                  signatureBase64={report?.providerSignature}
+                  signLog={report?.providerSignLog}
+                  description="Uygulayıcı firma yetkilisinin adı, soyadı ve imzası"
+                />
+              </div>
+
+              <div className="sig-col">
+                <div className="sig-col__header">Uygulama Yaptıran Yetkili</div>
+                <SignatureBox
+                  signedAt={report?.customerSignedAt}
+                  signerName={report?.customerSignerName}
+                  signatureBase64={report?.customerSignature}
+                  signLog={report?.customerSignLog}
+                  description="Hizmet alınan yerin sorumlusunun adı, soyadı ve imzası"
+                />
+              </div>
+
+            </div>
           </section>
 
-          <div className="footer no-print">
-            <button className="btn" onClick={() => window.print()}>
-              YAZDIR
-            </button>
-          </div>
+          {/* Dipnot */}
+          <section className="note">
+            <strong>Not:</strong> ZEHİRLENME DURUMLARINDA 114 UZEM VEYA 112'Yİ ARAYINIZ.
+            Bu form 5 yıl süreyle muhafaza edilmek zorundadır.
+            Dijital imza verileri elektronik kayıt olarak saklanmakta olup yasal geçerliliğe sahiptir.
+          </section>
+
         </div>
+
+        {/* İmza Modalı */}
+        <SignatureModal
+          isOpen={isSigModalOpen}
+          onClose={() => setIsSigModalOpen(false)}
+          onConfirm={onConfirmSignature}
+          title={sigKind === "customer" ? "Müşteri Onay İmzası" : "Personel Dijital İmzası"}
+          subtitle={
+            sigKind === "customer"
+              ? "İmzanız yasal belgeye işlenecektir"
+              : "Uygulayıcı onay imzası"
+          }
+          signerName={
+            sigKind === "customer"
+              ? resolveCustomerSignName()
+              : resolveProviderSignName()
+          }
+        />
       </div>
     </Layout>
   );

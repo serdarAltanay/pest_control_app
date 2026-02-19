@@ -52,7 +52,7 @@ export default function RodentBaitActivation() {
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
       await api.post(url, { type: "FARE_YEMLEME", ...form });
-      toast.success("Kaydedildi");
+      toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       navigate(-1);
     } catch (e) {
       console.error(e);
@@ -87,7 +87,7 @@ export default function RodentBaitActivation() {
                 <div className="field">
                   <div className="label">Aktivite Var mı ?</div>
                   <label className="switch">
-                    <input type="checkbox" checked={form.aktiviteVar} onChange={e=>set("aktiviteVar", e.target.checked)} />
+                    <input type="checkbox" checked={form.aktiviteVar} onChange={e => set("aktiviteVar", e.target.checked)} />
                     <span className="slider" />
                   </label>
                 </div>
@@ -95,7 +95,7 @@ export default function RodentBaitActivation() {
                 <div className="field">
                   <div className="label">Deforme Yem</div>
                   <label className="switch">
-                    <input type="checkbox" checked={form.deformeYem} onChange={e=>set("deformeYem", e.target.checked)} />
+                    <input type="checkbox" checked={form.deformeYem} onChange={e => set("deformeYem", e.target.checked)} />
                     <span className="slider" />
                   </label>
                 </div>
@@ -103,7 +103,7 @@ export default function RodentBaitActivation() {
                 <div className="field">
                   <div className="label">Yem Değişti mi ?</div>
                   <label className="switch">
-                    <input type="checkbox" checked={form.yemDegisti} onChange={e=>set("yemDegisti", e.target.checked)} />
+                    <input type="checkbox" checked={form.yemDegisti} onChange={e => set("yemDegisti", e.target.checked)} />
                     <span className="slider" />
                   </label>
                 </div>
@@ -111,7 +111,7 @@ export default function RodentBaitActivation() {
                 <div className="field">
                   <div className="label">Monitör Deforme mi ?</div>
                   <label className="switch">
-                    <input type="checkbox" checked={form.deformeMonitor} onChange={e=>set("deformeMonitor", e.target.checked)} />
+                    <input type="checkbox" checked={form.deformeMonitor} onChange={e => set("deformeMonitor", e.target.checked)} />
                     <span className="slider" />
                   </label>
                 </div>
@@ -119,7 +119,7 @@ export default function RodentBaitActivation() {
                 <div className="field">
                   <div className="label">Monitör Değişti mi ?</div>
                   <label className="switch">
-                    <input type="checkbox" checked={form.monitorDegisti} onChange={e=>set("monitorDegisti", e.target.checked)} />
+                    <input type="checkbox" checked={form.monitorDegisti} onChange={e => set("monitorDegisti", e.target.checked)} />
                     <span className="slider" />
                   </label>
                 </div>
@@ -127,14 +127,14 @@ export default function RodentBaitActivation() {
                 <div className="field">
                   <div className="label">Ulaşılamayan Monitör</div>
                   <label className="switch">
-                    <input type="checkbox" checked={form.ulasilamayanMonitor} onChange={e=>set("ulasilamayanMonitor", e.target.checked)} />
+                    <input type="checkbox" checked={form.ulasilamayanMonitor} onChange={e => set("ulasilamayanMonitor", e.target.checked)} />
                     <span className="slider" />
                   </label>
                 </div>
 
                 <div className="field">
                   <div className="label">Risk Değeri</div>
-                  <select className="select" value={form.risk} onChange={e=>set("risk", e.target.value)}>
+                  <select className="select" value={form.risk} onChange={e => set("risk", e.target.value)}>
                     {RISK.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>

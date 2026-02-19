@@ -100,7 +100,7 @@ export default function Biocides() {
     setList((rows) => rows.filter((r) => r.id !== id));
     try {
       await api.delete(`/biocides/${id}`);
-      toast.success("Silindi");
+      toast.success("Biyosidal ürün başarıyla silindi.");
     } catch (e) {
       setList(prev);
       toast.error(e?.response?.data?.message || "Silinemedi");

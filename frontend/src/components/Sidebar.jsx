@@ -1,6 +1,5 @@
-// src/components/Sidebar.jsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/Sidebar.scss";
 import api from "../api/axios";
 
@@ -8,6 +7,7 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const [myStores, setMyStores] = useState(null); // null=yükleniyor, []=yok
   const navigate = useNavigate();
+  const location = useLocation();
   const role = (localStorage.getItem("role") || "").toLowerCase();
 
   const isAdmin = role === "admin";
@@ -63,15 +63,14 @@ export default function Sidebar() {
           {isCustomer && (
             <>
               <li className="section-title">Pest işlerim</li>
-              <li className="sidebar-item" onClick={() => navigate("/customer")}>Anasayfa</li>
-              <li className="sidebar-item" onClick={goMyStore}>{labelMyStore}</li>
-              <li className="sidebar-item" onClick={() => navigate("/customer/agenda")}>Ziyaret Ajandam</li>
-              <li className="sidebar-item" onClick={() => navigate("/customer/reports")}>Dosyalar/Raporlar</li>
+              <li className={`sidebar-item ${location.pathname === "/customer" ? "active" : ""}`} onClick={() => navigate("/customer")}>Anasayfa</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/customer/stores") ? "active" : ""}`} onClick={goMyStore}>{labelMyStore}</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/customer/agenda") ? "active" : ""}`} onClick={() => navigate("/customer/agenda")}>Ziyaret Ajandam</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/customer/reports") ? "active" : ""}`} onClick={() => navigate("/customer/reports")}>Dosyalar/Raporlar</li>
               <li className="section-title">iletişim</li>
-              {/* ⇩⇩ Yeni linkler (müşteri) ⇩⇩ */}
-              <li className="sidebar-item" onClick={() => navigate("/customer/feedback/new")}>Şikayet / Öneri Oluştur</li>
-              <li className="sidebar-item" onClick={() => navigate("/customer/feedback")}>Şikayet & Önerilerim</li>
-              <li className="sidebar-item" onClick={() => navigate("/customer/contacts")}>İletişim Kanalları</li>
+              <li className={`sidebar-item ${location.pathname === "/customer/feedback/new" ? "active" : ""}`} onClick={() => navigate("/customer/feedback/new")}>Şikayet / Öneri Oluştur</li>
+              <li className={`sidebar-item ${location.pathname === "/customer/feedback" ? "active" : ""}`} onClick={() => navigate("/customer/feedback")}>Şikayet & Önerilerim</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/customer/contacts") ? "active" : ""}`} onClick={() => navigate("/customer/contacts")}>İletişim Kanalları</li>
             </>
           )}
 
@@ -79,9 +78,9 @@ export default function Sidebar() {
           {(isEmployee || isAdmin) && (
             <>
               <li className="section-title">İşler</li>
-              <li className="sidebar-item" onClick={() => navigate("/work")}>İş Paneli</li>
-              <li className="sidebar-item" onClick={() => navigate("/ek1/serbest")}>Serbest Ek1 oluştur</li>
-              <li className="sidebar-item" onClick={() => navigate("/calendar")}>Ziyaret Takvimi</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/work") ? "active" : ""}`} onClick={() => navigate("/work")}>İş Paneli</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/ek1/serbest") ? "active" : ""}`} onClick={() => navigate("/ek1/serbest")}>Serbest Ek1 oluştur</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/calendar") ? "active" : ""}`} onClick={() => navigate("/calendar")}>Ziyaret Takvimi</li>
             </>
           )}
 
@@ -89,11 +88,10 @@ export default function Sidebar() {
           {canManageBasic && (
             <>
               <li className="section-title">Yönetim İşleri</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/customers/new")}>Müşteri Ekle</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/customers")}>Müşteri Listesi</li>
-              {/* Mağaza ekleme menüsü eklendi */}
-              <li className="sidebar-item" onClick={() => navigate("/admin/stores")}>Mağaza Listesi</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/biocides")}>Biyosidallar</li>
+              <li className={`sidebar-item ${location.pathname === "/admin/customers/new" ? "active" : ""}`} onClick={() => navigate("/admin/customers/new")}>Müşteri Ekle</li>
+              <li className={`sidebar-item ${location.pathname === "/admin/customers" ? "active" : ""}`} onClick={() => navigate("/admin/customers")}>Müşteri Listesi</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/admin/stores") ? "active" : ""}`} onClick={() => navigate("/admin/stores")}>Mağaza Listesi</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/admin/biocides") ? "active" : ""}`} onClick={() => navigate("/admin/biocides")}>Biyosidallar</li>
             </>
           )}
 
@@ -101,16 +99,16 @@ export default function Sidebar() {
           {isAdmin && (
             <>
               <li className="section-title">Personel İşleri</li>
-              <li className="sidebar-item" onClick={() => navigate("/tracking/employees")}>Personel Takip</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/employees/new")}>Personel Ekle</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/tracking/employees") ? "active" : ""}`} onClick={() => navigate("/tracking/employees")}>Personel Takip</li>
+              <li className={`sidebar-item ${location.pathname === "/admin/employees/new" ? "active" : ""}`} onClick={() => navigate("/admin/employees/new")}>Personel Ekle</li>
 
               <li className="section-title">Erişim İşleri</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/access")}>Erişim Listesi</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/access/new")}>Yeni Erişim Ver</li>
+              <li className={`sidebar-item ${location.pathname === "/admin/access" ? "active" : ""}`} onClick={() => navigate("/admin/access")}>Erişim Listesi</li>
+              <li className={`sidebar-item ${location.pathname === "/admin/access/new" ? "active" : ""}`} onClick={() => navigate("/admin/access/new")}>Yeni Erişim Ver</li>
 
               <li className="section-title">İletişim</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/complaints")}>Şikayetler</li>
-              <li className="sidebar-item" onClick={() => navigate("/admin/suggestions")}>Öneriler</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/admin/complaints") ? "active" : ""}`} onClick={() => navigate("/admin/complaints")}>Şikayetler</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/admin/suggestions") ? "active" : ""}`} onClick={() => navigate("/admin/suggestions")}>Öneriler</li>
             </>
           )}
         </ul>

@@ -69,22 +69,24 @@ export default function Navbar() {
         {/* PROFİL DROPDOWN */}
         <div className="profile-dropdown" ref={ddRef}>
           <button className="profile-trigger" onClick={() => setOpen((v) => !v)}>
-            <span className="avatar">
-              <img
-                src={imgSrc}
-                alt="Profil"
-                onError={(e) => {
-                  if (e.currentTarget.src.endsWith("/noavatar.jpg")) return;
-                  e.currentTarget.src = "/noavatar.jpg";
-                }}
-              />
-            </span>
+            {roleLower !== "customer" && (
+              <span className="avatar">
+                <img
+                  src={imgSrc}
+                  alt="Profil"
+                  onError={(e) => {
+                    if (e.currentTarget.src.endsWith("/noavatar.jpg")) return;
+                    e.currentTarget.src = "/noavatar.jpg";
+                  }}
+                />
+              </span>
+            )}
             <span className="who">
               <span className="name">{displayName}</span>
               <span className="role">{displayRole}</span>
             </span>
             <svg className={`chev ${open ? "up" : ""}`} viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-              <path d="M7 10l5 5 5-5H7z" fill="currentColor"/>
+              <path d="M7 10l5 5 5-5H7z" fill="currentColor" />
             </svg>
           </button>
 
@@ -110,10 +112,10 @@ export default function Navbar() {
               >
                 <span className="track">
                   <span className="icon sun" aria-hidden>
-                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zm10.48 0l1.79-1.79 1.79 1.79-1.79 1.79-1.79-1.79zM12 2v3M12 19v3M4.84 17.24l-1.79 1.79 1.79 1.79 1.79-1.79-1.79-1.79zM19.16 17.24l1.79 1.79-1.79 1.79-1.79-1.79 1.79-1.79zM2 12h3M19 12h3M12 6a6 6 0 100 12 6 6 0 000-12z"/></svg>
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zm10.48 0l1.79-1.79 1.79 1.79-1.79 1.79-1.79-1.79zM12 2v3M12 19v3M4.84 17.24l-1.79 1.79 1.79 1.79 1.79-1.79-1.79-1.79zM19.16 17.24l1.79 1.79-1.79 1.79-1.79-1.79 1.79-1.79zM2 12h3M19 12h3M12 6a6 6 0 100 12 6 6 0 000-12z" /></svg>
                   </span>
                   <span className="icon moon" aria-hidden>
-                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M21 12.79A9 9 0 1111.21 3 7 7 0 1021 12.79z"/></svg>
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M21 12.79A9 9 0 1111.21 3 7 7 0 1021 12.79z" /></svg>
                   </span>
                 </span>
                 <span className="thumb" />

@@ -116,17 +116,17 @@ export default function StoreNonconformities() {
     }
   };
 
- const toggleResolved = async (id) => {
-   try {
-     setTogglingId(id);
-     const { data } = await api.patch(`/nonconformities/${id}/toggle`);
-     setList((arr) => arr.map((x) => (x.id === id ? data : x)));
-   } catch {
-     toast.error("Durum güncellenemedi");
-   } finally {
-     setTogglingId(null);
-   }
-};
+  const toggleResolved = async (id) => {
+    try {
+      setTogglingId(id);
+      const { data } = await api.patch(`/nonconformities/${id}/toggle`);
+      setList((arr) => arr.map((x) => (x.id === id ? data : x)));
+    } catch {
+      toast.error("Durum güncellenemedi");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const del = async (id) => {
     if (!window.confirm("Silinsin mi?")) return;
@@ -134,7 +134,7 @@ export default function StoreNonconformities() {
     setList((arr) => arr.filter((x) => x.id !== id));
     try {
       await api.delete(`/nonconformities/${id}`);
-      toast.success("Silindi");
+      toast.success("Uygunsuzluk kaydı başarıyla silindi.");
     } catch {
       setList(prev);
       toast.error("Silinemedi");

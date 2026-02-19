@@ -1,92 +1,356 @@
-/* src/pages/tracking/Ek1Preview.scss */
+/* ═══════════════════════════════════════════════
+   Ek1Preview.scss  –  Resmi Belge Önizleme
+   Renksiz · Sade · Keskin hatlı
+   ═══════════════════════════════════════════════ */
+
 .ek1-print {
-  /* ------- toolbar ------- */
-  .toolbar { display:flex; gap:8px; margin:12px 0; }
-  .btn { height:36px; padding:0 12px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-weight:700; cursor:pointer; }
-  .btn.primary { background:#16a34a; border-color:#16a34a; color:#fff; }
-  .btn.warn { background:#f59e0b; border-color:#f59e0b; color:#fff; }
-  .btn.ghost { background:#fff; }
+  background: #e8e8e8;
+  min-height: 100vh;
+  padding-bottom: 60px;
 
-  /* ------- page ------- */
-  .page.A4{
-    width:210mm; min-height:297mm; margin:0 auto; background:#fff;
-    padding:14mm; box-shadow:0 0 8px rgba(0,0,0,.08);
-    box-sizing:border-box; color:#111; font-size:13px; line-height:1.34;
-    text-align:left;
+  /* ─── Araç Çubuğu (ekran) ─── */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #fff;
+    border-bottom: 1px solid #d1d5db;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    align-items: center;
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      color: #374151;
+      transition: background 0.12s;
+
+      &:hover:not(:disabled) {
+        background: #f9fafb;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &.ghost {
+        background: transparent;
+        border-color: #d1d5db;
+      }
+
+      &.primary {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #fff;
+
+        &:hover:not(:disabled) {
+          background: #1e40af;
+        }
+      }
+
+      &.warn {
+        background: #b45309;
+        border-color: #b45309;
+        color: #fff;
+
+        &:hover:not(:disabled) {
+          background: #92400e;
+        }
+      }
+    }
+
+    select.btn {
+      padding-right: 28px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23374151'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
   }
 
-  /* ------- header ------- */
-  .doc-head{
-    display:grid; grid-template-columns:60px 1fr 60px; align-items:center; margin-bottom:10px;
-    img{ width:60px; height:60px; object-fit:contain; }
-    h1{ margin:0; text-align:center; font-size:18px; font-weight:800; letter-spacing:.2px; }
-    .qr{ justify-self:end; }
+  /* Durum pill — toolbar only, baskıda görünmez */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    color: #374151;
+
+    &--approved {
+      background: #f0fdf4;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    &--submitted {
+      background: #fffbeb;
+      color: #854d0e;
+      border-color: #fde68a;
+    }
+
+    &--draft {
+      background: #f9fafb;
+      color: #6b7280;
+      border-color: #d1d5db;
+    }
   }
 
-  .block{ margin-top:12px; break-inside:avoid; page-break-inside:avoid; }
-  .block-title{
-    font-weight:800; padding:6px 8px; background:#fff;
-    border:1px solid #000;
+  /* ─── A4 Belge ─── */
+  .page.A4 {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 20px auto;
+    background: #ffffff;
+    padding: 14mm 16mm 14mm;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-sizing: border-box;
+
+    /* Belge içinde her şey siyah/beyaz */
+    color: #000000;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 11.5px;
+    line-height: 1.45;
+
+    /* ── Belge Başlığı ── */
+    .doc-head {
+      display: grid;
+      grid-template-columns: 70px 1fr 70px;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #000;
+      margin-bottom: 10px;
+    }
+
+    .doc-head__logo {
+      width: 66px;
+      height: 66px;
+      object-fit: contain;
+    }
+
+    .doc-head__center {
+      text-align: center;
+    }
+
+    .doc-head__sup {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: 3px;
+    }
+
+    .doc-head__title {
+      margin: 0 0 4px;
+      font-size: 14.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .doc-head__meta {
+      font-size: 9.5px;
+      color: #444;
+    }
+
+    .doc-head__qr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .doc-head__qr-label {
+      font-size: 7.5px;
+      text-align: center;
+      color: #555;
+    }
+
+    /* ── Bölüm Bloğu ── */
+    .block {
+      margin-top: 9px;
+    }
+
+    .block-title {
+      font-weight: 900;
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: #000;
+      color: #fff;
+      padding: 3px 7px;
+    }
+
+    /* ── Tablolar ── */
+    table {
+      display: table !important;
+      width: 100% !important;
+      max-width: none !important;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0 !important;
+
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 4px 7px;
+        font-size: 11px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        vertical-align: top;
+        text-align: left;
+        background: transparent;
+      }
+
+      th {
+        background: #f4f4f4;
+        font-weight: 700;
+        text-align: left;
+      }
+
+      /* global index.css zebra satırlarını sıfırla */
+      tbody tr:nth-child(odd),
+      tbody tr:nth-child(even) {
+        background: #fff;
+      }
+
+      .center {
+        text-align: center;
+      }
+    }
+
+    /* ── İmza Bölümü ── */
+    .sig-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid #000;
+      border-top: none;
+      /* block-title sınırıyla birleşir */
+    }
+
+    .sig-col {
+      padding: 0;
+
+      &:first-child {
+        border-right: 1px solid #000;
+      }
+    }
+
+    .sig-col__header {
+      background: #f4f4f4;
+      font-weight: 700;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 4px 7px;
+      border-bottom: 1px solid #000;
+    }
+
+    /* İmza kutusu */
+    .sig-box {
+      padding: 8px 7px 6px;
+    }
+
+    /* İmza çizim alanı — kenarlıksız */
+    .sig-box__area {
+      min-height: 70px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2px;
+    }
+
+    .sig-box__img {
+      max-height: 65px;
+      max-width: 100%;
+      display: block;
+    }
+
+    /* İmzalayan adı — ortada */
+    .sig-box__name {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #000;
+      min-height: 14px;
+      margin-bottom: 4px;
+    }
+
+    /* Açıklama çizgisi */
+    .sig-box__description {
+      border-top: 1px solid #000;
+      padding-top: 4px;
+      font-size: 9.5px;
+      color: #333;
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* Audit cümlesi — silik, küçük */
+    .sig-box__audit-sentence {
+      margin-top: 4px;
+      font-size: 7.5px;
+      color: #999;
+      text-align: center;
+      font-style: italic;
+      line-height: 1.4;
+    }
+
+    /* ── Dipnot ── */
+    .note {
+      border: 1px solid #000;
+      padding: 6px 9px;
+      margin-top: 12px;
+      font-size: 9.5px;
+      line-height: 1.5;
+      background: #fafafa;
+    }
   }
 
-  /* ========= TABLOLAR ========= */
-  .page.A4 table, .page.A4 thead, .page.A4 tbody, .page.A4 tr, .page.A4 th, .page.A4 td { all: revert; }
+  /* ─── Yazdırma ─── */
+  @media print {
+    padding: 0;
+    background: #fff;
 
-  table, .table, table.kv, table.list {
-    width:100%;
-    border-collapse:collapse;
-    table-layout:fixed;
-    margin:0;
-  }
+    .no-print {
+      display: none !important;
+    }
 
-  table th, table td,
-  .table th, .table td,
-  .kv > tbody > tr > th,
-  .kv > tbody > tr > td,
-  .list > thead > tr > th,
-  .list > tbody > tr > td {
-    border:1px solid #000;
-    padding:6px 8px;
-    text-align:left !important;
-    vertical-align:top;
-    word-break:break-word;
-    overflow-wrap:anywhere;
-    line-height:1.25;
-  }
+    .page.A4 {
+      margin: 0;
+      box-shadow: none;
+      width: 100%;
+      padding: 10mm 12mm;
+    }
 
-  .list > thead > tr > th,
-  .kv > tbody > tr > th {
-    background:#f9fafb;
-    font-weight:700;
-  }
-
-  table.kv col:first-child  { width:42% !important; }
-  table.kv col:last-child   { width:auto  !important; }
-
-  .list > thead > tr > th:nth-child(1),
-  .list > tbody > tr > td:nth-child(1) { width:56px; text-align:center !important; }
-  .list > thead > tr > th:nth-child(6),
-  .list > tbody > tr > td:nth-child(6) {
-    text-align:right !important;
-    white-space:nowrap;
-    font-variant-numeric: tabular-nums;
-    font-feature-settings:"tnum" 1;
-  }
-
-  .center{ text-align:center; }
-  .note{ border:1px solid #000; padding:8px; margin-top:10px; font-size:12px; }
-
-  /* ------- print ------- */
-  @media print{
-    @page{ size:A4; margin:10mm; }
-    html, body{ background:#fff !important; }
-    .page.A4{ box-shadow:none !important; margin:0 !important; width:auto !important; min-height:auto !important; padding:0; }
-    .no-print{ display:none !important; }
-    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-
-    .list thead{ display:table-header-group; }
-    .list tfoot{ display:table-footer-group; }
-    .list tr, .kv tr, .block,
-    table th, table td { break-inside:avoid; page-break-inside:avoid; }
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
   }
 }

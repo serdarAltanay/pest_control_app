@@ -52,7 +52,7 @@ export default function MothTrapActivation() {
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
       await api.post(url, { type: "GUVE_TUZAGI", ...form });
-      toast.success("Kaydedildi");
+      toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       navigate(-1);
     } catch (e) {
       console.error(e);
@@ -94,7 +94,7 @@ export default function MothTrapActivation() {
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
                     <label className="switch">
-                      <input type="checkbox" checked={!!form[key]} onChange={e=>set(key, e.target.checked)} />
+                      <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked)} />
                       <span className="slider" />
                     </label>
                   </div>
@@ -103,17 +103,17 @@ export default function MothTrapActivation() {
                 <div className="field">
                   <div className="label">Güve *</div>
                   <input className="input" type="number" min={0} value={form.guve}
-                         onChange={e=>set("guve", Number(e.target.value||0))} />
+                    onChange={e => set("guve", Number(e.target.value || 0))} />
                 </div>
                 <div className="field">
                   <div className="label">Diğer *</div>
                   <input className="input" type="number" min={0} value={form.diger}
-                         onChange={e=>set("diger", Number(e.target.value||0))} />
+                    onChange={e => set("diger", Number(e.target.value || 0))} />
                 </div>
 
                 <div className="field">
                   <div className="label">Risk Değeri</div>
-                  <select className="select" value={form.risk} onChange={e=>set("risk", e.target.value)}>
+                  <select className="select" value={form.risk} onChange={e => set("risk", e.target.value)}>
                     {RISK.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>

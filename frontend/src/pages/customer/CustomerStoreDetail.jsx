@@ -8,7 +8,7 @@ import "./CustomerStoreDetail.scss";
 
 /* ───────── Recharts (opsiyonel) ───────── */
 let Recharts;
-try { Recharts = require("recharts"); } catch {}
+try { Recharts = require("recharts"); } catch { }
 
 /* ───────── Sabitler ───────── */
 const TYPE_TR = {
@@ -26,8 +26,8 @@ const VISIT_TYPE_TR = {
   DIGER: "Diğer",
 };
 const PIE_COLORS = [
-  "#2563eb","#10b981","#f59e0b","#ef4444","#8b5cf6",
-  "#14b8a6","#f97316","#06b6d4","#84cc16","#e11d48"
+  "#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+  "#14b8a6", "#f97316", "#06b6d4", "#84cc16", "#e11d48"
 ];
 
 /* ───────── Yardımcılar ───────── */
@@ -186,7 +186,11 @@ export default function CustomerStoreDetail() {
             </div>
           </div>
           <div className="tabs">
-            <Link className="tab" to={`/customer/stores/${storeId}/nonconformities`}>Uygunsuzluklar</Link>
+            {store?._count?.nonconformities > 0 ? (
+              <Link className="tab" to={`/customer/stores/${storeId}/nonconformities`}>Uygunsuzluklar</Link>
+            ) : (
+              <span className="tab disabled" title="Kayıtlı uygunsuzluk yok" style={{ opacity: 0.5, cursor: "not-allowed" }}>Uygunsuzluklar</span>
+            )}
             <Link className="tab" to={`/customer/stores/${storeId}/reports`}>Raporlar</Link>
             <Link className="tab" to={`/customer/stores/${storeId}/analytics`}>Trend Analizi</Link>
           </div>
@@ -207,7 +211,7 @@ export default function CustomerStoreDetail() {
                 <div className="full"><b>Adres</b><span>{store?.address || "—"}</span></div>
                 <div>
                   <b>Durum</b>
-                  <span className={`badge ${store?.isActive ? "ok":"no"}`}>
+                  <span className={`badge ${store?.isActive ? "ok" : "no"}`}>
                     {store?.isActive ? "Aktif" : "Pasif"}
                   </span>
                 </div>

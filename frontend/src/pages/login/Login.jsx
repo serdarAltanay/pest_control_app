@@ -69,7 +69,7 @@ export default function Login() {
             setAuthToken(data.accessToken);
             const payload = parseJwt(data.accessToken);
             if (payload?.role) localStorage.setItem("role", payload.role);
-            try { await fetchProfile?.(); } catch {}
+            try { await fetchProfile?.(); } catch { }
             safeNavigate(pickTarget(payload?.role));
           }
         } catch {
@@ -84,10 +84,25 @@ export default function Login() {
     e.preventDefault();
     if (loading) return;
 
+    // Input validation
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      toast.warn("Lütfen e-posta adresinizi girin.");
+      return;
+    }
+    if (!password) {
+      toast.warn("Lütfen şifrenizi girin.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.warn("Geçerli bir e-posta adresi girin.");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await api.post("/auth/login", {
-        email: email.trim().toLowerCase(),
+        email: trimmedEmail,
         password,
       });
 
@@ -96,18 +111,28 @@ export default function Login() {
       localStorage.setItem("role", role);
       localStorage.setItem("fullName", fullName || "");
       localStorage.setItem("name", fullName || "");
-      localStorage.setItem("email", serverEmail || email.trim().toLowerCase());
+      localStorage.setItem("email", serverEmail || trimmedEmail);
 
-      try { await fetchProfile?.(); } catch {}
+      try { await fetchProfile?.(); } catch { }
 
-      toast.success("Giriş başarılı 🎉");
+      const displayName = fullName || trimmedEmail;
+      toast.success(`Hoş geldiniz, ${displayName}`);
       safeNavigate(pickTarget(role));
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Giriş hatası ❌";
-      toast.error(msg);
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.error;
+
+      if (status === 401) {
+        toast.error(serverMsg || "E-posta veya şifre hatalı.");
+      } else if (status === 403) {
+        toast.error("Bu hesap devre dışı bırakılmış.");
+      } else if (status >= 500) {
+        toast.error("Sunucuya ulaşılamıyor. Lütfen daha sonra tekrar deneyin.");
+      } else if (!err?.response) {
+        toast.error("İnternet bağlantınızı kontrol edin.");
+      } else {
+        toast.error(serverMsg || "Giriş yapılamadı. Bilgilerinizi kontrol edin.");
+      }
     } finally {
       setLoading(false);
     }

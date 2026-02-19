@@ -1,0 +1,688 @@
+/* SignatureModal.scss
+   Signature modal bileseni icin stiller. */
+
+.ek1-print {
+   background: #e8e8e8;
+   min-height: 100vh;
+   padding-bottom: 60px;
+
+   /* Arac Cubugu */
+   .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+      align-items: center;
+
+      .btn {
+         display: inline-flex;
+         align-items: center;
+         height: 34px;
+         padding: 0 14px;
+         border-radius: 6px;
+         border: 1px solid var(--border);
+         background: var(--surface);
+         font-weight: 600;
+         font-size: 13px;
+         cursor: pointer;
+         color: var(--text);
+         transition: background 0.12s;
+
+         &:hover:not(:disabled) {
+            background: var(--hover-bg);
+         }
+
+         &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+         }
+
+         &.ghost {
+            background: transparent;
+            border-color: var(--border);
+         }
+
+         &.primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--primary-contrast);
+
+            &:hover:not(:disabled) {
+               opacity: 0.9;
+            }
+         }
+
+         &.warn {
+            background: #c08a50;
+            border-color: #c08a50;
+            color: #fff;
+
+            &:hover:not(:disabled) {
+               background: #a8763e;
+            }
+         }
+      }
+
+      select.btn {
+         padding-right: 28px;
+         appearance: none;
+         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23374151'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+         background-repeat: no-repeat;
+         background-position: right 8px center;
+         background-size: 14px;
+         cursor: pointer;
+      }
+
+      .btn-group {
+         display: flex;
+         gap: 4px;
+         align-items: center;
+      }
+   }
+
+   /* Durum pill */
+   .status-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--muted-surface);
+      color: var(--text);
+
+      &--approved {
+         background: #f0fdf4;
+         color: #166534;
+         border-color: #bbf7d0;
+      }
+
+      &--submitted {
+         background: #fffbeb;
+         color: #854d0e;
+         border-color: #fde68a;
+      }
+
+      &--draft {
+         background: #f9fafb;
+         color: #6b7280;
+         border-color: #d1d5db;
+      }
+   }
+
+   /* A4 Belge */
+   .page.A4 {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 20px auto;
+      background: #ffffff;
+      color: #000000;
+      /* Force black text for A4 print realism in dark mode */
+
+      /*
+     * Padding mm cinsinden tanımlanıyor ama kutu hesabı
+     * px bazında yapılıyor — border-box ile tutarlı kılıyoruz.
+     */
+      padding: 12mm 14mm;
+      box-sizing: border-box;
+
+      /*
+     * overflow:hidden yerine visible bırakıyoruz;
+     * taşmayı tablo seviyesinde engelliyoruz.
+     */
+      overflow: visible;
+
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      color: #000000;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 11.5px;
+      line-height: 1.45;
+
+      /* Tüm alt elementler border-box modeline uysun */
+      *,
+      *::before,
+      *::after {
+         box-sizing: border-box;
+      }
+
+      /* Baslik */
+      .doc-head {
+         display: grid;
+         grid-template-columns: 70px 1fr 70px;
+         align-items: center;
+         gap: 10px;
+         padding-bottom: 8px;
+         border-bottom: 2px solid #000;
+         margin-bottom: 10px;
+         width: 100%;
+      }
+
+      .doc-head__logo {
+         width: 66px;
+         height: 66px;
+         object-fit: contain;
+      }
+
+      .doc-head__center {
+         text-align: center;
+      }
+
+      .doc-head__sup {
+         font-size: 10px;
+         font-weight: 700;
+         letter-spacing: 0.08em;
+         margin-bottom: 3px;
+      }
+
+      .doc-head__title {
+         margin: 0 0 4px;
+         font-size: 14.5px;
+         font-weight: 900;
+         text-transform: uppercase;
+         letter-spacing: 0.04em;
+      }
+
+      .doc-head__meta {
+         font-size: 9.5px;
+         color: #444;
+      }
+
+      .doc-head__qr {
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+         gap: 3px;
+      }
+
+      .doc-head__qr-label {
+         font-size: 7.5px;
+         text-align: center;
+         color: #555;
+      }
+
+      /* Bolum */
+      .block {
+         margin-top: 9px;
+         width: 100%;
+      }
+
+      .block-title {
+         font-weight: 900;
+         font-size: 10.5px;
+         letter-spacing: 0.04em;
+         text-transform: uppercase;
+         background: #000;
+         color: #fff;
+         padding: 3px 7px;
+      }
+
+      /* ──────────────────────────────────────────
+       TABLOLAR — taşma düzeltmesi
+       ────────────────────────────────────────── */
+
+      /*
+     * Her iki tablo tipi için ortak kural:
+     * – width: 100%  →  parent (block) genişliğini doldur
+     * – max-width: 100%  →  asla parent'tan taşma
+     * – table-layout: fixed  →  sütun genişliği tarayıcı
+     *   tarafından içeriğe göre değil, colgroup/ilk satır
+     *   genişliğine göre hesaplanır; bu sayede taşma önlenir
+     * – word-break / overflow-wrap  →  uzun kelimeler kırılır
+     */
+      table {
+         width: 100%;
+         max-width: 100%;
+         border-collapse: collapse;
+         table-layout: fixed;
+
+         th,
+         td {
+            border: 1px solid #000;
+            padding: 4px 7px;
+            font-size: 11px;
+            vertical-align: top;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            hyphens: auto;
+            min-width: 0;
+         }
+
+         th {
+            background: #f4f4f4;
+            font-weight: 700;
+            text-align: left;
+         }
+
+         .center {
+            text-align: center;
+         }
+      }
+
+      /*
+     * Anahtar-değer tablosu (.kv):
+     * Sol sütun (th) sabit %42, sağ sütun kalan alanı alır.
+     * colgroup col tanımlarına ek güvence olarak burada da belirtiyoruz.
+     */
+      table.kv {
+         col:first-child {
+            width: 42%;
+         }
+      }
+
+      /*
+     * Liste tablosu (.list):
+     * # sütunu dar, geri kalan sütunlar otomatik dağıtılır.
+     */
+      table.list {
+
+         th:first-child,
+         td:first-child {
+            width: 4%;
+            text-align: center;
+         }
+      }
+
+      /* ── İmza Grid ── */
+      .sig-grid {
+         display: grid;
+         grid-template-columns: 1fr 1fr;
+         width: 100%;
+         border: 1px solid #000;
+         border-top: none;
+      }
+
+      .sig-col {
+         min-width: 0;
+         /* grid sütununun daralmasına izin ver */
+
+         &:first-child {
+            border-right: 1px solid #000;
+         }
+      }
+
+      .sig-col__header {
+         background: #f4f4f4;
+         font-weight: 700;
+         font-size: 10.5px;
+         text-transform: uppercase;
+         letter-spacing: 0.03em;
+         padding: 4px 7px;
+         border-bottom: 1px solid #000;
+      }
+
+      .sig-box {
+         padding: 8px 7px 6px;
+      }
+
+      .sig-box__area {
+         min-height: 70px;
+         width: 100%;
+         background: #fff;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         margin-bottom: 2px;
+         overflow: hidden;
+      }
+
+      .sig-box__img {
+         max-height: 65px;
+         max-width: 100%;
+         display: block;
+      }
+
+      .sig-box__name {
+         text-align: center;
+         font-size: 10px;
+         font-weight: 700;
+         color: #000;
+         min-height: 14px;
+         margin-bottom: 4px;
+      }
+
+      .sig-box__description {
+         border-top: 1px solid #000;
+         padding-top: 4px;
+         font-size: 9.5px;
+         color: #333;
+         text-align: center;
+         font-style: italic;
+      }
+
+      .sig-box__audit-sentence {
+         margin-top: 4px;
+         font-size: 7.5px;
+         color: #999;
+         text-align: center;
+         font-style: italic;
+         line-height: 1.4;
+      }
+
+      /* ── Dipnot ── */
+      .note {
+         border: 1px solid #000;
+         padding: 6px 9px;
+         margin-top: 12px;
+         font-size: 9.5px;
+         line-height: 1.5;
+         background: #fafafa;
+         width: 100%;
+      }
+   }
+
+   /* Yazdirma */
+   @media print {
+      padding: 0;
+      background: #fff;
+
+      .no-print {
+         display: none !important;
+      }
+
+      .page.A4 {
+         margin: 0;
+         box-shadow: none;
+         width: 100%;
+         padding: 10mm 12mm;
+      }
+
+      * {
+         -webkit-print-color-adjust: exact;
+         print-color-adjust: exact;
+      }
+   }
+}
+
+/* Signature Modal (sigm-*) */
+
+/* Overlay */
+.sigm-overlay {
+   position: fixed;
+   inset: 0;
+   z-index: 9999;
+   background: rgba(0, 0, 0, 0.55);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 20px;
+   animation: sigm-fadeIn 0.18s ease-out;
+}
+
+@keyframes sigm-fadeIn {
+   from {
+      opacity: 0;
+   }
+
+   to {
+      opacity: 1;
+   }
+}
+
+/* Modal Kutusu */
+.sigm-modal {
+   background: #fff;
+   border-radius: 16px;
+   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+   width: 100%;
+   max-width: 540px;
+   overflow: hidden;
+   animation: sigm-slideUp 0.22s ease-out;
+}
+
+@keyframes sigm-slideUp {
+   from {
+      opacity: 0;
+      transform: translateY(20px);
+   }
+
+   to {
+      opacity: 1;
+      transform: translateY(0);
+   }
+}
+
+/* Header */
+.sigm-header {
+   display: flex;
+   align-items: flex-start;
+   justify-content: space-between;
+   padding: 20px 24px 14px;
+   border-bottom: 1px solid #f1f5f9;
+}
+
+.sigm-header-left {
+   display: flex;
+   align-items: flex-start;
+   gap: 12px;
+}
+
+.sigm-icon {
+   font-size: 28px;
+   line-height: 1;
+   flex-shrink: 0;
+}
+
+.sigm-title {
+   margin: 0;
+   font-size: 17px;
+   font-weight: 800;
+   color: #334155;
+}
+
+.sigm-subtitle {
+   margin: 3px 0 0;
+   font-size: 12.5px;
+   color: #64748b;
+}
+
+.sigm-signer {
+   margin: 5px 0 0;
+   font-size: 12.5px;
+   font-weight: 600;
+   color: #334155;
+   display: flex;
+   align-items: center;
+   gap: 6px;
+}
+
+.sigm-signer-dot {
+   width: 7px;
+   height: 7px;
+   border-radius: 50%;
+   background: #6ec98b;
+   display: inline-block;
+}
+
+.sigm-close {
+   background: none;
+   border: none;
+   font-size: 18px;
+   cursor: pointer;
+   color: #94a3b8;
+   border-radius: 8px;
+   width: 32px;
+   height: 32px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   transition: background 0.12s, color 0.12s;
+
+   &:hover {
+      background: #f1f5f9;
+      color: #334155;
+   }
+}
+
+/* Bilgi Bandi */
+.sigm-info-banner {
+   background: #f0f4fa;
+   color: #6882bb;
+   font-size: 11.5px;
+   font-weight: 500;
+   padding: 8px 24px;
+   border-bottom: 1px solid #e2e8f0;
+}
+
+/* Canvas Alani */
+.sigm-canvas-wrapper {
+   padding: 16px 24px 8px;
+}
+
+.sigm-canvas-frame {
+   position: relative;
+   border: 2px dashed #cbd5e1;
+   border-radius: 12px;
+   background: #fafbfc;
+   transition: border-color 0.2s, background 0.2s;
+   overflow: hidden;
+
+   &.has-sig {
+      border-color: #94a3b8;
+      background: #fff;
+   }
+}
+
+.sigm-canvas {
+   display: block;
+   width: 100% !important;
+   height: 180px !important;
+   cursor: crosshair;
+   touch-action: none;
+}
+
+/* Placeholder */
+.sigm-placeholder {
+   position: absolute;
+   inset: 0;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: 6px;
+   pointer-events: none;
+   color: #94a3b8;
+   font-size: 13px;
+   font-style: italic;
+}
+
+/* Baseline */
+.sigm-baseline {
+   position: relative;
+   margin: 6px 0 0;
+   display: flex;
+   align-items: center;
+   gap: 8px;
+}
+
+.sigm-baseline-line {
+   flex: 1;
+   height: 1px;
+   background: #e2e8f0;
+}
+
+.sigm-baseline-label {
+   font-size: 10.5px;
+   color: #94a3b8;
+   white-space: nowrap;
+}
+
+/* Cizgi Sayaci */
+.sigm-stroke-info {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   padding: 6px 24px;
+   font-size: 12px;
+   color: #5ea87a;
+   font-weight: 600;
+}
+
+.sigm-dot-green {
+   width: 6px;
+   height: 6px;
+   border-radius: 50%;
+   background: #6ec98b;
+   display: inline-block;
+}
+
+/* Footer */
+.sigm-footer {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 14px 24px 18px;
+   border-top: 1px solid #f1f5f9;
+}
+
+.sigm-footer-right {
+   display: flex;
+   gap: 8px;
+}
+
+/* Butonlar */
+.sigm-btn {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   height: 38px;
+   padding: 0 16px;
+   border-radius: 9px;
+   border: 1px solid var(--border);
+   background: var(--surface);
+   font-size: 13.5px;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.15s;
+   color: var(--text);
+
+   &:hover {
+      background: var(--hover-bg);
+   }
+}
+
+.sigm-btn-ghost {
+   background: transparent;
+   border-color: transparent;
+   color: var(--text-muted);
+
+   &:hover {
+      background: var(--muted-surface);
+      color: var(--text);
+   }
+}
+
+.sigm-btn-cancel {
+   background: var(--surface);
+   border-color: var(--border);
+   color: var(--text-muted);
+
+   &:hover {
+      background: var(--hover-bg);
+      border-color: var(--text-muted);
+   }
+}
+
+.sigm-btn-confirm {
+   background: var(--primary);
+   border-color: var(--primary);
+   color: var(--primary-contrast);
+   font-weight: 700;
+
+   &:hover {
+      opacity: 0.9;
+   }
+
+   &.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+   }
+}

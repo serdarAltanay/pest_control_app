@@ -74,7 +74,13 @@ export default function CustomerStoreList() {
                 </div>
                 <div className="actions" onClick={(e) => e.stopPropagation()}>
                   <Link className="btn ghost" to={`/customer/stores/${s.id}`}>Detay</Link>
-                  <Link className="btn" to={`/customer/stores/${s.id}/nonconformities`}>Uygunsuzluklar</Link>
+                  {s._count?.nonconformities > 0 ? (
+                    <Link className="btn" to={`/customer/stores/${s.id}/nonconformities`}>Uygunsuzluklar</Link>
+                  ) : (
+                    <span className="btn disabled" title="Bu mağaza için kayıtlı uygunsuzluk yok" style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                      Uygunsuzluklar
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

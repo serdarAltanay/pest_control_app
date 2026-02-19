@@ -3,68 +3,46 @@ import { Link, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import SignatureModal from "../../components/SignatureModal.jsx";
 import "./Ek1.scss";
 
 /* ───────── Sabitler ───────── */
-const VISIT_TYPE_TR = {
-  TEK_SEFERLIK: "Tek Seferlik Ziyaret",
-  PERIYODIK: "Periyodik",
-  ACIL_CAGRI: "Acil Çağrı",
-  ILK_ZIYARET: "İlk Ziyaret",
-  DIGER: "Diğer",
-};
-const METHOD_TR = {
-  PULVERIZE: "Pulverize",
-  ULV: "ULV",
-  ATOMIZER: "Atomizer",
-  YENILEME: "Yenileme",
-  SISLEME: "Sisleme",
-  YEMLEME: "Yemleme",
-};
 const PEST_OPTIONS = [
-  "Kemirgen","Hamamböceği","Karınca","Uçan Haşere","Pire",
-  "Kene","Güve","Örümcek","Akar","Tahtakurusu"
+  "Kemirgen", "Hamamböceği", "Karınca", "Uçan Haşere", "Pire",
+  "Kene", "Güve", "Örümcek", "Akar", "Tahtakurusu",
+];
+
+const METHOD_OPTIONS = [
+  { value: "PULVERIZE", label: "Pulverize" },
+  { value: "ULV", label: "ULV" },
+  { value: "ATOMIZER", label: "Atomizer" },
+  { value: "SISLEME", label: "Sisleme" },
+  { value: "YEMLEME", label: "Yemleme" },
+  { value: "YENILEME", label: "Yenileme" },
 ];
 
 /* ───────── Utils ───────── */
 const timeOpts = (() => {
-  const start = { h: 8, m: 0 }, end = { h: 20, m: 0 }, step = 15, out = [];
-  for (let t = start.h * 60 + start.m; t <= end.h * 60 + end.m; t += step) {
-    const h = String(Math.floor(t / 60)).padStart(2,"0");
-    const m = String(t % 60).padStart(2,"0");
+  const out = [];
+  for (let t = 8 * 60; t <= 20 * 60; t += 15) {
+    const h = String(Math.floor(t / 60)).padStart(2, "0");
+    const m = String(t % 60).padStart(2, "0");
     out.push(`${h}:${m}`);
   }
   return out;
 })();
+
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
 const todayStr = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
-
-/* ───────── Data loaders ───────── */
-async function loadBiocides() {
-  try { const { data } = await api.get("/biocides"); return Array.isArray(data) ? data : []; }
-  catch { return []; }
-}
-async function loadEmployees() {
-  // BE: /api/employees (admin görünür—yetki yoksa uyarı düşer)
-  const { data } = await api.get("/employees");
-  const arr = Array.isArray(data) ? data : [];
-  return arr
-    .map((x) => ({ id: Number(x.id), label: String(x.fullName || "").trim() }))
-    .filter(e => e.id && e.label);
-}
 
 /* ───────── Çoklu Dropdown ───────── */
 function MultiSelectDropdown({ options, value, onChange, placeholder = "Seçiniz…" }) {
   const ref = useRef(null);
   const [open, setOpen] = useState(false);
-
-  const selected = useMemo(
-    () => options.filter(o => value.includes(o.id)),
-    [options, value]
-  );
+  const selected = useMemo(() => options.filter((o) => value.includes(o.id)), [options, value]);
 
   useEffect(() => {
     const onDoc = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
@@ -72,33 +50,28 @@ function MultiSelectDropdown({ options, value, onChange, placeholder = "Seçiniz
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const toggleId = (id) => {
-    onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
-  };
-  const clearAll = (e) => { e?.stopPropagation?.(); onChange([]); };
+  const toggleId = (id) =>
+    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
 
   return (
     <div ref={ref} className={`multi-dd ${open ? "open" : ""}`}>
-      <button type="button" className="dropdown-toggle" onClick={() => setOpen(o => !o)}>
+      <button type="button" className="dropdown-toggle" onClick={() => setOpen((o) => !o)}>
         <div className="dropdown-value">
           {selected.length === 0 ? (
             <span className="placeholder">{placeholder}</span>
           ) : (
-            selected.map(s => <span key={s.id} className="chip">{s.label}</span>)
+            selected.map((s) => (
+              <span key={s.id} className="chip">{s.label}</span>
+            ))
           )}
         </div>
-        <span className="caret" aria-hidden>▾</span>
+        <span className="caret">▾</span>
       </button>
-
       {open && (
         <div className="dropdown-menu">
-          <div className="dropdown-head">
-            <strong>Uygulayıcı Seçin</strong>
-            <button type="button" className="btn" onClick={clearAll}>Temizle</button>
-          </div>
           <ul className="dropdown-list">
-            {options.length === 0 && <li className="empty">Kayıt yok</li>}
-            {options.map(opt => (
+            {options.length === 0 && <li className="empty">Personel bulunamadı</li>}
+            {options.map((opt) => (
               <li key={opt.id} className="dropdown-item" onClick={() => toggleId(opt.id)}>
                 <input type="checkbox" readOnly checked={value.includes(opt.id)} />
                 <span>{opt.label}</span>
@@ -111,53 +84,52 @@ function MultiSelectDropdown({ options, value, onChange, placeholder = "Seçiniz
   );
 }
 
-/* ───────── Component ───────── */
+/* ───────── Ana Bileşen ───────── */
 export default function SerbestEk1() {
   const navigate = useNavigate();
 
-  // listeler
   const [biocides, setBiocides] = useState([]);
   const [empOptions, setEmpOptions] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [isSigModalOpen, setIsSigModalOpen] = useState(false);
 
-  useEffect(() => { loadBiocides().then(setBiocides); }, []);
+  /* Form State'leri */
+  const [cForm, setCForm] = useState({ title: "", contactName: "", email: "", phone: "" });
+  const [sForm, setSForm] = useState({ name: "", address: "", placeType: "", areaM2: "" });
+  const [vForm, setVForm] = useState({
+    date: todayStr(), startTime: "", endTime: "",
+    visitType: "TEK_SEFERLIK", targetPests: [], notes: "",
+  });
+  const [selectedEmpIds, setSelectedEmpIds] = useState([]);
+  const [lines, setLines] = useState([]);
+  const [ncrs, setNcrs] = useState([]);
+  const [lineForm, setLineForm] = useState({ biosidalId: "", method: "PULVERIZE", amount: "" });
+  const [ncrForm, setNcrForm] = useState({ title: "", notes: "", observedAt: todayStr() });
+
+  /* Veri Yükleme */
   useEffect(() => {
-    loadEmployees()
-      .then(setEmpOptions)
-      .catch(() => toast.error("Personel listesi alınamadı (yetki veya ağ)."));
+    (async () => {
+      try {
+        const [resB, resE] = await Promise.all([
+          api.get("/biocides"),
+          api.get("/employees"),
+        ]);
+        setBiocides(Array.isArray(resB.data) ? resB.data : []);
+        setEmpOptions((resE.data || []).map((x) => ({ id: x.id, label: x.fullName })));
+      } catch {
+        toast.error("Veriler yüklenemedi.");
+      }
+    })();
   }, []);
 
-  // müşteri (kayıtsız)
-  const [cForm, setCForm] = useState({ title: "", contactName: "", email: "", phone: "" });
-
-  // lokasyon (kayıtsız)
-  const [sForm, setSForm] = useState({ name: "", address: "", placeType: "", areaM2: "" });
-
-  // ziyaret
-  const [vForm, setVForm] = useState({
-    date: todayStr(), startTime: "", endTime: "", visitType: "TEK_SEFERLIK",
-    targetPests: [], notes: ""
-  });
-
-  // seçilen uygulayıcılar (id listesi)
-  const [selectedEmpIds, setSelectedEmpIds] = useState([]);
   const selectedEmpNames = useMemo(
-    () => selectedEmpIds
-      .map(id => empOptions.find(e => e.id === id)?.label)
-      .filter(Boolean),
+    () => selectedEmpIds.map((id) => empOptions.find((e) => e.id === id)?.label).filter(Boolean),
     [selectedEmpIds, empOptions]
   );
 
-  // biyosidal satırları
-  const [lineForm, setLineForm] = useState({ biosidalId: "", method: "PULVERIZE", amount: "" });
-  const [lines, setLines] = useState([]);
+  const onChange = (setter) => (e) =>
+    setter((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-  // uygunsuzluklar (görselsiz)
-  const [ncrForm, setNcrForm] = useState({ title: "", notes: "", observedAt: todayStr() });
-  const [ncrs, setNcrs] = useState([]);
-
-  const [saving, setSaving] = useState(false);
-
-  const onChange = (setter) => (e) => setter((p) => ({ ...p, [e.target.name]: e.target.value }));
   const togglePest = (label) =>
     setVForm((p) => ({
       ...p,
@@ -166,79 +138,85 @@ export default function SerbestEk1() {
         : [...p.targetPests, label],
     }));
 
+  /* Ürün Ekle */
   const addLine = (e) => {
     e.preventDefault();
     if (!lineForm.biosidalId || !lineForm.amount) return toast.error("Ürün ve miktar gerekli.");
     const bio = biocides.find((b) => String(b.id) === String(lineForm.biosidalId));
-    setLines((arr) => [...arr, {
-      id: crypto.randomUUID(),
-      biosidalId: Number(lineForm.biosidalId),
-      biosidalName: bio?.name || lineForm.biosidalId,
-      method: lineForm.method,
-      amount: Number(lineForm.amount),
-    }]);
+    setLines([
+      ...lines,
+      {
+        id: crypto.randomUUID(),
+        biosidalId: Number(lineForm.biosidalId),
+        biosidalName: bio?.name,
+        method: lineForm.method,
+        amount: Number(lineForm.amount),
+      },
+    ]);
     setLineForm({ biosidalId: "", method: "PULVERIZE", amount: "" });
   };
-  const removeLine = (id) => setLines((arr) => arr.filter((x) => x.id !== id));
 
-  const addNcr = (e) => {
-    e?.preventDefault?.();
-    if (!ncrForm.title.trim() && !ncrForm.notes.trim()) return toast.error("Başlık veya açıklama girin");
-    setNcrs((arr) => [...arr, {
-      id: crypto.randomUUID(),
-      title: ncrForm.title.trim(),
-      notes: ncrForm.notes.trim(),
-      observedAt: ncrForm.observedAt,
-    }]);
-    setNcrForm((s) => ({ ...s, title: "", notes: "" }));
+  /* NCR Ekle */
+  const addNcr = () => {
+    if (!ncrForm.title.trim()) return toast.error("Başlık gerekli");
+    setNcrs([...ncrs, { ...ncrForm, id: crypto.randomUUID() }]);
+    setNcrForm({ title: "", notes: "", observedAt: todayStr() });
   };
-  const removeNcr = (id) => setNcrs((arr) => arr.filter((x) => x.id !== id));
 
-  const saveAll = async () => {
-    if (!cForm.title.trim())  return toast.error("Müşteri/Unvan girin");
-    if (!sForm.name.trim())   return toast.error("Lokasyon adı girin");
-    if (!sForm.address.trim())return toast.error("Adres girin");
-    if (!vForm.date)          return toast.error("Tarih seçin");
+  /* Validasyon + Modal Aç */
+  const handleInitiateCreate = () => {
+    if (!cForm.title.trim()) return toast.error("Müşteri ünvanı zorunludur.");
+    if (!sForm.name.trim()) return toast.error("Lokasyon adı zorunludur.");
+    if (!sForm.address.trim()) return toast.error("Adres zorunludur.");
+    setIsSigModalOpen(true);
+  };
 
+  /* İmza + GPS → Kaydet */
+  const onFinalSave = async (signatureBase64) => {
+    setIsSigModalOpen(false);
     setSaving(true);
+
+    let coords = null;
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000 })
+      );
+      coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    } catch {
+      console.warn("GPS pas geçildi.");
+    }
+
     try {
       const payload = {
-        customerTitle: cForm.title.trim(),
-        customerContactName: cForm.contactName.trim() || undefined,
-        customerEmail: cForm.email.trim() || undefined,
-        customerPhone: cForm.phone.trim() || undefined,
-
-        storeName: sForm.name.trim(),
-        address: sForm.address.trim(),
-        placeType: sForm.placeType || undefined,
-        areaM2: sForm.areaM2 ? Number(sForm.areaM2) : undefined,
-
+        customerTitle: cForm.title,
+        customerContactName: cForm.contactName,
+        customerEmail: cForm.email,
+        customerPhone: cForm.phone,
+        storeName: sForm.name,
+        address: sForm.address,
+        placeType: sForm.placeType,
+        areaM2: sForm.areaM2 ? Number(sForm.areaM2) : null,
         date: new Date(vForm.date).toISOString(),
-        startTime: vForm.startTime || null,
-        endTime: vForm.endTime || null,
-        visitType: vForm.visitType || "TEK_SEFERLIK",
+        startTime: vForm.startTime,
+        endTime: vForm.endTime,
+        visitType: vForm.visitType,
         targetPests: vForm.targetPests,
-        notes: vForm.notes || null,
-
-        // seçilen uygulayıcıların ad-soyad listesi
+        notes: vForm.notes,
         employees: selectedEmpNames,
-
-        // ek-1 satırları + uygunsuzluk başlık/açıklama (görselsiz)
-        lines: lines.map(l => ({ biosidalId: l.biosidalId, method: l.method, amount: l.amount })),
-        ncrs: ncrs.map(({ title, notes, observedAt }) => ({ title, notes, observedAt })),
+        lines: lines.map((l) => ({ biosidalId: l.biosidalId, method: l.method, amount: l.amount })),
+        ncrs: ncrs.map((n) => ({ title: n.title, notes: n.notes, observedAt: n.observedAt })),
+        // Biyometrik
+        customerSignature: signatureBase64,
+        coords,
+        deviceInfo: navigator.userAgent.includes("Tablet") || navigator.userAgent.includes("iPad")
+          ? "Şirket Tableti" : "Mobil Cihaz",
       };
 
       const { data } = await api.post("/ek1/free", payload);
-      const visitId = data?.visitId || data?.id || data?.visit?.id;
-      if (!visitId) throw new Error("Oluşturma sonucu alınamadı");
-
-      // (opsiyonel) müşteri onayı—BE zaten SUBMITTED + customerSignedAt basıyor ama ek garanti:
-      try { await api.post(`/ek1/visit/${visitId}/sign/customer`, { name: cForm.contactName || "Yetkili" }); } catch {}
-
-      toast.success("Serbest EK-1 oluşturuldu");
-      navigate(`/ek1/visit/${visitId}`);
-    } catch (e) {
-      toast.error(e?.response?.data?.message || e.message || "Kayıt tamamlanamadı");
+      toast.success("Biyometrik onaylı EK-1 oluşturuldu.");
+      navigate(`/admin/stores/0/visits/${data.visitId}/preview`);
+    } catch {
+      toast.error("Kayıt başarısız.");
     } finally {
       setSaving(false);
     }
@@ -248,262 +226,227 @@ export default function SerbestEk1() {
     <Layout>
       <div className="ek1flow-page">
         <div className="page-header">
-          <h1>Serbest EK-1 Oluştur (Tek Seferlik)</h1>
+          <h1>Serbest EK-1 <span className="page-header-badge">Biyometrik Onaylı</span></h1>
           <div className="header-actions">
-            <Link className="btn ghost" to="/admin">Panele Dön</Link>
+            <Link className="btn ghost" to="/admin">İptal</Link>
           </div>
         </div>
 
-        <div className="hint">
-          Bu akışta <b>müşteri/mağaza kaydı açılmaz</b>, <b>erişim verilmez</b>.
-          Belge normal EK-1 gibi saklanır; ziyaret türü <b>Tek Seferlik</b> olarak işaretlenir.
-        </div>
-
-        {/* 1) Müşteri */}
-        <section className="card form">
-          <div className="card-title">1) Müşteri/Unvan Bilgileri</div>
-          <div className="grid-3">
-            <div className="col-span-3">
-              <label>Müşteri/Unvan *</label>
-              <input name="title" value={cForm.title} onChange={onChange(setCForm)} placeholder="Örn: ACME Gıda A.Ş." required />
+        {/* 1 + 2 – Müşteri & Lokasyon */}
+        <div className="grid-2">
+          <section className="card form">
+            <div className="card-title">
+              <span className="card-num">1</span> Müşteri Bilgileri
             </div>
-            <div>
-              <label>Yetkili Ad Soyad</label>
-              <input name="contactName" value={cForm.contactName} onChange={onChange(setCForm)} placeholder="Opsiyonel" />
+            <label>Müşteri Ünvanı <span className="req">*</span></label>
+            <input name="title" value={cForm.title} onChange={onChange(setCForm)} placeholder="Firma / Şahıs Adı" />
+            <div className="grid-2" style={{ marginTop: 10 }}>
+              <div>
+                <label>Yetkili Kişi</label>
+                <input name="contactName" value={cForm.contactName} onChange={onChange(setCForm)} placeholder="Ad Soyad" />
+              </div>
+              <div>
+                <label>E-posta</label>
+                <input type="email" name="email" value={cForm.email} onChange={onChange(setCForm)} placeholder="ornek@firma.com" />
+              </div>
             </div>
-            <div>
-              <label>E-posta</label>
-              <input type="email" name="email" value={cForm.email} onChange={onChange(setCForm)} placeholder="opsiyonel@firma.com" />
-            </div>
-            <div>
+            <div style={{ marginTop: 10 }}>
               <label>Telefon</label>
-              <input name="phone" value={cForm.phone} onChange={onChange(setCForm)} placeholder="Opsiyonel" />
+              <input name="phone" value={cForm.phone} onChange={onChange(setCForm)} placeholder="05XX XXX XX XX" />
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* 2) Lokasyon */}
+          <section className="card form">
+            <div className="card-title">
+              <span className="card-num">2</span> Uygulama Alanı
+            </div>
+            <label>Lokasyon Adı <span className="req">*</span></label>
+            <input name="name" value={sForm.name} onChange={onChange(setSForm)} placeholder="Şube / Tesis Adı" />
+            <label style={{ marginTop: 10 }}>Açık Adres <span className="req">*</span></label>
+            <textarea name="address" rows={2} value={sForm.address} onChange={onChange(setSForm)} placeholder="İlçe, İl" />
+            <div className="grid-2" style={{ marginTop: 10 }}>
+              <div>
+                <label>Alan Türü</label>
+                <select name="placeType" value={sForm.placeType} onChange={onChange(setSForm)}>
+                  <option value="">Seçiniz</option>
+                  <option value="Mesken">Mesken</option>
+                  <option value="İşyeri">İşyeri</option>
+                  <option value="Gıda Tesisi">Gıda Tesisi</option>
+                  <option value="Depo">Depo</option>
+                  <option value="Diğer">Diğer</option>
+                </select>
+              </div>
+              <div>
+                <label>Alan (m²)</label>
+                <input type="number" name="areaM2" value={sForm.areaM2} onChange={onChange(setSForm)} placeholder="m²" />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* 3 – Ziyaret Detayları */}
         <section className="card form">
-          <div className="card-title">2) Uygulama Lokasyonu</div>
+          <div className="card-title">
+            <span className="card-num">3</span> İşlem Detayları
+          </div>
           <div className="grid-3">
             <div>
-              <label>Lokasyon Adı *</label>
-              <input name="name" value={sForm.name} onChange={onChange(setSForm)} placeholder="Örn: ACME - Merkez Depo" required />
-            </div>
-            <div>
-              <label>Mesken / İşyeri</label>
-              <select name="placeType" value={sForm.placeType} onChange={onChange(setSForm)}>
-                <option value="">Seçiniz…</option>
-                <option value="İşyeri">İşyeri</option>
-                <option value="Mesken">Mesken</option>
-              </select>
-            </div>
-            <div>
-              <label>Alan (m²)</label>
-              <input name="areaM2" value={sForm.areaM2} onChange={onChange(setSForm)} placeholder="Opsiyonel" />
-            </div>
-            <div className="col-span-3">
-              <label>Adres *</label>
-              <textarea name="address" rows={2} value={sForm.address} onChange={onChange(setSForm)} placeholder="Açık adres" required />
-            </div>
-          </div>
-        </section>
-
-        {/* 3) Ziyaret */}
-        <section className="card form">
-          <div className="card-title">3) Ziyaret Bilgileri</div>
-          <div className="grid-3">
-            <div>
-              <label>Tarih *</label>
-              <input type="date" name="date" value={vForm.date} onChange={onChange(setVForm)} required />
+              <label>Tarih</label>
+              <input type="date" name="date" value={vForm.date} onChange={onChange(setVForm)} />
             </div>
             <div>
               <label>Giriş Saati</label>
               <select name="startTime" value={vForm.startTime} onChange={onChange(setVForm)}>
-                <option value="">Seçiniz…</option>
+                <option value="">Seçiniz</option>
                 {timeOpts.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label>Çıkış Saati</label>
               <select name="endTime" value={vForm.endTime} onChange={onChange(setVForm)}>
-                <option value="">Seçiniz…</option>
+                <option value="">Seçiniz</option>
                 {timeOpts.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-
-            <div className="col-span-3">
-              <label>Ziyaret Türü *</label>
-              <select name="visitType" value={vForm.visitType} onChange={onChange(setVForm)} required>
-                {Object.entries(VISIT_TYPE_TR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+          </div>
+          <div className="group">
+            <label>Uygulayıcı Personel</label>
+            <MultiSelectDropdown options={empOptions} value={selectedEmpIds} onChange={setSelectedEmpIds} placeholder="Personel seçiniz…" />
+          </div>
+          <div className="group">
+            <label>Hedef Zararlılar</label>
+            <div className="pill-grid">
+              {PEST_OPTIONS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`chk-pill ${vForm.targetPests.includes(p) ? "on" : ""}`}
+                  onClick={() => togglePest(p)}
+                >
+                  {p}
+                </button>
+              ))}
             </div>
-
-            {/* Uygulayıcı(lar) – çoklu custom dropdown */}
-            <div className="col-span-3">
-              <label>Uygulayıcı(lar)</label>
-              <MultiSelectDropdown
-                options={empOptions}
-                value={selectedEmpIds}
-                onChange={setSelectedEmpIds}
-                placeholder="Seçiniz…"
-              />
-              <div className="muted" style={{ marginTop: 6 }}>
-                Çoklu seçim için kutucukları işaretleyin. Dışarı tıklayınca menü kapanır.
-              </div>
-            </div>
-
-            <div className="col-span-3">
-              <label>Hedef Zararlı Türleri</label>
-              <div className="pill-grid">
-                {PEST_OPTIONS.map((label) => {
-                  const on = vForm.targetPests.includes(label);
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      className={`chk-pill ${on ? "on" : ""}`}
-                      onClick={() => togglePest(label)}
-                      title={label}
-                    >
-                      <input type="checkbox" readOnly checked={on} />
-                      <span>{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="col-span-3">
-              <label>Notlar</label>
-              <textarea name="notes" rows={3} value={vForm.notes} onChange={onChange(setVForm)} />
-            </div>
+          </div>
+          <div className="group">
+            <label>Uyarı / Notlar</label>
+            <textarea name="notes" rows={2} value={vForm.notes} onChange={onChange(setVForm)} placeholder="Varsa özel talimatlar…" />
           </div>
         </section>
 
-        {/* 4) Uygunsuzluklar (görselsiz) */}
-        <section className="card form">
-          <div className="card-title">4) Uygunsuzluklar (Opsiyonel)</div>
-          <div className="grid-3">
-            <div className="col-span-3">
-              <label>Başlık</label>
+        {/* 4 + 5 – Ürünler & NCR */}
+        <div className="grid-2">
+          <section className="card">
+            <div className="card-title">
+              <span className="card-num">4</span> Kullanılan Biyosidal Ürünler
+            </div>
+            <form onSubmit={addLine} className="line-form">
+              <select
+                value={lineForm.biosidalId}
+                onChange={(e) => setLineForm({ ...lineForm, biosidalId: e.target.value })}
+              >
+                <option value="">Ürün Seçiniz…</option>
+                {biocides.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+              <select
+                value={lineForm.method}
+                onChange={(e) => setLineForm({ ...lineForm, method: e.target.value })}
+              >
+                {METHOD_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
               <input
+                type="number"
+                placeholder="Miktar"
+                value={lineForm.amount}
+                onChange={(e) => setLineForm({ ...lineForm, amount: e.target.value })}
+              />
+              <button type="submit" className="btn primary">+ Ekle</button>
+            </form>
+            {lines.length > 0 && (
+              <table className="line-table">
+                <thead>
+                  <tr><th>Ürün</th><th>Yöntem</th><th>Miktar</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {lines.map((l) => (
+                    <tr key={l.id}>
+                      <td>{l.biosidalName}</td>
+                      <td>{l.method}</td>
+                      <td>{l.amount}</td>
+                      <td>
+                        <button
+                          className="btn-icon btn-danger"
+                          onClick={() => setLines(lines.filter((x) => x.id !== l.id))}
+                        >X</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <section className="card">
+            <div className="card-title">
+              <span className="card-num">5</span> Uygunsuzluklar (NCR)
+            </div>
+            <div className="ncr-form">
+              <input
+                placeholder="Başlık *"
                 value={ncrForm.title}
-                onChange={(e) => setNcrForm((s) => ({ ...s, title: e.target.value }))}
-                placeholder="Örn: Depolama alanında düzensizlik"
+                onChange={(e) => setNcrForm({ ...ncrForm, title: e.target.value })}
               />
-            </div>
-            <div className="col-span-3">
-              <label>Açıklama</label>
-              <textarea
-                rows={3}
+              <input
+                placeholder="Açıklama"
                 value={ncrForm.notes}
-                onChange={(e) => setNcrForm((s) => ({ ...s, notes: e.target.value }))}
-                placeholder="Kısa açıklama / tespit"
+                onChange={(e) => setNcrForm({ ...ncrForm, notes: e.target.value })}
               />
-            </div>
-            <div>
-              <label>Tarih</label>
               <input
                 type="date"
                 value={ncrForm.observedAt}
-                onChange={(e) => setNcrForm((s) => ({ ...s, observedAt: e.target.value }))}
+                onChange={(e) => setNcrForm({ ...ncrForm, observedAt: e.target.value })}
               />
+              <button className="btn" onClick={addNcr}>+ Ekle</button>
             </div>
-          </div>
-          <div className="actions">
-            <button className="btn" onClick={addNcr}>Listeye Ekle</button>
-          </div>
-
-          <div className="card-subtitle">Hazırlanan Uygunsuzluklar</div>
-          {ncrs.length === 0 ? (
-            <div className="empty">Henüz uygunsuzluk eklenmedi.</div>
-          ) : (
-            <table className="table">
-              <thead><tr><th>Tarih</th><th>Başlık</th><th>Açıklama</th><th>İşlem</th></tr></thead>
-              <tbody>
+            {ncrs.length > 0 && (
+              <ul className="ncr-list">
                 {ncrs.map((n) => (
-                  <tr key={n.id}>
-                    <td>{new Date(n.observedAt).toLocaleDateString("tr-TR")}</td>
-                    <td>{n.title || "—"}</td>
-                    <td className="notes">{n.notes || "—"}</td>
-                    <td><button type="button" className="btn danger" onClick={() => removeNcr(n.id)}>Sil</button></td>
-                  </tr>
+                  <li key={n.id}>
+                    <strong>{n.title}</strong>
+                    {n.notes && <span> – {n.notes}</span>}
+                    <button
+                      className="btn-icon btn-danger"
+                      onClick={() => setNcrs(ncrs.filter((x) => x.id !== n.id))}
+                    >X</button>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+              </ul>
+            )}
+          </section>
+        </div>
 
-        {/* 5) Biyosidal Ürünler */}
-        <form className="card form" onSubmit={addLine}>
-          <div className="card-title">5) Biyosidal Ürünler</div>
-          <div className="grid-3">
-            <div>
-              <label>Biyosidal Ürün *</label>
-              <select
-                value={lineForm.biosidalId}
-                onChange={(e) => setLineForm((p) => ({ ...p, biosidalId: e.target.value }))}
-                required
-              >
-                <option value="">Seçiniz…</option>
-                {biocides.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Uygulama Şekli *</label>
-              <select
-                value={lineForm.method}
-                onChange={(e) => setLineForm((p) => ({ ...p, method: e.target.value }))}
-                required
-              >
-                {Object.entries(METHOD_TR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Miktar *</label>
-              <input
-                value={lineForm.amount}
-                onChange={(e) => setLineForm((p) => ({ ...p, amount: e.target.value }))}
-                placeholder="Örn: 100"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="actions">
-            <button className="btn primary">Listeye Ekle</button>
-          </div>
-
-          <div className="card-subtitle">Hazırlanan Satırlar</div>
-          {lines.length === 0 ? (
-            <div className="empty">Henüz ürün eklenmedi.</div>
-          ) : (
-            <table className="table">
-              <thead><tr><th>Ürün</th><th>Yöntem</th><th>Miktar</th><th>İşlem</th></tr></thead>
-              <tbody>
-                {lines.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.biosidalName}</td>
-                    <td>{METHOD_TR[l.method] || l.method}</td>
-                    <td>{l.amount}</td>
-                    <td><button type="button" className="btn danger" onClick={() => removeLine(l.id)}>Sil</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </form>
-
-        {/* Final */}
+        {/* Final Butonu */}
         <div className="final-actions">
-          <button className="btn primary xl" onClick={saveAll} disabled={saving}>
-            {saving ? "Kaydediliyor..." : "SERBEST EK-1 OLUŞTUR"}
+          <button
+            className="btn primary xl"
+            onClick={handleInitiateCreate}
+            disabled={saving}
+          >
+            {saving ? "KAYDEDİLİYOR…" : "MÜŞTERİYE İMZALAT VE OLUŞTUR"}
           </button>
           <div className="muted">
-            Müşteri/mağaza kaydı açılmaz, erişim verilmez. Müşteri onayı otomatik işlenir.
+            İmza atıldığı anda GPS konumu ve zaman damgası belgeye işlenecektir.
           </div>
         </div>
+
+        <SignatureModal
+          isOpen={isSigModalOpen}
+          onClose={() => setIsSigModalOpen(false)}
+          onConfirm={onFinalSave}
+          title="Müşteri Onay İmzası"
+          subtitle="Bu belge hukuki geçerliliğe sahiptir"
+          signerName={cForm.contactName || cForm.title}
+        />
       </div>
     </Layout>
   );

@@ -29,7 +29,7 @@ export default function WorkDashboard() {
     try {
       setBusy(true);
       await api.post("/seed/run");
-      toast.success("Seed başarıyla çalıştı 🎉");
+      toast.success("Demo veriler başarıyla oluşturuldu.");
     } catch (e) {
       console.error(e);
       toast.error(e.response?.data?.error || "Seed çalıştırılamadı");
@@ -43,7 +43,7 @@ export default function WorkDashboard() {
     try {
       setBusy(true);
       const { data } = await api.post("/wipe");
-      toast.success(data?.message || "Tüm veriler silindi 🧹");
+      toast.success(data?.message || "Tüm veriler başarıyla silindi.");
     } catch (e) {
       console.error(e);
       toast.error(e.response?.data?.error || "Silme başarısız");

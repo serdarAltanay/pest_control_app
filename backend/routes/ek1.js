@@ -24,8 +24,8 @@ async function getAccessibleStoreIdsForCustomer(prisma, user) {
   // 0) NEW PATH: AccessOwner → AccessGrant (öncelik)
   let ownerId = Number(
     user?.accessOwnerId ??
-      user?.ownerId ??
-      ((user?.role || "").toLowerCase() === "customer" ? user?.id : null)
+    user?.ownerId ??
+    ((user?.role || "").toLowerCase() === "customer" ? user?.id : null)
   );
 
   if ((!Number.isFinite(ownerId) || ownerId <= 0) && prisma.accessOwner?.findUnique) {
@@ -326,29 +326,48 @@ async function hSign(kind, req, res) {
     const visitId = toId(req.params.visitId);
     if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
 
-    if ((req.user?.role || "").toLowerCase() === "customer") {
-      const ok = await assertCustomerCanSeeVisit(req, visitId);
-      if (!ok) return res.status(403).json({ message: "Yetkiniz yok" });
-    }
-
     await ensureReport(visitId);
-    const name = (
-      req.body?.name ||
+
+    // Frontend'den gelen yeni veriler: signature (base64) ve coords (gps)
+    const { name, signature, coords, deviceInfo } = req.body;
+
+    const displayName = (
+      name ||
       req.user?.fullName ||
       req.user?.email ||
       (kind === "provider" ? "Uygulayıcı" : "Müşteri")
     ).toString();
 
-    const data =
-      kind === "provider"
-        ? { providerSignedAt: new Date(), providerSignerName: name }
-        : { customerSignedAt: new Date(), customerSignerName: name };
+    // Audit Log: Denetim için gerekli teknik veriler
+    const auditLog = {
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+      userAgent: req.headers['user-agent'],
+      device: deviceInfo || "Şirket Tableti",
+      coords: coords || null, // {lat: ..., lng: ...}
+    };
+
+    const data = kind === "provider"
+      ? {
+        providerSignedAt: new Date(),
+        providerSignerName: displayName,
+        providerSignature: signature,
+        providerSignLog: auditLog
+      }
+      : {
+        customerSignedAt: new Date(),
+        customerSignerName: displayName,
+        customerSignature: signature,
+        customerSignLog: auditLog
+      };
 
     let report = await prisma.ek1Report.update({ where: { visitId }, data });
+
+    // Durum hesapla (APPROVED / SUBMITTED)
     report = await prisma.ek1Report.update({
       where: { visitId },
       data: { status: computeStatusAfter(report) },
     });
+
     res.json(report);
   } catch (e) {
     console.error(`SIGN ${kind}`, e);
@@ -573,13 +592,13 @@ async function hListEk1(req, res) {
       const A = a.createdAt
         ? new Date(a.createdAt).getTime()
         : a.start
-        ? new Date(a.start).getTime()
-        : 0;
+          ? new Date(a.start).getTime()
+          : 0;
       const B = b.createdAt
         ? new Date(b.createdAt).getTime()
         : b.start
-        ? new Date(b.start).getTime()
-        : 0;
+          ? new Date(b.start).getTime()
+          : 0;
       return B - A;
     });
 
@@ -616,7 +635,7 @@ router.post(
 router.post(
   "/visit/:visitId/sign/customer",
   auth,
-  roleCheck(["customer", "admin"]), // employee çıkarıldı
+  roleCheck(["customer", "admin", "employee"]),
   (req, res) => hSign("customer", req, res)
 );
 router.post("/:visitId/sign", auth, roleCheck(["admin", "employee", "customer"]), hSignAuto);
@@ -644,7 +663,7 @@ router.post(
 router.post(
   "/visits/:visitId/ek1/sign/customer",
   auth,
-  roleCheck(["customer", "admin"]), // employee çıkarıldı
+  roleCheck(["customer", "admin", "employee"]),
   (req, res) => hSign("customer", req, res)
 );
 router.post("/visits/:visitId/ek1/approve", auth, roleCheck(["admin"]), hApprove);

@@ -16,24 +16,24 @@ export default function NonconformityDetail() {
 
   const fmt = (d) => (d ? new Date(d).toLocaleString("tr-TR") : "—");
 
-    // NonconformityDetail.jsx (load fonksiyonunu güncelle)
-    const load = async () => {
+  // NonconformityDetail.jsx (load fonksiyonunu güncelle)
+  const load = async () => {
     setLoading(true);
     try {
-        const { data } = await api.get(`/nonconformities/${ncrId}`);
-        setItem(data);
+      const { data } = await api.get(`/nonconformities/${ncrId}`);
+      setItem(data);
     } catch (e) {
-        const msg = e?.response?.data?.error || e?.message || "Kayıt alınamadı";
-        toast.error(msg);
-        // 404 ise listeye döndürmek mantıklı
-        if (e?.response?.status === 404) {
+      const msg = e?.response?.data?.error || e?.message || "Kayıt alınamadı";
+      toast.error(msg);
+      // 404 ise listeye döndürmek mantıklı
+      if (e?.response?.status === 404) {
         navigate(`/admin/stores/${storeId}/nonconformities`);
         return;
-        }
+      }
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-    };
+  };
 
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [ncrId]);
@@ -56,7 +56,7 @@ export default function NonconformityDetail() {
     try {
       setDeleting(true);
       await api.delete(`/nonconformities/${ncrId}`);
-      toast.success("Silindi");
+      toast.success("Uygunsuzluk kaydı başarıyla silindi.");
       navigate(`/admin/stores/${storeId}/nonconformities`);
     } catch {
       toast.error("Silinemedi");
@@ -98,46 +98,46 @@ export default function NonconformityDetail() {
           <>
             {/* Üst: Bilgiler */}
             <section className="card meta-card">
-            <div className="card-title">Uygunsuzluk Bilgileri</div>
-            <table className="kv-table">
+              <div className="card-title">Uygunsuzluk Bilgileri</div>
+              <table className="kv-table">
                 <tbody>
-                <tr>
+                  <tr>
                     <th>Kategori</th>
                     <td>{item.category || "—"}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                     <th>Başlık</th>
                     <td>{item.title || "—"}</td>
-                </tr>
-                <tr className="notes-row">
+                  </tr>
+                  <tr className="notes-row">
                     <th>Açıklama</th>
                     <td>{item.notes || "—"}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                     <th>Gözlem Tarihi</th>
                     <td>{fmt(item.observedAt)}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                     <th>Oluşturulma</th>
                     <td>{fmt(item.createdAt)}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                     <th>Oluşturan</th>
                     <td>{item.createdByName || `${item.createdByRole || ""} #${item.createdById || ""}` || "—"}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                     <th>Durum</th>
                     <td>
-                    <span className={`badge ${item?.resolved ? "ok" : "no"}`}>
+                      <span className={`badge ${item?.resolved ? "ok" : "no"}`}>
                         {item?.resolved ? "Çözüldü" : "Çözülmedi"}
-                    </span>
-                    {item?.resolved && item?.resolvedAt ? (
+                      </span>
+                      {item?.resolved && item?.resolvedAt ? (
                         <span className="muted" style={{ marginLeft: 8 }}>{fmt(item.resolvedAt)}</span>
-                    ) : null}
+                      ) : null}
                     </td>
-                </tr>
+                  </tr>
                 </tbody>
-            </table>
+              </table>
             </section>
 
 

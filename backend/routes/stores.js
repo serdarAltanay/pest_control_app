@@ -68,7 +68,7 @@ async function ensureAccessOwner({ email, role, firstName, lastName, phone }) {
         [owner.firstName, owner.lastName].filter(Boolean).join(" ") ||
         owner.email;
       await sendAccessOwnerWelcome({ to: owner.email, name: display, code });
-    } catch {}
+    } catch { }
   }
   return { owner, created };
 }
@@ -140,28 +140,25 @@ router.get("/mine", auth, async (req, res) => {
       return res.status(403).json({ message: "Yetkisiz" });
 
     const ownerId = await resolveOwnerId(req);
-    if (!ownerId) return res.json([]);
+    if (!ownerId) {
+      console.warn("GET /stores/mine -> ownerId bulunamadı");
+      return res.json([]);
+    }
 
     const storeIds = await collectAccessibleStoreIds(ownerId);
     if (!storeIds.length) return res.json([]);
 
     const stores = await prisma.store.findMany({
       where: { id: { in: storeIds } },
-      orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
         code: true,
-        city: true,
-        address: true,
-        phone: true,
-        manager: true,
         isActive: true,
-        latitude: true,
-        longitude: true,
-        customerId: true,
-        createdAt: true,   // ✨ eklendi
-        updatedAt: true,   // ✨ eklendi
+        city: true,
+        _count: {
+          select: { Visit: true, nonconformities: true },
+        },
       },
     });
     return res.json(stores);
@@ -179,27 +176,25 @@ router.get("/", auth, async (req, res, next) => {
       return res.status(403).json({ message: "Yetkisiz" });
 
     const ownerId = await resolveOwnerId(req);
-    if (!ownerId) return res.json({ items: [] });
+    if (!ownerId) {
+      return res.json({ items: [] });
+    }
 
     const storeIds = await collectAccessibleStoreIds(ownerId);
     if (!storeIds.length) return res.json({ items: [] });
 
+    // Ekran için gerekli minimum data
     const stores = await prisma.store.findMany({
       where: { id: { in: storeIds } },
-      orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
         code: true,
         city: true,
-        address: true,
-        phone: true,
-        manager: true,
         isActive: true,
-        latitude: true,
-        longitude: true,
-        customerId: true,
-        createdAt: true,   // ✨ eklendi
+        _count: {
+          select: { Visit: true, nonconformities: true },
+        },
         updatedAt: true,   // ✨ eklendi
       },
     });
@@ -339,29 +334,22 @@ router.get("/:id", auth, async (req, res) => {
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
     if (!(await customerCanAccessStore(req, id))) {
-      return res.status(403).json({ message: "Yetkisiz" });
+      return res.status(403).json({ message: "Bu mağazaya erişim izniniz yok" });
     }
 
     const store = await prisma.store.findUnique({
       where: { id },
-      select: {
-        id: true,
-        customerId: true,
-        customer: { select: { id: true, title: true, code: true } },
-        name: true,
-        code: true,
-        city: true,
-        address: true,
-        phone: true,
-        manager: true,
-        isActive: true,
-        latitude: true,
-        longitude: true,
-        pestType: true,
-        placeType: true,
-        areaM2: true,
-        createdAt: true,   // ✨ eklendi
-        updatedAt: true,   // ✨ eklendi
+      include: {
+        customer: { select: { id: true, title: true } },
+        manager: { select: { id: true, fullName: true, title: true } },
+        _count: {
+          select: {
+            Visit: true,
+            stations: true,
+            reports: true,
+            nonconformities: true,
+          },
+        },
       },
     });
     if (!store) return res.status(404).json({ message: "Mağaza bulunamadı" });
@@ -483,7 +471,7 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
             [owner.firstName, owner.lastName].filter(Boolean).join(" ") ||
             owner.email;
           await sendAccessOwnerGranted({ to: owner.email, name: display, scopeText });
-        } catch {}
+        } catch { }
       }
     }
 
