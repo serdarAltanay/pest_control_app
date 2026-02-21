@@ -1,21 +1,25 @@
 // routes/presence.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
+import cron from "node-cron";
 import { auth } from "../middleware/auth.js";
 
 const router = Router();
 const prisma = new PrismaClient();
 
+/* — Accuracy eşiği (metre) — düşük kaliteli GPS noktaları atılır */
+const MAX_ACCURACY_M = 200;
+
 /* ---------------- helpers ---------------- */
 
 // basit haversine (metre)
 const HAVERSINE = (p1, p2) => {
-  const toRad = (v)=> (v*Math.PI)/180;
+  const toRad = (v) => (v * Math.PI) / 180;
   const R = 6371000;
-  const dLat = toRad(Number(p2.lat)-Number(p1.lat));
-  const dLon = toRad(Number(p2.lng)-Number(p1.lng));
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(Number(p1.lat)))*Math.cos(toRad(Number(p2.lat)))*Math.sin(dLon/2)**2;
-  return 2*R*Math.asin(Math.sqrt(a));
+  const dLat = toRad(Number(p2.lat) - Number(p1.lat));
+  const dLon = toRad(Number(p2.lng) - Number(p1.lng));
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(Number(p1.lat))) * Math.cos(toRad(Number(p2.lat))) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 };
 
 const isValidationErr = (e) =>
@@ -23,7 +27,7 @@ const isValidationErr = (e) =>
 
 // rol bazlı direkt update dene
 async function tryUpdateByRole(role, id, now) {
-  if (role === "admin")    return prisma.admin.update({    where: { id }, data: { lastSeenAt: now } });
+  if (role === "admin") return prisma.admin.update({ where: { id }, data: { lastSeenAt: now } });
   if (role === "employee") return prisma.employee.update({ where: { id }, data: { lastSeenAt: now } });
 
   if (role === "customer") {
@@ -58,16 +62,16 @@ async function fallbackUpdateAny({ id, email }, now) {
 
   // 2) email ile dene
   if (email) {
-    const ao = await prisma.accessOwner.findUnique({ where: { email } }).catch(()=>null);
+    const ao = await prisma.accessOwner.findUnique({ where: { email } }).catch(() => null);
     if (ao) return prisma.accessOwner.update({ where: { id: ao.id }, data: { lastSeenAt: now } });
 
-    const ad = await prisma.admin.findUnique({ where: { email } }).catch(()=>null);
+    const ad = await prisma.admin.findUnique({ where: { email } }).catch(() => null);
     if (ad) return prisma.admin.update({ where: { id: ad.id }, data: { lastSeenAt: now } });
 
-    const emp = await prisma.employee.findUnique({ where: { email } }).catch(()=>null);
+    const emp = await prisma.employee.findUnique({ where: { email } }).catch(() => null);
     if (emp) return prisma.employee.update({ where: { id: emp.id }, data: { lastSeenAt: now } });
 
-    const cust = await prisma.customer.findUnique({ where: { email } }).catch(()=>null);
+    const cust = await prisma.customer.findUnique({ where: { email } }).catch(() => null);
     if (cust) {
       try { return await prisma.customer.update({ where: { id: cust.id }, data: { lastSeenAt: now } }); }
       catch { /* kolon yoksa sessiz geç */ }
@@ -109,6 +113,11 @@ router.post("/heartbeat", auth, async (req, res) => {
       (!!updated && Object.prototype.hasOwnProperty.call(updated, "jobTitle"));
 
     if (isEmployee && typeof lat === "number" && typeof lng === "number") {
+      // Accuracy filtre — düşük kaliteli GPS noktaları atla
+      if (typeof accuracy === "number" && accuracy > MAX_ACCURACY_M) {
+        return res.json({ ok: true, at: now.toISOString(), wrotePoint: false, skippedReason: "low_accuracy" });
+      }
+
       const last = await prisma.employeeTrackPoint.findFirst({
         where: { employeeId: id },
         orderBy: { at: "desc" },
@@ -142,12 +151,6 @@ router.post("/heartbeat", auth, async (req, res) => {
       }
     }
 
-    // 3) rastgele temizlik (7 gün)
-    if (Math.random() < 0.02) {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      await prisma.employeeTrackPoint.deleteMany({ where: { at: { lt: sevenDaysAgo } } });
-    }
-
     return res.json({ ok: true, at: now.toISOString(), wrotePoint });
   } catch (err) {
     console.error("POST /presence/heartbeat error:", err);
@@ -163,16 +166,16 @@ router.post("/heartbeat", auth, async (req, res) => {
 router.get("/summary", auth, async (_req, res) => {
   try {
     const ONLINE_SEC = Number(process.env.PRESENCE_ONLINE_SEC ?? 120); // 2 dk
-    const IDLE_SEC   = Number(process.env.PRESENCE_IDLE_SEC ?? 900);  // 15 dk
+    const IDLE_SEC = Number(process.env.PRESENCE_IDLE_SEC ?? 900);  // 15 dk
 
     const now = new Date();
     const onlineSince = new Date(now.getTime() - ONLINE_SEC * 1000);
-    const idleSince   = new Date(now.getTime() - IDLE_SEC * 1000);
+    const idleSince = new Date(now.getTime() - IDLE_SEC * 1000);
 
     const countBuckets = async (model) => {
-      const total  = await model.count();
+      const total = await model.count();
       const online = await model.count({ where: { lastSeenAt: { gte: onlineSince } } });
-      const idle   = await model.count({ where: { lastSeenAt: { gte: idleSince, lt: onlineSince } } });
+      const idle = await model.count({ where: { lastSeenAt: { gte: idleSince, lt: onlineSince } } });
       const offline = Math.max(0, total - online - idle);
       return { total, online, idle, offline };
     };
@@ -221,7 +224,7 @@ router.get("/tracks", auth, async (req, res) => {
     const [_, y, mo, d] = m.map(Number);
 
     const start = new Date(y, mo - 1, d, 0, 0, 0, 0);
-    const end   = new Date(y, mo - 1, d + 1, 0, 0, 0, 0);
+    const end = new Date(y, mo - 1, d + 1, 0, 0, 0, 0);
 
     const rows = await prisma.employeeTrackPoint.findMany({
       where: { at: { gte: start, lt: end } },
@@ -243,7 +246,7 @@ router.get("/tracks", auth, async (req, res) => {
       data[empId].points.push({
         lat: Number(r.lat),
         lng: Number(r.lng),
-        at:  r.at,
+        at: r.at,
         accuracy: r.accuracy ?? undefined,
       });
     }
@@ -252,6 +255,19 @@ router.get("/tracks", auth, async (req, res) => {
   } catch (err) {
     console.error("GET /presence/tracks error:", err);
     return res.status(500).json({ ok: false, message: "Sunucu hatası" });
+  }
+});
+
+/* ─── Zamanlı temizlik: her gece 03:00'te 7 günden eski tracking verileri sil ─── */
+cron.schedule("0 3 * * *", async () => {
+  try {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { count } = await prisma.employeeTrackPoint.deleteMany({
+      where: { at: { lt: cutoff } },
+    });
+    console.log(`[cron] Eski tracking verileri silindi: ${count} kayıt (< ${cutoff.toISOString()})`);
+  } catch (err) {
+    console.error("[cron] Tracking temizleme hatası:", err);
   }
 });
 

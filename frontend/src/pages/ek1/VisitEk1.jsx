@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import SignatureModal from "../../components/SignatureModal.jsx";
 import "./Ek1.scss";
 
 const METHOD_OPTIONS = [
@@ -28,7 +27,6 @@ export default function VisitEk1() {
   const [lines, setLines] = useState([]);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [isSigModalOpen, setIsSigModalOpen] = useState(false);
 
   const [form, setForm] = useState({ biosidalId: "", method: "PULVERIZE", amount: "" });
 
@@ -78,45 +76,24 @@ export default function VisitEk1() {
     }
   };
 
-  /* İmza modalı aç */
+  /* Direkt Kaydet */
   const handleSubmitWithSignature = () => {
     if (lines.length === 0) return toast.error("Önce en az bir ürün eklemelisiniz.");
-    setIsSigModalOpen(true);
+    onConfirmFinalSubmission();
   };
 
-  /* İmza + GPS → Submit */
-  const onConfirmFinalSubmission = async (signatureBase64) => {
-    setIsSigModalOpen(false);
+  /* Kaydet → Preview'a Yönlendir */
+  const onConfirmFinalSubmission = async () => {
     setSubmitting(true);
 
-    let coords = null;
     try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
-      );
-      coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    } catch {
-      console.warn("GPS alınamadı.");
-    }
-
-    try {
-      /* Biyometrik imza */
-      await api.post(`/ek1/visit/${visitId}/sign/customer`, {
-        signature: signatureBase64,
-        coords,
-        deviceInfo:
-          navigator.userAgent.includes("Tablet") || navigator.userAgent.includes("iPad")
-            ? "Şirket Tableti"
-            : "Mobil Cihaz",
-      });
-
       /* Onaya gönder */
       await api.post(`/ek1/visit/${visitId}/submit`);
 
-      toast.success("Biyometrik onaylı belge gönderildi.");
+      toast.success("Belge kaydedildi. Önizleme açılıyor…");
       navigate(`/admin/stores/${storeId}/visits/${visitId}/preview`);
     } catch {
-      toast.error("Onay işlemi başarısız.");
+      toast.error("Kayıt işlemi başarısız.");
     } finally {
       setSubmitting(false);
     }
@@ -213,29 +190,21 @@ export default function VisitEk1() {
         {/* Final Butonu */}
         <div className="final-actions">
           <button
-            className="btn warn xl"
+            className="btn primary xl"
             onClick={handleSubmitWithSignature}
             disabled={submitting || lines.length === 0}
           >
-            {submitting ? "İŞLENİYOR…" : "MÜŞTERİYE İMZALAT VE BİTİR"}
+            {submitting ? "İŞLENİYOR…" : "KAYDET VE ÖNİZLE"}
           </button>
           {lines.length === 0 && (
-            <div className="muted warn-text">İmzalamadan önce en az bir ürün ekleyin.</div>
+            <div className="muted warn-text">Önce en az bir ürün ekleyin.</div>
           )}
           {lines.length > 0 && (
             <div className="muted">
-              İmza atıldığı anda GPS ve zaman damgası belgeye işlenecektir.
+              Kayıt sonrası önizlemede müşteri/personel imzası alınabilir.
             </div>
           )}
         </div>
-
-        <SignatureModal
-          isOpen={isSigModalOpen}
-          onClose={() => setIsSigModalOpen(false)}
-          onConfirm={onConfirmFinalSubmission}
-          title="Müşteri Onay İmzası"
-          subtitle="EK-1 belgesi için yasal onay"
-        />
       </div>
     </Layout>
   );

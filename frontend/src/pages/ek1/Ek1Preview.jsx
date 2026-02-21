@@ -30,10 +30,6 @@ const METHOD_TR = {
   PULVERIZE: "Pulverize",
 };
 
-const role = (localStorage.getItem("role") || "").toLowerCase();
-const isCustomerRole = role === "customer";
-const isAdminRole = role === "admin";
-const isEmployeeRole = role === "employee";
 
 const fmtTRDate = (d) => (d ? new Date(d).toLocaleDateString("tr-TR") : "—");
 const fmtTRDateTime = (d) =>
@@ -138,24 +134,43 @@ export default function Ek1Preview() {
   const [busy, setBusy] = useState(false);
   const docUrl = useMemo(() => window.location.href, [visitId]);
 
+  // Role checks inside component so they re-evaluate on every render
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  const isAdminRole = role === "admin";
+  const isEmployeeRole = role === "employee";
+  const isCustomerRole = role === "customer";
+
   const [isSigModalOpen, setIsSigModalOpen] = useState(false);
   const [sigKind, setSigKind] = useState(null);
+  const [employeeList, setEmployeeList] = useState([]);
 
   const loadAll = async () => {
     try {
-      const { data } = await api.get(`/ek1/visit/${visitId}`);
+      const [bundleRes, empRes] = await Promise.all([
+        api.get(`/ek1/visit/${visitId}`),
+        api.get("/employees").catch(() => ({ data: [] })),
+      ]);
+      const data = bundleRes.data;
       console.log("[EK1] loadAll report:", {
         providerSignedAt: data?.report?.providerSignedAt,
         customerSignedAt: data?.report?.customerSignedAt,
         status: data?.report?.status,
       });
       setBundle(data);
+      setEmployeeList(Array.isArray(empRes.data) ? empRes.data : []);
     } catch (e) {
       toast.error(e?.response?.data?.message || "EK-1 verisi alınamadı");
     }
   };
 
   useEffect(() => { loadAll(); }, [visitId]);
+
+  // Sayfa açılır açılmaz konum izni iste
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(() => { }, () => { }, { timeout: 3000 });
+    }
+  }, []);
 
   const { visit, store, provider, lines = [], report } = bundle || {};
 
@@ -187,17 +202,55 @@ export default function Ek1Preview() {
   const selfName = getCurrentUserDisplayName();
   const managerName = store?.manager || null;
 
-  const [providerSigner, setProviderSigner] = useState("self");
-  const [customerSigner, setCustomerSigner] = useState(isAdminRole ? "manager" : "self");
+  // Provider signer: select from employee list
+  const [providerSignerName, setProviderSignerName] = useState("");
+  // Customer signer: free text input
+  const [customerSignerName, setCustomerSignerName] = useState("");
 
-  const resolveProviderSignName = () =>
-    providerSigner === "manager" && managerName ? managerName : selfName;
-  const resolveCustomerSignName = () =>
-    isCustomerRole
-      ? selfName
-      : customerSigner === "manager" && managerName
-        ? managerName
-        : selfName;
+  // Build provider options: visit employees first, then all employees from API
+  const providerOptions = useMemo(() => {
+    const opts = [];
+    const seen = new Set();
+
+    // Current user
+    if (selfName && !seen.has(selfName)) {
+      opts.push(selfName);
+      seen.add(selfName);
+    }
+
+    // Visit's assigned employees
+    const visitEmps = visit?.employees;
+    if (Array.isArray(visitEmps)) {
+      visitEmps.forEach((e) => {
+        const name = typeof e === "string" ? e : e?.fullName || e?.name || "";
+        if (name && !seen.has(name)) { opts.push(name); seen.add(name); }
+      });
+    } else if (typeof visitEmps === "string" && visitEmps && !seen.has(visitEmps)) {
+      opts.push(visitEmps);
+      seen.add(visitEmps);
+    }
+
+    // All employees from API
+    employeeList.forEach((e) => {
+      const name = e.fullName || e.name || "";
+      if (name && !seen.has(name)) { opts.push(name); seen.add(name); }
+    });
+
+    return opts;
+  }, [visit, employeeList, selfName]);
+
+  // Set defaults when data loads
+  useEffect(() => {
+    if (providerOptions.length > 0 && !providerSignerName) {
+      setProviderSignerName(providerOptions[0]);
+    }
+  }, [providerOptions]);
+
+  useEffect(() => {
+    if (!customerSignerName) {
+      setCustomerSignerName(managerName || "");
+    }
+  }, [managerName]);
 
   const startSigning = (kind) => {
     setSigKind(kind);
@@ -219,16 +272,19 @@ export default function Ek1Preview() {
     let coords = null;
     try {
       const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 })
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000, enableHighAccuracy: true })
       );
       coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    } catch {
-      console.warn("Konum alınamadı.");
+    } catch (geoErr) {
+      console.warn("Konum alınamadı:", geoErr);
+      setBusy(false);
+      toast.error("İmza için konum bilgisi zorunludur. Lütfen konum iznini açın ve tekrar deneyin.");
+      return;
     }
 
     try {
       const signerName =
-        currentSigKind === "customer" ? resolveCustomerSignName() : resolveProviderSignName();
+        currentSigKind === "customer" ? (customerSignerName || selfName) : (providerSignerName || selfName);
 
       console.log("[EK1] Posting to:", `/ek1/visit/${visitId}/sign/${currentSigKind}`, "signer:", signerName);
 
@@ -286,27 +342,46 @@ export default function Ek1Preview() {
 
           {!providerSigned && (isAdminRole || isEmployeeRole) && (
             <div className="btn-group">
-              {managerName && (
-                <select className="btn ghost" value={providerSigner} onChange={(e) => setProviderSigner(e.target.value)}>
-                  <option value="self">{selfName}</option>
-                  <option value="manager">{managerName}</option>
-                </select>
-              )}
+              <select
+                className="btn ghost"
+                value={providerSignerName}
+                onChange={(e) => setProviderSignerName(e.target.value)}
+              >
+                {providerOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
               <button className="btn primary" onClick={() => startSigning("provider")} disabled={busy}>
                 {busy ? "İşleniyor…" : "Personel İmzası"}
               </button>
             </div>
           )}
 
-          {!customerSigned && (isAdminRole || isEmployeeRole || isCustomerRole) && (
+          {!customerSigned && (
             <div className="btn-group">
-              {isAdminRole && managerName && (
-                <select className="btn ghost" value={customerSigner} onChange={(e) => setCustomerSigner(e.target.value)}>
-                  <option value="manager">{managerName}</option>
-                  <option value="self">{selfName}</option>
-                </select>
+              <input
+                type="text"
+                className="btn ghost"
+                placeholder="İmzalayan adı soyadı"
+                value={customerSignerName}
+                onChange={(e) => setCustomerSignerName(e.target.value)}
+                style={{ minWidth: 160 }}
+              />
+              {managerName && customerSignerName !== managerName && (
+                <button
+                  className="btn ghost"
+                  onClick={() => setCustomerSignerName(managerName)}
+                  title={`Mağaza yöneticisi: ${managerName}`}
+                  style={{ fontSize: 11, whiteSpace: 'nowrap' }}
+                >
+                  ▶ {managerName}
+                </button>
               )}
-              <button className="btn warn" onClick={() => startSigning("customer")} disabled={busy}>
+              <button
+                className="btn warn"
+                onClick={() => startSigning("customer")}
+                disabled={busy || !customerSignerName.trim()}
+              >
                 {busy ? "İşleniyor…" : "Müşteri Onayı Al"}
               </button>
             </div>
@@ -468,8 +543,8 @@ export default function Ek1Preview() {
           }
           signerName={
             sigKind === "customer"
-              ? resolveCustomerSignName()
-              : resolveProviderSignName()
+              ? (customerSignerName || selfName)
+              : (providerSignerName || selfName)
           }
         />
       </div>

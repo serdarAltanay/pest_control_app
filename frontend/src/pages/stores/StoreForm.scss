@@ -6,16 +6,16 @@
     margin-bottom: 12px;
 
     h1 { margin: 0; font-size: 22px; font-weight: 800; }
-    .btn { height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #e5e7eb; background:#fff; font-weight:700; cursor:pointer; }
-    .btn.ghost { background:#fff; }
+    .btn { height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-weight:700; cursor:pointer; }
+    .btn.ghost { background: var(--surface); }
   }
 
   .card {
-    background: #fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-bottom:12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px;
   }
   .empty-tip {
-    margin-top: 8px; padding: 10px; border:1px dashed #e5e7eb; border-radius: 8px;
-    background: #f9fafb; color:#6b7280; font-size: 13px;
+    margin-top: 8px; padding: 10px; border: 1px dashed var(--border); border-radius: 8px;
+    background: var(--muted-surface); color: var(--text-muted); font-size: 13px;
   }
 
   .form {
@@ -24,7 +24,7 @@
       .col-span-2 { grid-column: 1 / -1; }
       label { display:block; font-weight:700; margin-bottom:6px; color:#374151; }
       input, textarea, select {
-        width: 100%; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; outline:none;
+        width: 100%; border: 1px solid var(--border); border-radius:8px; padding:8px 10px; outline:none;
         height: 38px; line-height: 1.2; box-sizing: border-box;
       }
       .inline { grid-column: 1 / -1; }
@@ -33,15 +33,15 @@
 
     .actions {
       display:flex; gap:8px; margin-top: 10px;
-      .btn { height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #e5e7eb; background:#fff; font-weight:700; cursor:pointer; }
+      .btn { height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-weight:700; cursor:pointer; }
       .btn.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
-      .btn.ghost { background:#fff; }
+      .btn.ghost { background: var(--surface); }
     }
   }
 
   .card.sub {
     .sub-title { font-weight:800; margin-bottom:8px; }
-    .muted { color:#6b7280; font-size: 13px; margin-bottom: 8px; }
+    .muted { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
     .coords { display:flex; gap:16px; margin-top:8px; color:#374151; b{margin-right:6px;} }
   }
 
@@ -49,7 +49,7 @@
     position: relative;
 
     .map-legend {
-      display:flex; align-items:center; gap:12px; margin-top:8px; font-size:13px; color:#4b5563;
+      display:flex; align-items:center; gap:12px; margin-top:8px; font-size:13px; color: var(--text-muted);
       .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
       .dot.old { background:#ef4444; }
       .dot.new { background:#10b981; }
@@ -72,10 +72,10 @@
 
 .store-form-page .form .radio-segment {
   display: inline-flex;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
 }
 
 .store-form-page .form .radio-segment .seg {
@@ -87,7 +87,7 @@
 }
 
 .store-form-page .form .radio-segment .seg + .seg {
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--border);
 }
 
 .store-form-page .form .radio-segment .seg input {

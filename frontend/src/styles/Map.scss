@@ -3,7 +3,7 @@
 .leaflet-marker-icon.pin-new { filter: hue-rotate(110deg) saturate(1.8); }
 
 .map-picker .map-legend {
-  display:flex; align-items:center; gap:12px; margin-top:8px; font-size:13px; color:#4b5563;
+  display:flex; align-items:center; gap:12px; margin-top:8px; font-size:13px; color: var(--text-muted);
 }
 .map-picker .map-legend .dot{ width:10px;height:10px;border-radius:50%;display:inline-block }
 .map-picker .map-legend .dot.old{ background:#ef4444 }

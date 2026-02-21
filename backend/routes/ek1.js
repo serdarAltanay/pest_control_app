@@ -505,9 +505,14 @@ async function hCreateFreeEk1(req, res) {
     await prisma.ek1Report.create({
       data: {
         visitId: visit.id,
-        status: "SUBMITTED",
-        customerSignedAt: new Date(),
-        customerSignerName: customerContactName || customerTitle,
+        status: b.customerSignature ? "SUBMITTED" : "DRAFT",
+        ...(b.customerSignature
+          ? {
+            customerSignedAt: new Date(),
+            customerSignerName: customerContactName || customerTitle,
+            customerSignature: b.customerSignature,
+          }
+          : {}),
         freeMeta,
       },
     });

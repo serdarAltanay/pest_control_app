@@ -2,8 +2,8 @@
 
 .sidebar {
   width: 220px;
-  background-color: var(--primary);
-  color: var(--primary-contrast);
+  background-color: var(--secondary);
+  color: var(--secondary-contrast);
   position: fixed;
   top: 60px;
   left: 0;
@@ -45,18 +45,20 @@
 
     /* Bölüm başlığı */
     .section-title {
-      padding: 10px 16px;
-      margin: 10px 12px 6px;
-      color: var(--primary-contrast);
-      opacity: 0.85;
-      font-size: 12px;
+      padding: 8px 16px 8px 14px;
+      margin: 16px 12px 8px;
+      color: #fff;
+      opacity: 1;
+      font-size: 13px;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .04em;
-      border-left: 3px solid var(--hover-bg);
+      letter-spacing: .08em;
+      border-left: 3px solid rgba(255, 255, 255, 0.7);
       border-radius: $border-radius;
-      background: var(--hover-bg);
+      background: rgba(255, 255, 255, 0.10);
+      backdrop-filter: blur(2px);
       user-select: none;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
     }
 
     /* Menü öğeleri */
@@ -94,16 +96,39 @@
       }
 
       &.active {
-        background-color: var(--primary-contrast);
-        color: var(--primary);
+        position: relative;
+        background: rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(4px);
+        color: #fff;
         opacity: 1;
         font-weight: 700;
-        box-shadow: var(--shadow);
-        transform: translateX(6px); // prominent state
+        letter-spacing: 0.02em;
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+          0 2px 12px rgba(0, 0, 0, 0.10);
+        transform: none;
+        border-radius: $border-radius;
 
-        // Match icon color if there are any inside
+        // Gradient accent bar on the left
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 15%;
+          bottom: 15%;
+          width: 3.5px;
+          border-radius: 0 4px 4px 0;
+          background: #fff;
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
         svg {
-          fill: var(--primary);
+          fill: #fff;
+        }
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.25);
+          transform: none;
         }
       }
     }

@@ -57,7 +57,7 @@
           font-weight: 800;
           color: #fff;
 
-          .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; opacity: .9; }
+          .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface); opacity: .9; }
 
           &.status-online  { background: #10b981; }
           &.status-idle    { background: #f59e0b; }
@@ -76,8 +76,8 @@
           min-width: 110px;
           border-radius: 999px;
           overflow: hidden;
-          border: 1px solid #e5e7eb;
-          background: #f3f4f6;
+          border: 1px solid var(--border);
+          background: var(--muted-surface);
 
           img { width: 100%; height: 100%; object-fit: cover; display: block; }
         }
@@ -86,13 +86,13 @@
           height: 30px;
           padding: 0 10px;
           border-radius: 8px;
-          border: 1px solid #e5e7eb;
-          background: #fff;
+          border: 1px solid var(--border);
+          background: var(--surface);
           font-weight: 800;
           cursor: pointer;
           transition: transform .08s ease, box-shadow .15s ease;
 
-          &:hover { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+          &:hover { box-shadow: var(--shadow); }
           &:active { transform: translateY(1px); }
           &:disabled { opacity: .6; cursor: not-allowed; }
           &.danger { background: #ef4444; border-color: #ef4444; color: #fff; }
@@ -109,27 +109,27 @@
       .btn {
         height: 36px;
         padding: 0 12px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         border-radius: 8px;
         cursor: pointer;
         font-weight: 700;
         transition: transform .08s ease, box-shadow .15s ease;
 
-        &:hover { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+        &:hover { box-shadow: var(--shadow); }
         &:active { transform: translateY(1px); }
         &:focus-visible { outline: 2px solid rgba($color-primary, .35); outline-offset: 2px; }
       }
 
-      .btn-edit   { background: #f59e0b; border-color: #f59e0b; color: #111; }
+      .btn-edit   { background: #f59e0b; border-color: #f59e0b; color: var(--text); }
       .btn-danger { background: #ef4444; border-color: #ef4444; color: #fff; }
     }
   }
 
   /* ——— KART GENEL ——— */
   .card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: $border-radius;
     padding: 14px;
 
@@ -143,10 +143,10 @@
 
     .empty {
       padding: 12px;
-      border: 1px dashed #e5e7eb;
+      border: 1px dashed var(--border);
       border-radius: 10px;
-      background: #fafafa;
-      color: #64748b;
+      background: var(--muted-surface);
+      color: var(--text-muted);
       font-size: 13px;
     }
   }
@@ -163,12 +163,12 @@
       align-items: flex-start;
       gap: 6px;
       padding: 10px 12px;
-      background: #fafafa;
+      background: var(--muted-surface);
       border: 1px solid #edf2f7;
       border-radius: 10px;
 
       b {
-        color: #64748b;
+        color: var(--text-muted);
         font-weight: 700;
         font-size: 13px;
         line-height: 1.35;
@@ -176,7 +176,7 @@
 
       span {
         display: block;
-        color: #111;
+        color: var(--text);
         font-size: 14px;
         line-height: 1.4;
         overflow-wrap: anywhere;
@@ -210,18 +210,18 @@
           width: 100%;
           height: 34px;
           padding: 0 34px 0 12px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--border);
           border-radius: 8px;
-          background: #fff;
+          background: var(--surface);
           font-weight: 600;
           font-size: 14px;
           outline: none;
           transition: box-shadow .15s ease, border-color .15s ease;
 
-          &::placeholder { color: #9ca3af; }
+          &::placeholder { color: var(--text-muted); }
           &:focus {
             border-color: #93c5fd;
-            box-shadow: 0 0 0 4px rgba(147,197,253,.25);
+            box-shadow: var(--shadow);
           }
         }
 
@@ -232,9 +232,9 @@
           transform: translateY(-50%);
           width: 24px;
           height: 24px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--border);
           border-radius: 6px;
-          background: #fff;
+          background: var(--surface);
           cursor: pointer;
           font-weight: 700;
           line-height: 1;
@@ -243,7 +243,7 @@
           justify-content: center;
           padding: 0;
 
-          &:hover { background: #f8fafc; }
+          &:hover { background: var(--muted-surface); }
         }
       }
 
@@ -274,7 +274,7 @@
 
       thead th {
         text-align: left;
-        background: #f8fafc;
+        background: var(--muted-surface);
         padding: 10px 12px;
         border-bottom: 1px solid #edf2f7;
         white-space: nowrap;
@@ -290,14 +290,14 @@
         color: #1f2937;
       }
 
-      .strong { font-weight: 800; color: #111; }
+      .strong { font-weight: 800; color: var(--text); }
 
       /* Satır tıklanabilirliği */
       tbody tr.clickable {
         cursor: pointer;
         transition: background .12s ease;
 
-        &:hover  { background: #f8fafc; }
+        &:hover  { background: var(--muted-surface); }
         &:focus  { outline: 2px solid #93c5fd; outline-offset: -2px; }
         &:focus-visible { outline: 2px solid #93c5fd; outline-offset: -2px; }
       }
@@ -308,14 +308,14 @@
         height: 30px;
         padding: 0 10px;
         border-radius: 8px;
-        border: 1px solid #e5e7eb;
-        background: #fff;
+        border: 1px solid var(--border);
+        background: var(--surface);
         font-weight: 700;
         cursor: pointer;
         margin-right: 6px;
         transition: transform .08s ease, box-shadow .15s ease;
 
-        &:hover { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+        &:hover { box-shadow: var(--shadow); }
         &:active { transform: translateY(1px); }
         &:last-child { margin-right: 0; }
         &.danger { background: #ef4444; border-color: #ef4444; color: #fff; }
@@ -339,12 +339,12 @@
         margin-left: 8px;
 
         &.ok   { background: #10b981; }
-        &.no   { background: #9ca3af; color: #111; }
-        &.warn { background: #f59e0b; color: #111; }
+        &.no   { background: #9ca3af; color: var(--text); }
+        &.warn { background: #f59e0b; color: var(--text); }
       }
 
       /* Kod sütununu mono görünüşlü yap (2. sütun) */
-      td:nth-child(2) { color:#475569; font-variant-numeric: tabular-nums; }
+      td:nth-child(2) { color: var(--text-muted); font-variant-numeric: tabular-nums; }
       .name-cell { display: flex; align-items: center; gap: 6px; }
     }
   }

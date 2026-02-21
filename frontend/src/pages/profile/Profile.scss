@@ -11,14 +11,14 @@
     width: 100%;
     max-width: 700px;
     padding: 2rem 3rem;
-    background: #fff;
+    background: var(--surface);
     border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow);
 
     h1 {
       margin: 0 0 1.5rem;
       font-size: 2rem;
-      color: #333;
+      color: var(--text);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -64,7 +64,7 @@
           height: 100%;
           border-radius: 50%;
           object-fit: cover;
-          background: #f3f4f6;
+          background: var(--muted-surface);
         }
 
         .avatar-overlay {
@@ -106,7 +106,7 @@
           cursor: pointer;
           transition: transform 0.08s ease, box-shadow 0.15s ease;
 
-          &:hover { box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08); }
+          &:hover { box-shadow: var(--shadow); }
           &:active { transform: translateY(1px) scale(0.99); }
 
           &.danger { background: #ef4444; }
@@ -130,7 +130,7 @@
       }
 
       strong {
-        color: #333;
+        color: var(--text);
         flex: 0 0 auto;
       }
 
@@ -182,7 +182,7 @@
   width: 100%;
   max-width: 420px;
   padding: 2rem;
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   display: flex;
   flex-direction: column;

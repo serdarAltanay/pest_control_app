@@ -1,5 +1,5 @@
 // src/pages/tracking/EmployeeTracking.jsx
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import "./EmployeeTracking.scss";
@@ -20,11 +20,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerSh,
 });
 
-const COLORS = ["#1f77b4","#2ca02c","#d62728","#9467bd","#ff7f0e","#17becf","#e377c2","#8c564b","#bcbd22","#7f7f7f"];
-const hashColorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
+const COLORS = ["#1f77b4", "#2ca02c", "#d62728", "#9467bd", "#ff7f0e", "#17becf", "#e377c2", "#8c564b", "#bcbd22", "#7f7f7f"];
+const hashColorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COLORS.length];
 
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
-const toDateKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const toDateKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 // Personelin son noktasını kendi renginde gösterecek DivIcon
 const makePinIcon = (hex) =>
@@ -121,7 +121,7 @@ export default function EmployeeRoutes() {
 
   // Başlangıç merkezi
   const initialCenter = useMemo(() => {
-    const pts = (stores || []).map(s => [s.lat, s.lng]).filter(([lat,lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+    const pts = (stores || []).map(s => [s.lat, s.lng]).filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
 
     if (pts.length >= 2) {
       let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
@@ -192,7 +192,8 @@ export default function EmployeeRoutes() {
               {Object.keys(tracks).length === 0 && <div className="muted">Bu günde rota bulunamadı.</div>}
               {Object.entries(tracks).map(([k, v]) => {
                 const empId = Number(k);
-                const emp = v.employee || { id: empId, name: `Personel #${k}`, color: hashColorFromId(empId) };
+                const rawEmp = v.employee || { id: empId, name: `Personel #${k}` };
+                const emp = { ...rawEmp, color: rawEmp.color || hashColorFromId(empId) };
                 const checked = visible.has(empId);
                 return (
                   <label key={empId} className={`emp ${checked ? "on" : ""}`}>
@@ -234,7 +235,8 @@ export default function EmployeeRoutes() {
               {Object.entries(tracks).map(([k, v]) => {
                 const empId = Number(k);
                 if (!visible.has(empId)) return null;
-                const emp = v.employee || { id: empId, color: hashColorFromId(empId) };
+                const rawEmp = v.employee || { id: empId };
+                const emp = { ...rawEmp, color: rawEmp.color || hashColorFromId(empId) };
                 const pts = (v.points || []).map(p => [p.lat, p.lng]);
 
                 if (pts.length < 2) {
@@ -258,7 +260,7 @@ export default function EmployeeRoutes() {
 
                 const last = v.points[v.points.length - 1]; // son nokta
                 return (
-                  <>
+                  <React.Fragment key={`track-${empId}`}>
                     <Polyline
                       key={`pl-${empId}`}
                       positions={pts}
@@ -277,7 +279,7 @@ export default function EmployeeRoutes() {
                         </Popup>
                       </Marker>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
 

@@ -25,12 +25,14 @@ export default function SignatureModal({
   const sigPad = useRef(null);
   const [isEmpty, setIsEmpty] = useState(true);
   const [strokeCount, setStrokeCount] = useState(0);
+  const [kvkkAccepted, setKvkkAccepted] = useState(false);
 
   /* Modal açılınca canvas'ı sıfırla */
   useEffect(() => {
     if (isOpen) {
       setIsEmpty(true);
       setStrokeCount(0);
+      setKvkkAccepted(false);
       setTimeout(() => sigPad.current?.clear(), 50);
     }
   }, [isOpen]);
@@ -87,7 +89,7 @@ export default function SignatureModal({
             <div className="sigm-icon" aria-hidden="true">✍</div>
             <div>
               <h3 className="sigm-title">{title}</h3>
-              {subtitle   && <p className="sigm-subtitle">{subtitle}</p>}
+              {subtitle && <p className="sigm-subtitle">{subtitle}</p>}
               {signerName && (
                 <p className="sigm-signer">
                   <span className="sigm-signer-dot" aria-hidden="true" />
@@ -143,6 +145,20 @@ export default function SignatureModal({
           </div>
         )}
 
+        {/* KVKK Onay */}
+        <label className="sigm-kvkk">
+          <input
+            type="checkbox"
+            checked={kvkkAccepted}
+            onChange={(e) => setKvkkAccepted(e.target.checked)}
+          />
+          <span>
+            Konum, IP adresi ve zaman damgası bilgilerimin yasal kayıt amacıyla
+            işlenmesini okudum ve kabul ediyorum.
+            <small> (6698 sayılı KVKK)</small>
+          </span>
+        </label>
+
         {/* Footer */}
         <div className="sigm-footer">
           <button className="sigm-btn sigm-btn-ghost" onClick={handleClear}>
@@ -153,9 +169,9 @@ export default function SignatureModal({
               İptal
             </button>
             <button
-              className={`sigm-btn sigm-btn-confirm${isEmpty ? ' disabled' : ''}`}
+              className={`sigm-btn sigm-btn-confirm${isEmpty || !kvkkAccepted ? ' disabled' : ''}`}
               onClick={handleSave}
-              disabled={isEmpty}
+              disabled={isEmpty || !kvkkAccepted}
             >
               ✓ İmzayı Onayla
             </button>

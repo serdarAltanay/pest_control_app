@@ -5,9 +5,9 @@
 
 /* ───── Cards / primitives ───── */
 .card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow);
   padding: 16px;
 }
 .card-title {
@@ -18,7 +18,7 @@
   align-items: baseline;
   gap: 8px;
 }
-.muted { color: #6b7280; }
+.muted { color: var(--text-muted); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
 .badge {
@@ -32,7 +32,7 @@
 }
 .badge.st-planned   { background:#e0f2fe; color:#065f46; }
 .badge.st-completed { background:#dcfce7; color:#14532d; }
-.badge.st-pending   { background:#f1f5f9; color:#334155; }
+.badge.st-pending   { background: var(--muted-surface); color:#334155; }
 .badge.st-failed    { background:#fee2e2; color:#7f1d1d; }
 .badge.st-cancelled { background:#fee2e2; color:#7f1d1d; }
 .badge.st-postponed { background:#fef3c7; color:#7c2d12; }
@@ -64,7 +64,7 @@
   opacity: 1; transform: translateX(0);
 }
 .hero-carousel .slide .content {
-  color: #0f172a;
+  color: var(--text);
   max-width: 700px;
 }
 .hero-carousel .slide h3 { font-size: 20px; margin: 0 0 6px; }
@@ -116,9 +116,9 @@
 }
 .list-card .list-head {
   font-weight: 600;
-  color: #475569;
+  color: var(--text-muted);
   padding: 8px 4px;
-  border-bottom: 1px dashed #e2e8f0;
+  border-bottom: 1px dashed var(--border);
   margin-bottom: 4px;
 }
 .list-card .row {
@@ -127,14 +127,14 @@
 }
 .list-card .row:last-child { border-bottom: 0; }
 .list-card .row.clickable { cursor: pointer; }
-.list-card .row:hover { background: #f8fafc; }
+.list-card .row:hover { background: var(--muted-surface); }
 .list-card .row .dot {
   width: 10px; height: 10px; border-radius: 50%;
 }
 .list-card .row .strong { font-weight: 600; }
-.list-card .row .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; color:#0f172a; }
+.list-card .row .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; color: var(--text); }
 
 .empty {
   padding: 14px;
-  color: #64748b;
+  color: var(--text-muted);
 }

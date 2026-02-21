@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import SignatureModal from "../../components/SignatureModal.jsx";
 import "./Ek1.scss";
 
 const PEST_OPTIONS = [
@@ -45,7 +44,6 @@ export default function Ek1Flow() {
   const [store, setStore] = useState(null);
   const [biocides, setBiocides] = useState([]);
   const [savingAll, setSavingAll] = useState(false);
-  const [isSigModalOpen, setIsSigModalOpen] = useState(false);
 
   /* Visit Form */
   const [formVisit, setFormVisit] = useState({
@@ -118,26 +116,15 @@ export default function Ek1Flow() {
     setNcrForm({ category: NCR_CATS[0], title: "", notes: "", observedAt: new Date().toISOString().slice(0, 10) });
   };
 
-  /* Validasyon → Modal Aç */
+  /* Validasyon → Direkt Kaydet */
   const handleStartSaveFlow = () => {
     if (!formVisit.date) return toast.error("Ziyaret tarihi zorunludur.");
-    setIsSigModalOpen(true);
+    onFinalConfirm();
   };
 
-  /* İmza + GPS → Kaydet */
-  const onFinalConfirm = async (signatureBase64) => {
-    setIsSigModalOpen(false);
+  /* Kaydet → Preview'a Yönlendir */
+  const onFinalConfirm = async () => {
     setSavingAll(true);
-
-    let coords = null;
-    try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
-      );
-      coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    } catch {
-      console.warn("GPS alınamadı.");
-    }
 
     try {
       /* 1) Ziyaret Oluştur */
@@ -162,17 +149,7 @@ export default function Ek1Flow() {
         }),
       ]);
 
-      /* 3) Biyometrik İmza Gönder */
-      await api.post(`/ek1/visit/${visitId}/sign/customer`, {
-        signature: signatureBase64,
-        coords,
-        deviceInfo:
-          navigator.userAgent.includes("Tablet") || navigator.userAgent.includes("iPad")
-            ? "Şirket Tableti"
-            : "Mobil Cihaz",
-      });
-
-      toast.success("Ziyaret ve biyometrik onay kaydedildi.");
+      toast.success("Ziyaret kaydedildi. Önizleme açılıyor…");
       navigate(`/admin/stores/${storeId}/visits/${visitId}/preview`);
     } catch {
       toast.error("Kayıt sırasında hata oluştu.");
@@ -342,21 +319,12 @@ export default function Ek1Flow() {
             onClick={handleStartSaveFlow}
             disabled={savingAll}
           >
-            {savingAll ? "İŞLENİYOR…" : "MÜŞTERİYE İMZALAT VE KAYDET"}
+            {savingAll ? "İŞLENİYOR…" : "KAYDET VE ÖNİZLE"}
           </button>
           <div className="muted">
-            İmza atıldığı anda GPS ve zaman damgası kaydedilecektir.
+            Kayıt sonrası önizlemede müşteri/personel imzası alınabilir.
           </div>
         </div>
-
-        <SignatureModal
-          isOpen={isSigModalOpen}
-          onClose={() => setIsSigModalOpen(false)}
-          onConfirm={onFinalConfirm}
-          title="Müşteri Onay İmzası (Tablet)"
-          subtitle="Ziyaret belgesi için yasal onay"
-          signerName={store?.managerName || store?.name || ""}
-        />
       </div>
     </Layout>
   );

@@ -36,6 +36,7 @@
 
   --accent: #00b894;
   --ring: rgba(0, 119, 182, .35);
+  --primary-rgb: 0, 119, 182;
 
   /* interaktif */
   --hover-bg: rgba(15, 23, 42, 0.05);
@@ -81,6 +82,7 @@
 
   --accent: #2dd4bf;
   --ring: rgba(56, 189, 248, .45);
+  --primary-rgb: 56, 189, 248;
 
   /* interaktif */
   --hover-bg: rgba(255, 255, 255, 0.05);

@@ -83,6 +83,28 @@
          display: flex;
          gap: 4px;
          align-items: center;
+         flex-wrap: wrap;
+
+         input[type="text"].btn {
+            font-size: 13px;
+            padding: 0 10px;
+            height: 34px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            outline: none;
+
+            &:focus {
+               box-shadow: 0 0 0 2px var(--ring);
+               border-color: var(--primary);
+            }
+
+            &::placeholder {
+               color: var(--text-muted);
+               opacity: 0.6;
+            }
+         }
       }
    }
 
@@ -112,9 +134,9 @@
       }
 
       &--draft {
-         background: #f9fafb;
-         color: #6b7280;
-         border-color: #d1d5db;
+         background: var(--muted-surface);
+         color: var(--text-muted);
+         border: var(--border);
       }
    }
 
@@ -123,7 +145,7 @@
       width: 210mm;
       min-height: 297mm;
       margin: 20px auto;
-      background: #ffffff;
+      background: var(--surface);
       color: #000000;
       /* Force black text for A4 print realism in dark mode */
 
@@ -140,7 +162,7 @@
      */
       overflow: visible;
 
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      box-shadow: var(--shadow);
       color: #000000;
       font-family: 'Times New Roman', Times, serif;
       font-size: 11.5px;
@@ -325,7 +347,7 @@
       .sig-box__area {
          min-height: 70px;
          width: 100%;
-         background: #fff;
+         background: var(--surface);
          display: flex;
          align-items: center;
          justify-content: center;
@@ -352,7 +374,7 @@
          border-top: 1px solid #000;
          padding-top: 4px;
          font-size: 9.5px;
-         color: #333;
+         color: var(--text);
          text-align: center;
          font-style: italic;
       }
@@ -373,7 +395,7 @@
          margin-top: 12px;
          font-size: 9.5px;
          line-height: 1.5;
-         background: #fafafa;
+         background: var(--muted-surface);
          width: 100%;
       }
    }
@@ -381,7 +403,7 @@
    /* Yazdirma */
    @media print {
       padding: 0;
-      background: #fff;
+      background: var(--surface);
 
       .no-print {
          display: none !important;
@@ -428,9 +450,9 @@
 
 /* Modal Kutusu */
 .sigm-modal {
-   background: #fff;
+   background: var(--surface);
    border-radius: 16px;
-   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+   box-shadow: var(--shadow);
    width: 100%;
    max-width: 540px;
    overflow: hidden;
@@ -480,7 +502,7 @@
 .sigm-subtitle {
    margin: 3px 0 0;
    font-size: 12.5px;
-   color: #64748b;
+   color: var(--text-muted);
 }
 
 .sigm-signer {
@@ -516,7 +538,7 @@
    transition: background 0.12s, color 0.12s;
 
    &:hover {
-      background: #f1f5f9;
+      background: var(--muted-surface);
       color: #334155;
    }
 }
@@ -528,7 +550,7 @@
    font-size: 11.5px;
    font-weight: 500;
    padding: 8px 24px;
-   border-bottom: 1px solid #e2e8f0;
+   border-bottom: 1px solid var(--border);
 }
 
 /* Canvas Alani */
@@ -538,7 +560,7 @@
 
 .sigm-canvas-frame {
    position: relative;
-   border: 2px dashed #cbd5e1;
+   border: 2px dashed var(--border);
    border-radius: 12px;
    background: #fafbfc;
    transition: border-color 0.2s, background 0.2s;
@@ -546,7 +568,7 @@
 
    &.has-sig {
       border-color: #94a3b8;
-      background: #fff;
+      background: var(--surface);
    }
 }
 
@@ -684,5 +706,35 @@
       opacity: 0.45;
       cursor: not-allowed;
       pointer-events: none;
+   }
+}
+
+/* KVKK Onay Checkbox */
+.sigm-kvkk {
+   display: flex;
+   align-items: flex-start;
+   gap: 10px;
+   padding: 10px 24px 6px;
+   cursor: pointer;
+   user-select: none;
+
+   input[type="checkbox"] {
+      margin-top: 2px;
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+   }
+
+   span {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-muted);
+
+      small {
+         color: var(--text-muted);
+         opacity: 0.7;
+      }
    }
 }

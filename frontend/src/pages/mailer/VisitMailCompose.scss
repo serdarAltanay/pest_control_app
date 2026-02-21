@@ -5,10 +5,10 @@
    ========================= */
 :root {
   --bg:           #f8fafc;
-  --card:         #ffffff;
+  --card:         var(--surface)fff;
   --text:         #0f172a;
   --muted:        #64748b;
-  --border:       #e5e7eb;
+  --border: var(--border);
   --soft-border:  #eef2f7;
   --primary:      #2563eb;
   --primary-600:  #2563eb;

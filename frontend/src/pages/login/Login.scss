@@ -4,10 +4,10 @@
   color-scheme: light;
 
   --bg: #f6f8fb;
-  --card-bg: #ffffff;
+  --card-bg: var(--surface)fff;
   --text: #0f172a;
   --muted: #64748b;
-  --border: #e5e7eb;
+  --border: var(--border);
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --focus-ring: 0 0 0 4px rgba(37, 99, 235, .15);
@@ -155,7 +155,7 @@ html, body {
     font-weight: 700;
     cursor: pointer;
     transition: transform .05s ease, background-color .15s ease, box-shadow .15s ease;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, .18);
+    box-shadow: var(--shadow);
 
     &:hover {
       background-color: var(--primary-hover);
@@ -163,7 +163,7 @@ html, body {
 
     &:active {
       transform: translateY(1px);
-      box-shadow: 0 4px 12px rgba(37, 99, 235, .18);
+      box-shadow: var(--shadow);
     }
 
     &:disabled {

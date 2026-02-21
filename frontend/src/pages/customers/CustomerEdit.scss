@@ -31,8 +31,8 @@
   }
 
   .card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: $border-radius;
     padding: 14px;
   }
@@ -50,12 +50,12 @@
       input, select, textarea {
         width: 100%;
         height: 40px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 0 12px;
-        background: #fff;
-        color: #111;
-        &:focus { outline: none; border-color: $color-primary; box-shadow: 0 0 0 3px rgba($color-primary,.12); }
+        background: var(--surface);
+        color: var(--text);
+        &:focus { outline: none; border-color: $color-primary; box-shadow: var(--shadow); }
       }
       textarea { height: auto; padding: 10px 12px; resize: vertical; }
       .chk { font-weight: 700; color: rgba($color-dark,.85); input { margin-right: 8px; } }
@@ -94,16 +94,16 @@
     border-radius: 8px;
     font-weight: 700;
     cursor: pointer;
-    border: 1px solid #e5e7eb;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--surface);
     transition: transform .08s ease, box-shadow .15s ease, background .15s ease;
 
-    &:hover { box-shadow: 0 8px 16px rgba(0,0,0,.08); }
+    &:hover { box-shadow: var(--shadow); }
     &:active { transform: translateY(1px); }
     &.primary { background: $color-primary; border-color: $color-primary; color: #fff; }
-    &.ghost   { background: #fff; color: #111; }
+    &.ghost   { background: var(--surface); color: var(--text); }
     &.danger  { background: #ef4444; border-color: #ef4444; color: #fff; }
-    &.danger.light { background: #fff; color: #ef4444; border-color: #ef4444; }
+    &.danger.light { background: var(--surface); color: #ef4444; border-color: #ef4444; }
   }
 }
 

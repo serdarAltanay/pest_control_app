@@ -13,7 +13,7 @@
   justify-content: space-between;
   padding: 0 12px;
   /* sağdan biraz daralt */
-  box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+  box-shadow: var(--shadow);
 
   .navbar-left {
     font-weight: 800;
@@ -73,7 +73,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+      box-shadow: var(--shadow);
     }
   }
 }
@@ -287,9 +287,9 @@
     left: var(--pad);
     width: calc(var(--h) - var(--pad)*2);
     height: calc(var(--h) - var(--pad)*2);
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 50%;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, .20);
+    box-shadow: var(--shadow);
     transition: left .25s cubic-bezier(.22, .61, .36, 1), background .25s ease;
   }
 

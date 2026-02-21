@@ -23,7 +23,7 @@ $warnc: #ffb86c;
 }
 
 .activation-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid $line;
   border-radius: $radius;
   padding: 14px;
@@ -111,7 +111,7 @@ $warnc: #ffb86c;
 .input,
 .select {
   width: 100%;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid $line;
   color: $ink;
   border-radius: $radius;
@@ -121,7 +121,7 @@ $warnc: #ffb86c;
 
   &:focus {
     border-color: $brand;
-    box-shadow: 0 0 0 3px rgba($brand, .12);
+    box-shadow: var(--shadow);
   }
 }
 

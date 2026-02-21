@@ -14,12 +14,12 @@
     flex-wrap: wrap;
     gap: 8px;
     padding: 10px 18px;
-    background: #fff;
-    border-bottom: 1px solid #d1d5db;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow);
     align-items: center;
 
     .btn {
@@ -28,8 +28,8 @@
       height: 34px;
       padding: 0 14px;
       border-radius: 6px;
-      border: 1px solid #d1d5db;
-      background: #fff;
+      border: 1px solid var(--border);
+      background: var(--surface);
       font-weight: 600;
       font-size: 13px;
       cursor: pointer;
@@ -37,7 +37,7 @@
       transition: background 0.12s;
 
       &:hover:not(:disabled) {
-        background: #f9fafb;
+        background: var(--muted-surface);
       }
 
       &:disabled {
@@ -47,7 +47,7 @@
 
       &.ghost {
         background: transparent;
-        border-color: #d1d5db;
+        border: var(--border);
       }
 
       &.primary {
@@ -97,8 +97,8 @@
     border-radius: 4px;
     font-size: 12px;
     font-weight: 700;
-    border: 1px solid #d1d5db;
-    background: #f9fafb;
+    border: 1px solid var(--border);
+    background: var(--muted-surface);
     color: #374151;
 
     &--approved {
@@ -114,9 +114,9 @@
     }
 
     &--draft {
-      background: #f9fafb;
-      color: #6b7280;
-      border-color: #d1d5db;
+      background: var(--muted-surface);
+      color: var(--text-muted);
+      border: var(--border);
     }
   }
 
@@ -125,9 +125,9 @@
     width: 210mm;
     min-height: 297mm;
     margin: 20px auto;
-    background: #ffffff;
+    background: var(--surface);
     padding: 14mm 16mm 14mm;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow);
     box-sizing: border-box;
 
     /* Belge içinde her şey siyah/beyaz */
@@ -235,7 +235,7 @@
       /* global index.css zebra satırlarını sıfırla */
       tbody tr:nth-child(odd),
       tbody tr:nth-child(even) {
-        background: #fff;
+        background: var(--surface);
       }
 
       .center {
@@ -278,7 +278,7 @@
     /* İmza çizim alanı — kenarlıksız */
     .sig-box__area {
       min-height: 70px;
-      background: #fff;
+      background: var(--surface);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -306,7 +306,7 @@
       border-top: 1px solid #000;
       padding-top: 4px;
       font-size: 9.5px;
-      color: #333;
+      color: var(--text);
       text-align: center;
       font-style: italic;
     }
@@ -328,14 +328,14 @@
       margin-top: 12px;
       font-size: 9.5px;
       line-height: 1.5;
-      background: #fafafa;
+      background: var(--muted-surface);
     }
   }
 
   /* ─── Yazdırma ─── */
   @media print {
     padding: 0;
-    background: #fff;
+    background: var(--surface);
 
     .no-print {
       display: none !important;

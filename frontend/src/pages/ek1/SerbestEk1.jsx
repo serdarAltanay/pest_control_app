@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import SignatureModal from "../../components/SignatureModal.jsx";
 import "./Ek1.scss";
 
 /* ───────── Sabitler ───────── */
@@ -91,7 +90,6 @@ export default function SerbestEk1() {
   const [biocides, setBiocides] = useState([]);
   const [empOptions, setEmpOptions] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [isSigModalOpen, setIsSigModalOpen] = useState(false);
 
   /* Form State'leri */
   const [cForm, setCForm] = useState({ title: "", contactName: "", email: "", phone: "" });
@@ -163,28 +161,17 @@ export default function SerbestEk1() {
     setNcrForm({ title: "", notes: "", observedAt: todayStr() });
   };
 
-  /* Validasyon + Modal Aç */
+  /* Validasyon → Direkt Kaydet */
   const handleInitiateCreate = () => {
     if (!cForm.title.trim()) return toast.error("Müşteri ünvanı zorunludur.");
     if (!sForm.name.trim()) return toast.error("Lokasyon adı zorunludur.");
     if (!sForm.address.trim()) return toast.error("Adres zorunludur.");
-    setIsSigModalOpen(true);
+    onFinalSave();
   };
 
-  /* İmza + GPS → Kaydet */
-  const onFinalSave = async (signatureBase64) => {
-    setIsSigModalOpen(false);
+  /* Kaydet → Preview'a Yönlendir */
+  const onFinalSave = async () => {
     setSaving(true);
-
-    let coords = null;
-    try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000 })
-      );
-      coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    } catch {
-      console.warn("GPS pas geçildi.");
-    }
 
     try {
       const payload = {
@@ -205,15 +192,10 @@ export default function SerbestEk1() {
         employees: selectedEmpNames,
         lines: lines.map((l) => ({ biosidalId: l.biosidalId, method: l.method, amount: l.amount })),
         ncrs: ncrs.map((n) => ({ title: n.title, notes: n.notes, observedAt: n.observedAt })),
-        // Biyometrik
-        customerSignature: signatureBase64,
-        coords,
-        deviceInfo: navigator.userAgent.includes("Tablet") || navigator.userAgent.includes("iPad")
-          ? "Şirket Tableti" : "Mobil Cihaz",
       };
 
       const { data } = await api.post("/ek1/free", payload);
-      toast.success("Biyometrik onaylı EK-1 oluşturuldu.");
+      toast.success("EK-1 kaydedildi. Önizleme açılıyor…");
       navigate(`/admin/stores/0/visits/${data.visitId}/preview`);
     } catch {
       toast.error("Kayıt başarısız.");
@@ -226,7 +208,7 @@ export default function SerbestEk1() {
     <Layout>
       <div className="ek1flow-page">
         <div className="page-header">
-          <h1>Serbest EK-1 <span className="page-header-badge">Biyometrik Onaylı</span></h1>
+          <h1>Serbest EK-1 <span className="page-header-badge">Form</span></h1>
           <div className="header-actions">
             <Link className="btn ghost" to="/admin">İptal</Link>
           </div>
@@ -432,21 +414,12 @@ export default function SerbestEk1() {
             onClick={handleInitiateCreate}
             disabled={saving}
           >
-            {saving ? "KAYDEDİLİYOR…" : "MÜŞTERİYE İMZALAT VE OLUŞTUR"}
+            {saving ? "KAYDEDİLİYOR…" : "KAYDET VE ÖNİZLE"}
           </button>
           <div className="muted">
-            İmza atıldığı anda GPS konumu ve zaman damgası belgeye işlenecektir.
+            Kayıt sonrası önizlemede müşteri/personel imzası alınabilir.
           </div>
         </div>
-
-        <SignatureModal
-          isOpen={isSigModalOpen}
-          onClose={() => setIsSigModalOpen(false)}
-          onConfirm={onFinalSave}
-          title="Müşteri Onay İmzası"
-          subtitle="Bu belge hukuki geçerliliğe sahiptir"
-          signerName={cForm.contactName || cForm.title}
-        />
       </div>
     </Layout>
   );
