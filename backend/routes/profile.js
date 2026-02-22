@@ -2,6 +2,7 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "../middleware/auth.js";
+import { cookieOpts } from "../config/cookies.js";
 
 const prisma = new PrismaClient();
 const profileRouter = express.Router();
@@ -133,6 +134,48 @@ profileRouter.put("/update-info", auth, async (req, res) => {
     return res.status(400).json({ error: "Bilinmeyen rol" });
   } catch (err) {
     console.error("Update profile info hatası:", err);
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
+// Profil silme / anonimleştirme
+profileRouter.delete("/", auth, async (req, res) => {
+  try {
+    const { id, role } = req.user;
+    const ts = Date.now();
+    const anonEmail = `deleted_${id}_${ts}@silinmis.user`;
+
+    if (role === "admin") {
+      await prisma.admin.update({
+        where: { id },
+        data: { email: anonEmail, fullName: "Silinmiş Yönetici", password: "" },
+      });
+    } else if (role === "employee") {
+      await prisma.employee.update({
+        where: { id },
+        data: { email: anonEmail, fullName: "Silinmiş Personel", password: "" },
+      });
+    } else if (role === "customer") {
+      const ao = await prisma.accessOwner.findUnique({ where: { id } });
+      if (ao) {
+        await prisma.accessOwner.update({
+          where: { id },
+          data: { email: anonEmail, firstName: "Silinmiş", lastName: "Kullanıcı", password: "", isActive: false },
+        });
+      }
+    } else {
+      return res.status(400).json({ error: "Bilinmeyen rol" });
+    }
+
+    // Refresh tokenları temizle
+    await prisma.refreshToken.deleteMany({
+      where: { userId: id, role: role === "customer" ? "accessOwner" : role },
+    });
+    res.clearCookie("refreshToken", cookieOpts);
+
+    return res.json({ success: true, message: "Hesabınız başarıyla silindi ve anonimleştirildi." });
+  } catch (err) {
+    console.error("Delete profile hatası:", err);
     res.status(500).json({ error: "Sunucu hatası" });
   }
 });

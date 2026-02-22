@@ -139,51 +139,53 @@ export default function Login() {
   };
 
   return (
-    <form className="login-form" onSubmit={handleSubmit} noValidate>
-      <h2>Giriş Yap</h2>
+    <div className="login-page-container" style={{ backgroundImage: "url('/login-bg.png')" }}>
+      <form className="login-form" onSubmit={handleSubmit} noValidate>
+        <h2>Giriş Yap</h2>
 
-      <label>
-        <span>E-posta</span>
-        <input
-          type="email"
-          inputMode="email"
-          autoComplete="username"
-          placeholder="mail@ornek.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoFocus
-          disabled={loading}
-        />
-      </label>
-
-      <label>
-        <span>Şifre</span>
-        <div className="password-field">
+        <label>
+          <span>E-posta</span>
           <input
-            type={showPw ? "text" : "password"}
-            autoComplete="current-password"
-            placeholder="••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            type="email"
+            inputMode="email"
+            autoComplete="username"
+            placeholder="mail@ornek.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
+            autoFocus
             disabled={loading}
           />
-          <button
-            type="button"
-            className="toggle-pw"
-            onClick={() => setShowPw((s) => !s)}
-            aria-label={showPw ? "Şifreyi gizle" : "Şifreyi göster"}
-            disabled={loading}
-          >
-            {showPw ? "Gizle" : "Göster"}
-          </button>
-        </div>
-      </label>
+        </label>
 
-      <button type="submit" disabled={loading}>
-        {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
-      </button>
-    </form>
+        <label>
+          <span>Şifre</span>
+          <div className="password-field">
+            <input
+              type={showPw ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
+            <button
+              type="button"
+              className="toggle-pw"
+              onClick={() => setShowPw((s) => !s)}
+              aria-label={showPw ? "Şifreyi gizle" : "Şifreyi göster"}
+              disabled={loading}
+            >
+              {showPw ? "Gizle" : "Göster"}
+            </button>
+          </div>
+        </label>
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+        </button>
+      </form>
+    </div>
   );
 }

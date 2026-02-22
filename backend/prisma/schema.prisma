@@ -118,6 +118,7 @@ model AccessOwner {
   // profileImage String?
   role      AccessRole @default(CALISAN)
   isActive  Boolean    @default(true)
+  hasAcceptedTerms Boolean @default(false)
 
   lastLoginAt   DateTime?
   lastProfileAt DateTime?
@@ -317,6 +318,7 @@ model Admin {
   email         String     @unique
   password      String
   profileImage  String?
+  hasAcceptedTerms Boolean @default(false)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   lastLoginAt   DateTime?
@@ -333,6 +335,7 @@ model Employee {
   jobTitle       String
   gsm            String
   profileImage   String?
+  hasAcceptedTerms Boolean @default(false)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   lastLoginAt    DateTime?
@@ -575,7 +578,7 @@ model EmployeeTrackPoint {
 
 model RefreshToken {
   id        Int      @id @default(autoincrement())
-  token     String   @unique
+  token     String   @unique @db.VarChar(500)
   userId    Int
   role      String
   createdAt DateTime @default(now())
@@ -595,3 +598,17 @@ model CompanyCertificate {
 
   @@index([uploadedAt])
 }
+
+model ConsentLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  userRole    String   // "employee", "admin", "customer" (AccessOwner)
+  consentType String   // "TOS", "PRIVACY_POLICY", "BIOMETRIC_SIGNATURE"
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  acceptedAt  DateTime @default(now())
+
+  @@index([userId, userRole])
+  @@index([consentType])
+}
+

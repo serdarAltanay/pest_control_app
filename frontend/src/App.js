@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/login/Login.jsx"
 import CustomerDashboard from "./pages/customerDashboard/CustomerDashboard.jsx";
 import WorkDashboard from "./pages/workDashboard/WorkDashboard.jsx";
-import CustomerManagementPage from "./pages/customerworks/CustomerManagementPage.jsx";
 import PrivateRoute from "./components/PrivateRoute";
 import Profile from "./pages/profile/Profile.jsx";
 import { ToastContainer } from "react-toastify";
@@ -141,14 +140,6 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['employee', 'admin']}>
                   <WorkDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/customers"
-              element={
-                <PrivateRoute allowedRoles={["employee", "admin"]}>
-                  <CustomerManagementPage />
                 </PrivateRoute>
               }
             />

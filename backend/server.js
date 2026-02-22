@@ -10,8 +10,6 @@ import { auth } from "./middleware/auth.js";
 
 // Routes
 import authRoutes from "./routes/auth.js";
-import seedRoutes from "./routes/seed.js";
-import wipeRoutes from "./routes/wipe.js";
 
 import customerRoutes from "./routes/customers.js";
 import adminRoutes from "./routes/admin.js";
@@ -87,9 +85,6 @@ app.get("/api/customer/stores", auth, (req, res, next) => {
 
 /* ------------ Primary Route Mounts ------------ */
 app.use("/api/auth", authRoutes);
-
-app.use("/api/seed", seedRoutes);
-app.use("/api/wipe", wipeRoutes);
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRouter);

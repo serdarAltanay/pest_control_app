@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import api, { apiNoRefresh } from "../api/axios";
+import { apiNoRefresh } from "../api/axios";
 import { isExpired, parseJwt } from "../utils/auth";
+import TermsModal from "./TermsModal";
 
 export default function PrivateRoute({ children, allowedRoles = [] }) {
   const [busy, setBusy] = useState(true);
@@ -13,7 +14,7 @@ export default function PrivateRoute({ children, allowedRoles = [] }) {
 
     (async () => {
       let token = localStorage.getItem("accessToken");
-      let role  = localStorage.getItem("role");
+      let role = localStorage.getItem("role");
 
       // Token yoksa / süresi dolmuşsa sessiz refresh (BEARER yok)
       if (!token || isExpired(token)) {
@@ -33,7 +34,7 @@ export default function PrivateRoute({ children, allowedRoles = [] }) {
           try {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("role");
-          } catch {}
+          } catch { }
         }
       }
 
@@ -56,6 +57,13 @@ export default function PrivateRoute({ children, allowedRoles = [] }) {
 
   // Yetki yoksa login'e gönderirken geldiğin yolu state.from ile taşı
   if (!ok) return <Navigate to="/" replace state={{ from: location.pathname }} />;
+
+  // Token var ama KVKK/TOS onayı yoksa modal göster, alt sayfayı render etme
+  const tk = localStorage.getItem("accessToken");
+  const p = parseJwt(tk);
+  if (tk && p && p.hasAcceptedTerms === false) {
+    return <TermsModal onComplete={() => window.location.reload()} />;
+  }
 
   return children;
 }

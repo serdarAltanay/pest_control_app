@@ -164,6 +164,23 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Hesabınızı silmek/anonimleştirmek istediğinize emin misiniz? Bu işlem geri alınamaz!")) return;
+    try {
+      await api.delete("/profile");
+      toast.success("Hesabınız kalıcı olarak silindi ve verileriniz anonimleştirildi.");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("role");
+      localStorage.removeItem("profileImage");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1500);
+    } catch (e) {
+      console.error(e);
+      toast.error("Hesap silinirken hata oluştu.");
+    }
+  };
+
   /** İsim kalıcılığı */
   const persistName = async (fullName) => {
     const wantsSplit = isAccessOwner || "firstName" in profile || "lastName" in profile;
@@ -227,6 +244,20 @@ export default function Profile() {
                   <span>{profile.company || "Belirtilmemiş"}</span>
                 </div>
               )}
+
+              <div className="profile-field" style={{ marginTop: "2rem", flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
+                <button
+                  onClick={handleDeleteAccount}
+                  style={{ background: "#ef4444", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "bold", transition: "0.2s" }}
+                  onMouseOver={(e) => e.target.style.background = "#dc2626"}
+                  onMouseOut={(e) => e.target.style.background = "#ef4444"}
+                >
+                  Kalıcı Olarak Hesabımı Sil
+                </button>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>
+                  * KVKK unutulma hakkı gereği kişisel verileriniz (ad, iletişim) sistemden anonimleştirilecektir.
+                </div>
+              </div>
             </div>
 
             {/* Avatar BLOĞU: Sadece admin & employee için */}

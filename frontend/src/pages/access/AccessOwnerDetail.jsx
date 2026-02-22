@@ -1,27 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./Access.scss";
 
 const ACCESS_ROLES = [
-  { value: "CALISAN",          label: "Çalışan" },
+  { value: "CALISAN", label: "Çalışan" },
   { value: "MAGAZA_SORUMLUSU", label: "Mağaza Sorumlusu" },
-  { value: "MAGAZA_MUDURU",    label: "Mağaza Müdürü" },
-  { value: "GENEL_MUDUR",      label: "Genel Müdür" },
-  { value: "PATRON",           label: "Patron" },
-  { value: "DIGER",            label: "Diğer" },
+  { value: "MAGAZA_MUDURU", label: "Mağaza Müdürü" },
+  { value: "GENEL_MUDUR", label: "Genel Müdür" },
+  { value: "PATRON", label: "Patron" },
+  { value: "DIGER", label: "Diğer" },
 ];
 
 /* ---------------- presence helpers ---------------- */
 const ONLINE_MS = 2 * 60 * 1000;
-const IDLE_MS   = 10 * 60 * 1000;
+const IDLE_MS = 10 * 60 * 1000;
 const getPresence = (t) => {
   if (!t) return { cls: "status-offline", label: "Offline" };
   const diff = Date.now() - new Date(t).getTime();
   if (diff <= ONLINE_MS) return { cls: "status-online", label: "Online" };
-  if (diff <= IDLE_MS)   return { cls: "status-idle", label: "Idle" };
+  if (diff <= IDLE_MS) return { cls: "status-idle", label: "Idle" };
   return { cls: "status-offline", label: "Offline" };
 };
 const relTime = (d) => {
@@ -44,7 +44,7 @@ const relTime = (d) => {
 const fmt = (v) => (v ? new Date(v).toLocaleString("tr-TR") : "—");
 
 /* ---------------- küçük yardımcılar ---------------- */
-function useDebounce(value, delay=300) {
+function useDebounce(value, delay = 300) {
   const [v, setV] = useState(value);
   useEffect(() => {
     const t = setTimeout(() => setV(value), delay);
@@ -94,12 +94,12 @@ function StorePicker({ onSelect, selectedId }) {
           className="search"
           placeholder="Mağaza ara (ad/kod)"
           value={query}
-          onChange={(e)=>setQuery(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
         />
         <div className="right-controls">
           <div className="page-size">
             <label>Show</label>
-            <select value={pageSize} onChange={(e)=>setPageSize(Number(e.target.value))}>
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
               <option value={10}>10</option><option value={25}>25</option>
               <option value={50}>50</option><option value={100}>100</option>
             </select>
@@ -116,12 +116,12 @@ function StorePicker({ onSelect, selectedId }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{textAlign:"center"}}>Yükleniyor...</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: "center" }}>Yükleniyor...</td></tr>
             ) : pageItems.length === 0 ? (
-              <tr><td colSpan={6} style={{textAlign:"center"}}>Kayıt bulunamadı</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: "center" }}>Kayıt bulunamadı</td></tr>
             ) : (
-              pageItems.map((s)=>(
-                <tr key={s.id} className={selectedId===s.id ? "is-selected" : ""}>
+              pageItems.map((s) => (
+                <tr key={s.id} className={selectedId === s.id ? "is-selected" : ""}>
                   <td>{s.code || "—"}</td>
                   <td>{s.name || "—"}</td>
                   <td>{s.city || "—"}</td>
@@ -129,10 +129,10 @@ function StorePicker({ onSelect, selectedId }) {
                   <td>{s.manager || "—"}</td>
                   <td className="actions">
                     <button
-                      className={`btn ${selectedId===s.id ? "selected" : ""}`}
-                      onClick={()=>onSelect(s)}
+                      className={`btn ${selectedId === s.id ? "selected" : ""}`}
+                      onClick={() => onSelect(s)}
                     >
-                      {selectedId===s.id ? "Seçildi" : "Seç"}
+                      {selectedId === s.id ? "Seçildi" : "Seç"}
                     </button>
                   </td>
                 </tr>
@@ -143,11 +143,11 @@ function StorePicker({ onSelect, selectedId }) {
       </div>
 
       <div className="pagination">
-        <button className="page-btn" disabled={currentPage<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Prev</button>
+        <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
         <span className="page-indicator">{currentPage}</span>
-        <button className="page-btn" disabled={currentPage>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</button>
+        <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
         <div className="count-info">
-          {stores.length===0 ? "0" : `${startIdx+1}-${Math.min(startIdx+pageSize, stores.length)} / ${stores.length}`}
+          {stores.length === 0 ? "0" : `${startIdx + 1}-${Math.min(startIdx + pageSize, stores.length)} / ${stores.length}`}
         </div>
       </div>
     </div>
@@ -217,12 +217,12 @@ function CustomerPicker({ onSelect, selectedId }) {
           className="search"
           placeholder="Müşteri ara (ad/kod/şehir/e-posta/sorumlu)"
           value={query}
-          onChange={(e)=>setQuery(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
         />
         <div className="right-controls">
           <div className="page-size">
             <label>Show</label>
-            <select value={pageSize} onChange={(e)=>setPageSize(Number(e.target.value))}>
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
               <option value={10}>10</option><option value={25}>25</option>
               <option value={50}>50</option><option value={100}>100</option>
             </select>
@@ -239,12 +239,12 @@ function CustomerPicker({ onSelect, selectedId }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{textAlign:"center"}}>Yükleniyor...</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: "center" }}>Yükleniyor...</td></tr>
             ) : pageItems.length === 0 ? (
-              <tr><td colSpan={7} style={{textAlign:"center"}}>Kayıt bulunamadı</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: "center" }}>Kayıt bulunamadı</td></tr>
             ) : (
-              pageItems.map((c)=>(
-                <tr key={c.id} className={selectedId===c.id ? "is-selected" : ""}>
+              pageItems.map((c) => (
+                <tr key={c.id} className={selectedId === c.id ? "is-selected" : ""}>
                   <td>{c.code || "—"}</td>
                   <td>{c.title || "—"}</td>
                   <td>{c.city || "—"}</td>
@@ -253,10 +253,10 @@ function CustomerPicker({ onSelect, selectedId }) {
                   <td>{c.employee?.fullName || "—"}</td>
                   <td className="actions">
                     <button
-                      className={`btn ${selectedId===c.id ? "selected" : ""}`}
-                      onClick={()=>onSelect(c)}
+                      className={`btn ${selectedId === c.id ? "selected" : ""}`}
+                      onClick={() => onSelect(c)}
                     >
-                      {selectedId===c.id ? "Seçildi" : "Seç"}
+                      {selectedId === c.id ? "Seçildi" : "Seç"}
                     </button>
                   </td>
                 </tr>
@@ -267,11 +267,11 @@ function CustomerPicker({ onSelect, selectedId }) {
       </div>
 
       <div className="pagination">
-        <button className="page-btn" disabled={currentPage<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Prev</button>
+        <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
         <span className="page-indicator">{currentPage}</span>
-        <button className="page-btn" disabled={currentPage>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</button>
+        <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
         <div className="count-info">
-          {filtered.length===0 ? "0" : `${startIdx+1}-${Math.min(startIdx+pageSize, filtered.length)} / ${filtered.length}`}
+          {filtered.length === 0 ? "0" : `${startIdx + 1}-${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length}`}
         </div>
       </div>
     </div>
@@ -281,16 +281,17 @@ function CustomerPicker({ onSelect, selectedId }) {
 /* ---------------- MAIN DETAIL PAGE ---------------- */
 export default function AccessOwnerDetail() {
   const { ownerId } = useParams();
+  const navigate = useNavigate();
 
-  const [owner, setOwner]           = useState(null);
-  const [grants, setGrants]         = useState([]);
+  const [owner, setOwner] = useState(null);
+  const [grants, setGrants] = useState([]);
   const [lastSeenAt, setLastSeenAt] = useState(null);
-  const [, setTick]                 = useState(0);
+  const [, setTick] = useState(0);
 
   // yeni erişim UI
   const [scopeType, setScopeType] = useState("CUSTOMER");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [selectedStore, setSelectedStore]       = useState(null);
+  const [selectedStore, setSelectedStore] = useState(null);
   const [savingGrant, setSavingGrant] = useState(false);
 
   const load = async () => {
@@ -301,7 +302,7 @@ export default function AccessOwnerDetail() {
       // 1) /access/owner/:id
       const one = await api.get(`/access/owner/${ownerId}`).catch(() => null);
       if (one?.data) {
-        o  = one.data.owner || null;
+        o = one.data.owner || null;
         gs = Array.isArray(one.data.grants) ? one.data.grants : [];
       }
 
@@ -309,7 +310,7 @@ export default function AccessOwnerDetail() {
       if (!o) {
         const two = await api.get(`/access/owners/${ownerId}`).catch(() => null);
         if (two?.data) {
-          o  = two.data.owner || two.data || null;
+          o = two.data.owner || two.data || null;
           gs = Array.isArray(two.data?.grants) ? two.data.grants : gs;
         }
       }
@@ -352,9 +353,9 @@ export default function AccessOwnerDetail() {
     if (!owner?.id) return toast.error("Owner yüklenemedi");
 
     const customerId = scopeType === "CUSTOMER" ? selectedCustomer?.id : null;
-    const storeId    = scopeType === "STORE"    ? selectedStore?.id    : null;
+    const storeId = scopeType === "STORE" ? selectedStore?.id : null;
     if (scopeType === "CUSTOMER" && !customerId) return toast.error("Bir müşteri seçin");
-    if (scopeType === "STORE"    && !storeId)    return toast.error("Bir mağaza seçin");
+    if (scopeType === "STORE" && !storeId) return toast.error("Bir mağaza seçin");
 
     // FE tarafında kopya grant kontrolü
     const hasDup = grants.some(g =>
@@ -374,7 +375,7 @@ export default function AccessOwnerDetail() {
         ownerId: Number(owner.id),
         scopeType,
         customerId: customerId ? Number(customerId) : undefined,
-        storeId:    storeId    ? Number(storeId)    : undefined,
+        storeId: storeId ? Number(storeId) : undefined,
       });
 
       toast.success("Erişim verildi. Bilgilendirme e-postası gönderildi.");
@@ -398,6 +399,21 @@ export default function AccessOwnerDetail() {
             <span className="muted">({owner?.email || "—"} · {owner?.role || "—"})</span>
           </h1>
           <div className="header-actions">
+            <button
+              className="btn danger"
+              onClick={async () => {
+                if (!window.confirm("Bu erişim sahibini tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")) return;
+                try {
+                  await api.delete(`/access/owner/${ownerId}`);
+                  toast.success("Kullanıcı başarıyla silindi");
+                  navigate("/admin/access");
+                } catch (e) {
+                  toast.error(e?.response?.data?.message || "Silinemedi");
+                }
+              }}
+            >
+              Kullanıcıyı Sil
+            </button>
             <Link className="btn" to="/admin/access">Liste</Link>
           </div>
         </div>
@@ -405,7 +421,7 @@ export default function AccessOwnerDetail() {
         {/* ÖZET */}
         <section className="card">
           <div className="card-title">Özet</div>
-          <div className="kv" style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:12 }}>
+          <div className="kv" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             <div>
               <b>Durum</b>
               <span>
@@ -444,7 +460,7 @@ export default function AccessOwnerDetail() {
           <form onSubmit={addGrant} className="grid-3">
             <div>
               <label>Kapsam *</label>
-              <select value={scopeType} onChange={e=>setScopeType(e.target.value)}>
+              <select value={scopeType} onChange={e => setScopeType(e.target.value)}>
                 <option value="CUSTOMER">Müşteri (tüm mağazalar)</option>
                 <option value="STORE">Mağaza (tekil)</option>
               </select>
@@ -456,27 +472,27 @@ export default function AccessOwnerDetail() {
                   <span className="badge">Seçilen Müşteri:</span>
                   <b>{selectedCustomer.title}</b>
                   <span className="muted"> (#{selectedCustomer.id}{selectedCustomer.code ? ` · ${selectedCustomer.code}` : ""})</span>
-                  <button type="button" className="link-clear" onClick={()=>setSelectedCustomer(null)}>Seçimi temizle</button>
+                  <button type="button" className="link-clear" onClick={() => setSelectedCustomer(null)}>Seçimi temizle</button>
                 </>
               ) : scopeType === "STORE" && selectedStore ? (
                 <>
                   <span className="badge">Seçilen Mağaza:</span>
                   <b>{selectedStore.name}</b>
                   <span className="muted"> (#{selectedStore.id}{selectedStore.code ? ` · ${selectedStore.code}` : ""})</span>
-                  <button type="button" className="link-clear" onClick={()=>setSelectedStore(null)}>Seçimi temizle</button>
+                  <button type="button" className="link-clear" onClick={() => setSelectedStore(null)}>Seçimi temizle</button>
                 </>
               ) : (
                 <span className="muted">Bir {scopeType === "CUSTOMER" ? "müşteri" : "mağaza"} seçin.</span>
               )}
             </div>
 
-            <div className="full btn-row" style={{marginTop: 8}}>
+            <div className="full btn-row" style={{ marginTop: 8 }}>
               <button
                 className="btn primary"
                 disabled={
                   savingGrant ||
-                  (scopeType==="CUSTOMER" && !selectedCustomer) ||
-                  (scopeType==="STORE" && !selectedStore)
+                  (scopeType === "CUSTOMER" && !selectedCustomer) ||
+                  (scopeType === "STORE" && !selectedStore)
                 }
               >
                 {savingGrant ? "Kaydediliyor..." : "Erişim Ver"}
@@ -493,12 +509,12 @@ export default function AccessOwnerDetail() {
           </div>
           {scopeType === "CUSTOMER" ? (
             <CustomerPicker
-              onSelect={(c)=>setSelectedCustomer(c)}
+              onSelect={(c) => setSelectedCustomer(c)}
               selectedId={selectedCustomer?.id || null}
             />
           ) : (
             <StorePicker
-              onSelect={(s)=>setSelectedStore(s)}
+              onSelect={(s) => setSelectedStore(s)}
               selectedId={selectedStore?.id || null}
             />
           )}
@@ -528,12 +544,12 @@ export default function AccessOwnerDetail() {
                     <td className="actions">
                       <button
                         className="btn danger"
-                        onClick={async ()=>{
+                        onClick={async () => {
                           if (!window.confirm("Bu erişimi kaldırmak istiyor musunuz?")) return;
                           try {
                             await api.delete(`/access/${g.id}`);
                             toast.success("Erişim kaldırıldı");
-                            setGrants(xs => xs.filter(x=>x.id !== g.id));
+                            setGrants(xs => xs.filter(x => x.id !== g.id));
                           } catch (e) {
                             toast.error(e?.response?.data?.message || "Silinemedi");
                           }

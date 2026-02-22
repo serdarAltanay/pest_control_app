@@ -10,7 +10,7 @@ const {
   MAIL_FROM,   // örn: '"Pest Control" <no-reply@domain.com>'
   MAIL_DISABLE, // "1" ise gerçek gönderim yapma, logla
   APP_NAME = "Pest Control",
-  APP_URL  = "http://localhost:3000",
+  APP_URL = "http://localhost:3000",
 } = process.env;
 
 let transporter = null;
@@ -47,60 +47,138 @@ export async function sendMail({ to, subject, html, text }) {
 
 /* -------------------- templates -------------------- */
 function baseBox(innerHtml) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <!-- Main Container -->
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 40px 40px; text-align: center;">
+              <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 700; letter-spacing: 0.5px;">${APP_NAME}</h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px; color: #334155; line-height: 1.6; font-size: 16px;">
+              ${innerHtml}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 30px 40px; text-align: center; font-size: 14px; color: #64748b; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 12px;">Bu e-posta <strong>${APP_NAME}</strong> sistemi tarafından otomatik olarak gönderilmiştir.</p>
+              <a href="${APP_URL}" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 600;">Sisteme Git &rarr;</a>
+            </td>
+          </tr>
+        </table>
+        <!-- Copyright -->
+        <p style="text-align: center; margin-top: 24px; font-size: 13px; color: #94a3b8;">
+          &copy; ${new Date().getFullYear()} ${APP_NAME}. Tüm hakları saklıdır.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buttonHtml(url, text) {
   return `
-  <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6;color:#0f172a;">
-    <div style="max-width:600px;margin:0 auto;padding:16px 12px;">
-      ${innerHtml}
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0 8px"/>
-      <div style="font-size:12px;color:#64748b;">
-        <div>${APP_NAME}</div>
-        <div><a href="${APP_URL}" target="_blank" style="color:#2563eb;text-decoration:none">${APP_URL}</a></div>
-      </div>
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 32px 0;">
+      <tr>
+        <td align="center">
+          <table border="0" cellspacing="0" cellpadding="0">
+            <tr>
+              <td align="center" style="border-radius: 8px;" bgcolor="#2563eb">
+                <a href="${url}" target="_blank" style="font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
+                  ${text}
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
+function passwordBox(code) {
+  return `
+    <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
+      <p style="margin: 0 0 8px; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Geçici Şifreniz</p>
+      <div style="font-size: 32px; font-weight: 700; color: #0f172a; letter-spacing: 4px; font-family: monospace;">${code}</div>
     </div>
-  </div>`;
+  `;
+}
+
+function scopeBox(scopeText) {
+  return `
+    <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+      <p style="margin: 0; color: #166534; font-size: 15px;">
+        <strong style="color: #14532d; display: block; margin-bottom: 4px;">Tanımlanan Erişim Kapsamı:</strong>
+        ${scopeText}
+      </p>
+    </div>
+  `;
 }
 
 function htmlWelcome({ name, code }) {
   const display = name?.trim() || "Merhaba";
   return baseBox(`
-    <h2 style="margin:0 0 10px;font-size:18px;">${APP_NAME} – Hesabınız oluşturuldu</h2>
-    <p>${display}, hesabınız oluşturuldu.</p>
-    <p>Geçici giriş şifreniz (6 haneli): <b style="font-size:18px;letter-spacing:2px">${code}</b></p>
-    <p>Giriş adresi: <a href="${APP_URL}" target="_blank" style="color:#2563eb">${APP_URL}</a></p>
+    <h2 style="margin: 0 0 20px; font-size: 22px; color: #0f172a;">Hoş Geldiniz, ${display}!</h2>
+    <p style="margin: 0 0 16px;">Sistemine üyeliğiniz başarıyla oluşturuldu. Aşağıdaki geçici şifreyi kullanarak giriş yapabilir ve ardından kendi şifrenizi belirleyebilirsiniz.</p>
+    ${passwordBox(code)}
+    ${buttonHtml(APP_URL, 'Sisteme Giriş Yap')}
+    <p style="margin: 0; font-size: 15px; color: #475569;">Güvenliğiniz için lütfen giriş yaptıktan sonra şifrenizi değiştirmeyi unutmayın.</p>
   `);
-}
-function textWelcome({ name, code }) {
-  return `${name || "Merhaba"}, hesabınız oluşturuldu.
-Geçici şifreniz: ${code}
-Giriş: ${APP_URL}`;
 }
 
 function htmlGranted({ name, scopeText }) {
   const display = name?.trim() || "Merhaba";
   return baseBox(`
-    <h2 style="margin:0 0 10px;font-size:18px;">${APP_NAME} – Erişiminiz tanımlandı</h2>
-    <p>${display}, sisteme erişiminiz tanımlandı.</p>
-    <p><b>Kapsam:</b> ${scopeText}</p>
-    <p>Giriş adresi: <a href="${APP_URL}" target="_blank" style="color:#2563eb">${APP_URL}</a></p>
+    <h2 style="margin: 0 0 20px; font-size: 22px; color: #0f172a;">Erişiminiz Güncellendi, ${display}</h2>
+    <p style="margin: 0 0 16px;">Hesabınıza yeni yetkiler ve erişim kapsamları tanımlandı.</p>
+    ${scopeBox(scopeText)}
+    <p style="margin: 0 0 16px;">Sisteme giriş yaparak güncel yetkilerinizle işlem yapmaya başlayabilirsiniz.</p>
+    ${buttonHtml(APP_URL, 'Sisteme Git')}
   `);
-}
-function textGranted({ name, scopeText }) {
-  return `${name || "Merhaba"}, erişiminiz tanımlandı.
-Kapsam: ${scopeText}
-Giriş: ${APP_URL}`;
 }
 
 function htmlReset({ name, code }) {
   const display = name?.trim() || "Merhaba";
   return baseBox(`
-    <h2 style="margin:0 0 10px;font-size:18px;">${APP_NAME} – Şifreniz sıfırlandı</h2>
-    <p>${display}, hesabınız için geçici bir şifre oluşturuldu.</p>
-    <p>Geçici giriş şifreniz (6 haneli): <b style="font-size:18px;letter-spacing:2px">${code}</b></p>
-    <p>Giriş adresi: <a href="${APP_URL}" target="_blank" style="color:#2563eb">${APP_URL}</a></p>
+    <h2 style="margin: 0 0 20px; font-size: 22px; color: #0f172a;">Şifreniz Sıfırlandı, ${display}</h2>
+    <p style="margin: 0 0 16px;">Talebiniz üzerine veya sistem yöneticisi tarafından hesabınızın şifresi sıfırlandı. Yeni geçici şifreniz aşağıdadır.</p>
+    ${passwordBox(code)}
+    ${buttonHtml(APP_URL, 'Sisteme Giriş Yap')}
+    <p style="margin: 0; font-size: 15px; color: #475569;">Lütfen giriş yaptıktan sonra hesap ayarlarından yeni şifrenizi belirleyiniz.</p>
   `);
 }
-function textReset({ name, code }) {
-  return `${name || "Merhaba"}, şifreniz sıfırlandı.
+
+function htmlWelcomeAndGranted({ name, code, scopeText }) {
+  const display = name?.trim() || "Merhaba";
+  return baseBox(`
+    <h2 style="margin: 0 0 20px; font-size: 22px; color: #0f172a;">Aramıza Hoş Geldiniz, ${display}!</h2>
+    <p style="margin: 0 0 16px;">Hesabınız başarıyla oluşturuldu ve sisteme erişim yetkileriniz tanımlandı.</p>
+    ${scopeBox(scopeText)}
+    <p style="margin: 0 0 16px;">Sisteme giriş yapmak için aşağıdaki geçici şifrenizi kullanabilirsiniz:</p>
+    ${passwordBox(code)}
+    ${buttonHtml(APP_URL, 'Hemen Giriş Yap')}
+    <p style="margin: 0; font-size: 15px; color: #475569;">Güvenliğiniz için giriş yaptıktan sonra şifrenizi değiştirmeyi unutmayın.</p>
+  `);
+}
+
+function textWelcomeAndGranted({ name, code, scopeText }) {
+  return `${name || "Merhaba"}, hesabınız oluşturuldu.
+Kapsam: ${scopeText}
 Geçici şifreniz: ${code}
 Giriş: ${APP_URL}`;
 }
@@ -133,6 +211,15 @@ export async function sendAccessOwnerPasswordReset({ to, name, code }) {
   });
 }
 
+export async function sendAccessOwnerWelcomeAndGranted({ to, name, code, scopeText }) {
+  return sendMail({
+    to,
+    subject: `${APP_NAME}: Hesabınız oluşturuldu ve erişiminiz tanımlandı`,
+    html: htmlWelcomeAndGranted({ name, code, scopeText }),
+    text: textWelcomeAndGranted({ name, code, scopeText }),
+  });
+}
+
 
 // lib/mailer.js  (dosyanın sonuna ekle)
 function absUrl(u) {
@@ -140,7 +227,7 @@ function absUrl(u) {
   if (/^https?:\/\//i.test(u)) return u;
   const API_ORIGIN = process.env.API_ORIGIN || ""; // ör: http://localhost:5000
   if (!API_ORIGIN) return u.replace(/^\/+/, "");
-  return `${API_ORIGIN.replace(/\/+$/,"")}/${u.replace(/^\/+/, "")}`;
+  return `${API_ORIGIN.replace(/\/+$/, "")}/${u.replace(/^\/+/, "")}`;
 }
 function fmtDateTR(d) {
   try {
@@ -150,7 +237,7 @@ function fmtDateTR(d) {
     });
   } catch { return String(d); }
 }
-function esc(x){ return String(x ?? "").replace(/[<>]/g, s => ({'<':'&lt;','>':'&gt;'}[s])); }
+function esc(x) { return String(x ?? "").replace(/[<>]/g, s => ({ '<': '&lt;', '>': '&gt;' }[s])); }
 
 function htmlVisitSummary(data) {
   const {
@@ -387,7 +474,7 @@ export async function sendSuggestionCreatedToAdmins({ to, suggestion, detailPath
 function htmlVisitPlannedToEmployee({ title, employeeName, storeName, storeCode, city, start, end, detailUrl }) {
   const when = `${fmtDateTR(start)} – ${fmtDateTR(end)}`;
   const storeLine = [storeName, storeCode ? `(${storeCode})` : null, city ? `– ${city}` : null].filter(Boolean).join(" ");
-  const btnUrl = detailUrl || `${process.env.APP_URL?.replace(/\/+$/,"") || ""}/calendar/visit/${esc(title)}`;
+  const btnUrl = detailUrl || `${process.env.APP_URL?.replace(/\/+$/, "") || ""}/calendar/visit/${esc(title)}`;
   return baseBox(`
     <h2 style="margin:0 0 10px;font-size:18px;">${APP_NAME} – Ziyaret Size Atandı</h2>
     <p style="margin:0 0 8px;">Merhaba ${esc(employeeName || "")}, aşağıdaki ziyaret size atandı:</p>

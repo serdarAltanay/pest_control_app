@@ -106,7 +106,7 @@ async function ensureOwnerHandler(req, res) {
         to: trimmedEmail,
         name: display,
         code,
-      }).catch(() => {});
+      }).catch(() => { });
       emailed = true;
     } else if (forceReset) {
       const code = random6();
@@ -123,7 +123,7 @@ async function ensureOwnerHandler(req, res) {
         to: owner.email,
         name: display,
         code,
-      }).catch(() => {});
+      }).catch(() => { });
       emailed = true;
     }
 
@@ -222,6 +222,29 @@ router.post(
   }
 );
 
+/* -------------------- completely delete owner (yalnız admin) -------------------- */
+router.delete(
+  "/owner/:ownerId",
+  auth,
+  roleCheck(["admin"]),
+  async (req, res) => {
+    try {
+      const ownerId = toId(req.params.ownerId);
+      if (!ownerId) return res.status(400).json({ message: "Geçersiz id" });
+
+      const owner = await prisma.accessOwner.findUnique({ where: { id: ownerId } });
+      if (!owner) return res.status(404).json({ message: "Erişim sahibi bulunamadı" });
+
+      await prisma.accessOwner.delete({ where: { id: ownerId } });
+
+      res.json({ ok: true, message: "Kullanıcı başarıyla silindi" });
+    } catch (e) {
+      console.error("DELETE /access/owner/:ownerId error:", e);
+      res.status(500).json({ message: "Sunucu hatası" });
+    }
+  }
+);
+
 /* -------------------- grants list (filters) -------------------- */
 router.get(
   "/grants",
@@ -306,10 +329,10 @@ router.get(
         }),
         storeIds.length
           ? prisma.accessGrant.findMany({
-              where: { scopeType: "STORE", storeId: { in: storeIds } },
-              orderBy: { updatedAt: "desc" },
-              include: grantInclude,
-            })
+            where: { scopeType: "STORE", storeId: { in: storeIds } },
+            orderBy: { updatedAt: "desc" },
+            include: grantInclude,
+          })
           : Promise.resolve([]),
       ]);
 
@@ -328,61 +351,118 @@ router.post(
   roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
-      const ownerId = toId(req.body.ownerId);
       const scopeType = String(req.body.scopeType || "").toUpperCase();
-      const customerId = req.body.customerId ? toId(req.body.customerId) : null;
-      const storeId = req.body.storeId ? toId(req.body.storeId) : null;
 
-      if (!ownerId) return res.status(400).json({ message: "ownerId gerekli" });
+      const rawCustomerIds = req.body.customerIds || (req.body.customerId ? [req.body.customerId] : []);
+      const rawStoreIds = req.body.storeIds || (req.body.storeId ? [req.body.storeId] : []);
+      const customerIds = Array.isArray(rawCustomerIds) ? rawCustomerIds.map(toId).filter(Boolean) : [];
+      const storeIds = Array.isArray(rawStoreIds) ? rawStoreIds.map(toId).filter(Boolean) : [];
+
       if (!["CUSTOMER", "STORE"].includes(scopeType))
         return res.status(400).json({ message: "Geçersiz scopeType" });
-      if (scopeType === "CUSTOMER" && !customerId)
-        return res.status(400).json({ message: "customerId gerekli" });
-      if (scopeType === "STORE" && !storeId)
-        return res.status(400).json({ message: "storeId gerekli" });
+      if (scopeType === "CUSTOMER" && customerIds.length === 0)
+        return res.status(400).json({ message: "En az bir müşteri gerekli" });
+      if (scopeType === "STORE" && storeIds.length === 0)
+        return res.status(400).json({ message: "En az bir mağaza gerekli" });
 
-      const owner = await prisma.accessOwner.findUnique({ where: { id: ownerId } });
-      if (!owner) return res.status(404).json({ message: "Owner bulunamadı" });
+      let ownerId = toId(req.body.ownerId);
+      let owner = null;
+      let isNewCreator = false;
+      let rawPassword = null;
 
-      if (scopeType === "CUSTOMER") {
-        const c = await prisma.customer.findUnique({ where: { id: customerId } });
-        if (!c) return res.status(404).json({ message: "Müşteri bulunamadı" });
-      } else {
-        const s = await prisma.store.findUnique({ where: { id: storeId } });
-        if (!s) return res.status(404).json({ message: "Mağaza bulunamadı" });
+      if (ownerId) {
+        owner = await prisma.accessOwner.findUnique({ where: { id: ownerId } });
+      } else if (req.body.email) {
+        const trimmedEmail = String(req.body.email).trim().toLowerCase();
+        owner = await prisma.accessOwner.findUnique({ where: { email: trimmedEmail } });
+
+        if (!owner) {
+          rawPassword = random6();
+          const pwhash = await bcrypt.hash(rawPassword, 10);
+          owner = await prisma.accessOwner.create({
+            data: {
+              email: trimmedEmail,
+              password: pwhash,
+              role: normRole(req.body.role),
+              firstName: req.body.firstName || null,
+              lastName: req.body.lastName || null,
+              phone: req.body.phone || null,
+              isActive: true,
+            },
+          });
+          isNewCreator = true;
+        }
+        ownerId = owner.id;
       }
 
-      const exists = await prisma.accessGrant.findFirst({
-        where: { ownerId, scopeType, customerId, storeId },
-      });
-      const created = exists
-        ? exists
-        : await prisma.accessGrant.create({
-            data: { ownerId, scopeType, customerId, storeId },
+      if (!owner) return res.status(404).json({ message: "Owner bulunamadı" });
+
+      const createdGrants = [];
+
+      if (scopeType === "CUSTOMER") {
+        for (const cid of customerIds) {
+          const c = await prisma.customer.findUnique({ where: { id: cid } });
+          if (!c) continue;
+
+          let exists = await prisma.accessGrant.findFirst({
+            where: { ownerId: owner.id, scopeType: "CUSTOMER", customerId: cid },
+            include: grantInclude
           });
 
-      const expanded = await prisma.accessGrant.findUnique({
-        where: { id: created.id },
-        include: grantInclude,
-      });
+          if (!exists) {
+            const created = await prisma.accessGrant.create({
+              data: { ownerId: owner.id, scopeType: "CUSTOMER", customerId: cid },
+            });
+            exists = await prisma.accessGrant.findUnique({
+              where: { id: created.id },
+              include: grantInclude
+            });
+          }
+          createdGrants.push(exists);
+        }
+      } else {
+        for (const sid of storeIds) {
+          const s = await prisma.store.findUnique({ where: { id: sid } });
+          if (!s) continue;
 
-      try {
-        const scopeText =
-          scopeType === "CUSTOMER"
-            ? `Müşteri (${expanded.customer?.title || expanded.customerId})`
-            : `Mağaza (${expanded.store?.name || expanded.storeId})`;
-        const display =
-          [expanded.owner?.firstName, expanded.owner?.lastName]
-            .filter(Boolean)
-            .join(" ") || expanded.owner?.email;
-        await sendAccessOwnerGranted({
-          to: expanded.owner?.email,
-          name: display,
-          scopeText,
-        }).catch(() => {});
-      } catch {}
+          let exists = await prisma.accessGrant.findFirst({
+            where: { ownerId: owner.id, scopeType: "STORE", storeId: sid },
+            include: grantInclude
+          });
 
-      res.json(expanded);
+          if (!exists) {
+            const created = await prisma.accessGrant.create({
+              data: { ownerId: owner.id, scopeType: "STORE", storeId: sid },
+            });
+            exists = await prisma.accessGrant.findUnique({
+              where: { id: created.id },
+              include: grantInclude
+            });
+          }
+          createdGrants.push(exists);
+        }
+      }
+
+      // SADECE YENİ OLUŞTURULDUYSA TEK BİR KOMBİNE MAİL ATILIR. MEVCUT KULLANICIYA MAİL ATILMAZ.
+      if (isNewCreator && createdGrants.length > 0) {
+        try {
+          const scopeText = scopeType === "CUSTOMER"
+            ? (customerIds.length === 1 && createdGrants[0]?.customer ? `Müşteri (${createdGrants[0].customer.title})` : `${customerIds.length} Müşteri`)
+            : (storeIds.length === 1 && createdGrants[0]?.store ? `Mağaza (${createdGrants[0].store.name})` : `${storeIds.length} Mağaza`);
+
+          const display = [owner.firstName, owner.lastName].filter(Boolean).join(" ") || owner.email;
+
+          const { sendAccessOwnerWelcomeAndGranted } = await import("../lib/mailer.js");
+          await sendAccessOwnerWelcomeAndGranted({
+            to: owner.email,
+            name: display,
+            code: rawPassword,
+            scopeText,
+          }).catch(() => { });
+        } catch { }
+      }
+
+      res.json(createdGrants);
     } catch (e) {
       console.error("POST /access/grant", e);
       res.status(500).json({ message: "Sunucu hatası" });

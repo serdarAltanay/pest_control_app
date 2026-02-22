@@ -450,13 +450,29 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         (accessOwner.lastName || "").trim() ||
         (manager ? String(manager).split(" ").slice(1).join(" ") : "");
 
-      const { owner } = await ensureAccessOwner({
-        email: accessOwner.email,
-        role: safeRole,
-        firstName,
-        lastName,
-        phone: accessOwner.phone || null,
-      });
+      // ensureAccessOwner already sends Welcome email. To do it atomically, we will just use it as is for now, but wait!
+      // Since changing ensureAccessOwner might break other things, we can just inline the owner creation here like we did in access.js to be completely sure we only send 1 email.
+      const trimmedEmail = String(accessOwner.email).trim().toLowerCase();
+      let owner = await prisma.accessOwner.findUnique({ where: { email: trimmedEmail } });
+      let isNewCreator = false;
+      let rawPassword = null;
+
+      if (!owner) {
+        rawPassword = random6();
+        const pwhash = await bcrypt.hash(rawPassword, 10);
+        owner = await prisma.accessOwner.create({
+          data: {
+            email: trimmedEmail,
+            password: pwhash,
+            role: safeRole,
+            firstName: firstName || null,
+            lastName: lastName || null,
+            phone: accessOwner.phone || null,
+            isActive: true,
+          },
+        });
+        isNewCreator = true;
+      }
 
       const exists = await prisma.accessGrant.findFirst({
         where: { ownerId: owner.id, scopeType: "STORE", storeId: created.id },
@@ -466,13 +482,23 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         await prisma.accessGrant.create({
           data: { ownerId: owner.id, scopeType: "STORE", storeId: created.id },
         });
-        try {
-          const scopeText = `Mağaza (${created.name || created.id})`;
-          const display =
-            [owner.firstName, owner.lastName].filter(Boolean).join(" ") ||
-            owner.email;
-          await sendAccessOwnerGranted({ to: owner.email, name: display, scopeText });
-        } catch { }
+
+        if (isNewCreator) {
+          try {
+            const scopeText = `Mağaza (${created.name || created.id})`;
+            const display =
+              [owner.firstName, owner.lastName].filter(Boolean).join(" ") ||
+              owner.email;
+
+            const { sendAccessOwnerWelcomeAndGranted } = await import("../lib/mailer.js");
+            await sendAccessOwnerWelcomeAndGranted({
+              to: owner.email,
+              name: display,
+              code: rawPassword,
+              scopeText
+            }).catch(() => { });
+          } catch { }
+        }
       }
     }
 

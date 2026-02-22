@@ -6,9 +6,9 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./Access.scss";
 
-const ROLES = ["CALISAN","MAGAZA_SORUMLUSU","MAGAZA_MUDURU","GENEL_MUDUR","PATRON","DIGER"];
+const ROLES = ["CALISAN", "MAGAZA_SORUMLUSU", "MAGAZA_MUDURU", "GENEL_MUDUR", "PATRON", "DIGER"];
 
-function useDebounce(value, delay=300) {
+function useDebounce(value, delay = 300) {
   const [v, setV] = useState(value);
   useEffect(() => {
     const t = setTimeout(() => setV(value), delay);
@@ -18,7 +18,7 @@ function useDebounce(value, delay=300) {
 }
 
 /* -------------------- STORE PICKER -------------------- */
-function StorePicker({ onSelect, selectedId }) {
+function StorePicker({ onToggle, selectedIds = [] }) {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -58,12 +58,12 @@ function StorePicker({ onSelect, selectedId }) {
           className="search"
           placeholder="Mağaza ara (ad/kod)"
           value={query}
-          onChange={(e)=>setQuery(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
         />
         <div className="right-controls">
           <div className="page-size">
             <label>Show</label>
-            <select value={pageSize} onChange={(e)=>setPageSize(Number(e.target.value))}>
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
               <option value={10}>10</option><option value={25}>25</option>
               <option value={50}>50</option><option value={100}>100</option>
             </select>
@@ -80,12 +80,12 @@ function StorePicker({ onSelect, selectedId }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{textAlign:"center"}}>Yükleniyor...</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: "center" }}>Yükleniyor...</td></tr>
             ) : pageItems.length === 0 ? (
-              <tr><td colSpan={6} style={{textAlign:"center"}}>Kayıt bulunamadı</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: "center" }}>Kayıt bulunamadı</td></tr>
             ) : (
-              pageItems.map((s)=>(
-                <tr key={s.id} className={selectedId===s.id ? "is-selected" : ""}>
+              pageItems.map((s) => (
+                <tr key={s.id} className={selectedIds.includes(s.id) ? "is-selected" : ""}>
                   <td>{s.code || "—"}</td>
                   <td>{s.name || "—"}</td>
                   <td>{s.city || "—"}</td>
@@ -93,10 +93,10 @@ function StorePicker({ onSelect, selectedId }) {
                   <td>{s.manager || "—"}</td>
                   <td className="actions">
                     <button
-                      className={`btn ${selectedId===s.id ? "selected" : ""}`}
-                      onClick={()=>onSelect(s)}
+                      className={`btn ${selectedIds.includes(s.id) ? "selected" : ""}`}
+                      onClick={() => onToggle(s)}
                     >
-                      {selectedId===s.id ? "Seçildi" : "Seç"}
+                      {selectedIds.includes(s.id) ? "Seçildi" : "Seç"}
                     </button>
                   </td>
                 </tr>
@@ -107,11 +107,11 @@ function StorePicker({ onSelect, selectedId }) {
       </div>
 
       <div className="pagination">
-        <button className="page-btn" disabled={currentPage<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Prev</button>
+        <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
         <span className="page-indicator">{currentPage}</span>
-        <button className="page-btn" disabled={currentPage>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</button>
+        <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
         <div className="count-info">
-          {stores.length===0 ? "0" : `${startIdx+1}-${Math.min(startIdx+pageSize, stores.length)} / ${stores.length}`}
+          {stores.length === 0 ? "0" : `${startIdx + 1}-${Math.min(startIdx + pageSize, stores.length)} / ${stores.length}`}
         </div>
       </div>
     </div>
@@ -127,7 +127,7 @@ const PERIOD_TR = {
   IKIAYLIK: "2 Aylık",
   UCAYLIK: "3 Aylık",
 };
-function CustomerPicker({ onSelect, selectedId }) {
+function CustomerPicker({ onToggle, selectedIds = [] }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -181,12 +181,12 @@ function CustomerPicker({ onSelect, selectedId }) {
           className="search"
           placeholder="Müşteri ara (ad/kod/şehir/e-posta/sorumlu)"
           value={query}
-          onChange={(e)=>setQuery(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
         />
         <div className="right-controls">
           <div className="page-size">
             <label>Show</label>
-            <select value={pageSize} onChange={(e)=>setPageSize(Number(e.target.value))}>
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
               <option value={10}>10</option><option value={25}>25</option>
               <option value={50}>50</option><option value={100}>100</option>
             </select>
@@ -203,12 +203,12 @@ function CustomerPicker({ onSelect, selectedId }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{textAlign:"center"}}>Yükleniyor...</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: "center" }}>Yükleniyor...</td></tr>
             ) : pageItems.length === 0 ? (
-              <tr><td colSpan={7} style={{textAlign:"center"}}>Kayıt bulunamadı</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: "center" }}>Kayıt bulunamadı</td></tr>
             ) : (
-              pageItems.map((c)=>(
-                <tr key={c.id} className={selectedId===c.id ? "is-selected" : ""}>
+              pageItems.map((c) => (
+                <tr key={c.id} className={selectedIds.includes(c.id) ? "is-selected" : ""}>
                   <td>{c.code || "—"}</td>
                   <td>{c.title || "—"}</td>
                   <td>{c.city || "—"}</td>
@@ -217,10 +217,10 @@ function CustomerPicker({ onSelect, selectedId }) {
                   <td>{c.employee?.fullName || "—"}</td>
                   <td className="actions">
                     <button
-                      className={`btn ${selectedId===c.id ? "selected" : ""}`}
-                      onClick={()=>onSelect(c)}
+                      className={`btn ${selectedIds.includes(c.id) ? "selected" : ""}`}
+                      onClick={() => onToggle(c)}
                     >
-                      {selectedId===c.id ? "Seçildi" : "Seç"}
+                      {selectedIds.includes(c.id) ? "Seçildi" : "Seç"}
                     </button>
                   </td>
                 </tr>
@@ -231,11 +231,11 @@ function CustomerPicker({ onSelect, selectedId }) {
       </div>
 
       <div className="pagination">
-        <button className="page-btn" disabled={currentPage<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Prev</button>
+        <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
         <span className="page-indicator">{currentPage}</span>
-        <button className="page-btn" disabled={currentPage>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</button>
+        <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
         <div className="count-info">
-          {filtered.length===0 ? "0" : `${startIdx+1}-${Math.min(startIdx+pageSize, filtered.length)} / ${filtered.length}`}
+          {filtered.length === 0 ? "0" : `${startIdx + 1}-${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length}`}
         </div>
       </div>
     </div>
@@ -251,53 +251,43 @@ export default function AccessNew() {
   const [phone, setPhone] = useState("");
 
   const [scopeType, setScopeType] = useState("CUSTOMER");
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [selectedStore, setSelectedStore] = useState(null);
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
+  const [selectedStores, setSelectedStores] = useState([]);
 
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // kapsam değişince diğer seçimi temizle
-    setSelectedCustomer(null);
-    setSelectedStore(null);
+    setSelectedCustomers([]);
+    setSelectedStores([]);
   }, [scopeType]);
+
+  const toggleCustomer = (c) => setSelectedCustomers(prev => prev.some(x => x.id === c.id) ? prev.filter(x => x.id !== c.id) : [...prev, c]);
+  const toggleStore = (s) => setSelectedStores(prev => prev.some(x => x.id === s.id) ? prev.filter(x => x.id !== s.id) : [...prev, s]);
 
   const submit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return toast.error("E-posta girin");
-    if (scopeType === "CUSTOMER" && !selectedCustomer?.id) return toast.error("Bir müşteri seçin");
-    if (scopeType === "STORE" && !selectedStore?.id) return toast.error("Bir mağaza seçin");
+    if (scopeType === "CUSTOMER" && selectedCustomers.length === 0) return toast.error("En az bir müşteri seçin");
+    if (scopeType === "STORE" && selectedStores.length === 0) return toast.error("En az bir mağaza seçin");
 
     try {
       setSaving(true);
-      // 1) owner’ı garanti et (şifre maille üretilir/gönderilir)
-      const ensureBody = { email: email.trim(), role, firstName, lastName, phone };
-      const { data: owner } = await api.post("/access/owners/ensure", ensureBody);
-      if (!owner?.id) throw new Error("Owner oluşturulamadı");
-
-      // 2) zaten bu kapsamda erişim var mı?
-      const params =
-        scopeType === "CUSTOMER"
-          ? `ownerId=${owner.id}&scopeType=CUSTOMER&customerId=${selectedCustomer.id}`
-          : `ownerId=${owner.id}&scopeType=STORE&storeId=${selectedStore.id}`;
-      const { data: existing } = await api.get(`/access/grants?${params}`);
-      if (Array.isArray(existing) && existing.length > 0) {
-        toast.info("Zaten bu kapsamda erişimi var.");
-        return;
-      }
-
-      // 3) grant ver
       await api.post("/access/grant", {
-        ownerId: Number(owner.id),
+        email: email.trim(),
+        role,
+        firstName,
+        lastName,
+        phone,
         scopeType,
-        customerId: scopeType === "CUSTOMER" ? Number(selectedCustomer.id) : undefined,
-        storeId: scopeType === "STORE" ? Number(selectedStore.id) : undefined,
+        customerIds: scopeType === "CUSTOMER" ? selectedCustomers.map(x => Number(x.id)) : undefined,
+        storeIds: scopeType === "STORE" ? selectedStores.map(x => Number(x.id)) : undefined,
       });
 
-      toast.success("Erişim verildi");
+      toast.success("Erişim işlemi tamamlandı");
       // temizle
       setEmail(""); setFirstName(""); setLastName(""); setPhone("");
-      setSelectedCustomer(null); setSelectedStore(null);
+      setSelectedCustomers([]); setSelectedStores([]);
     } catch (e2) {
       toast.error(e2?.response?.data?.message || "Kaydedilemedi");
     } finally { setSaving(false); }
@@ -318,58 +308,70 @@ export default function AccessNew() {
           <form onSubmit={submit} className="grid-3">
             <div>
               <label>E-posta *</label>
-              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
             <div>
               <label>Rol *</label>
-              <select value={role} onChange={e=>setRole(e.target.value)}>
-                {ROLES.map(r=> <option key={r} value={r}>{r}</option>)}
+              <select value={role} onChange={e => setRole(e.target.value)}>
+                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
               <label>Telefon</label>
-              <input value={phone} onChange={e=>setPhone(e.target.value)} />
+              <input value={phone} onChange={e => setPhone(e.target.value)} />
             </div>
             <div>
               <label>Ad</label>
-              <input value={firstName} onChange={e=>setFirstName(e.target.value)} />
+              <input value={firstName} onChange={e => setFirstName(e.target.value)} />
             </div>
             <div>
               <label>Soyad</label>
-              <input value={lastName} onChange={e=>setLastName(e.target.value)} />
+              <input value={lastName} onChange={e => setLastName(e.target.value)} />
             </div>
             <div>
               <label>Kapsam *</label>
-              <select value={scopeType} onChange={e=>setScopeType(e.target.value)}>
+              <select value={scopeType} onChange={e => setScopeType(e.target.value)}>
                 <option value="CUSTOMER">Müşteri-Genel</option>
                 <option value="STORE">Mağaza</option>
               </select>
             </div>
 
             <div className="full selected-target">
-              {scopeType === "CUSTOMER" && selectedCustomer ? (
+              {scopeType === "CUSTOMER" && selectedCustomers.length > 0 ? (
                 <>
-                  <span className="badge">Seçilen Müşteri:</span>
-                  <b>{selectedCustomer.title}</b>
-                  <span className="muted"> (#{selectedCustomer.id}{selectedCustomer.code ? ` · ${selectedCustomer.code}` : ""})</span>
-                  <button type="button" className="link-clear" onClick={()=>setSelectedCustomer(null)}>Seçimi temizle</button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span className="badge">Seçilen Müşteriler ({selectedCustomers.length}):</span>
+                    {selectedCustomers.map(c => (
+                      <span key={c.id} className="badge" style={{ background: '#f1f5f9', color: '#1e293b', border: '1px solid #cbd5e1', padding: '4px 8px' }}>
+                        <b>{c.title}</b> <span className="muted">({c.code || c.id})</span>
+                        <button type="button" onClick={() => toggleCustomer(c)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', marginLeft: '4px', color: '#ef4444' }}>×</button>
+                      </span>
+                    ))}
+                    <button type="button" className="link-clear" onClick={() => setSelectedCustomers([])}>Tümünü temizle</button>
+                  </div>
                 </>
-              ) : scopeType === "STORE" && selectedStore ? (
+              ) : scopeType === "STORE" && selectedStores.length > 0 ? (
                 <>
-                  <span className="badge">Seçilen Mağaza:</span>
-                  <b>{selectedStore.name}</b>
-                  <span className="muted"> (#{selectedStore.id}{selectedStore.code ? ` · ${selectedStore.code}` : ""})</span>
-                  <button type="button" className="link-clear" onClick={()=>setSelectedStore(null)}>Seçimi temizle</button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span className="badge">Seçilen Mağazalar ({selectedStores.length}):</span>
+                    {selectedStores.map(s => (
+                      <span key={s.id} className="badge" style={{ background: '#f1f5f9', color: '#1e293b', border: '1px solid #cbd5e1', padding: '4px 8px' }}>
+                        <b>{s.name}</b> <span className="muted">({s.code || s.id})</span>
+                        <button type="button" onClick={() => toggleStore(s)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', marginLeft: '4px', color: '#ef4444' }}>×</button>
+                      </span>
+                    ))}
+                    <button type="button" className="link-clear" onClick={() => setSelectedStores([])}>Tümünü temizle</button>
+                  </div>
                 </>
               ) : (
-                <span className="muted">Bir {scopeType === "CUSTOMER" ? "müşteri" : "mağaza"} seçin.</span>
+                <span className="muted">En az bir {scopeType === "CUSTOMER" ? "müşteri" : "mağaza"} seçin.</span>
               )}
             </div>
 
             <div className="full btn-row">
               <button
                 className="btn primary"
-                disabled={saving || (scopeType==="CUSTOMER" && !selectedCustomer) || (scopeType==="STORE" && !selectedStore)}
+                disabled={saving || (scopeType === "CUSTOMER" && selectedCustomers.length === 0) || (scopeType === "STORE" && selectedStores.length === 0)}
               >
                 {saving ? "Kaydediliyor..." : "Erişim Ver"}
               </button>
@@ -385,13 +387,13 @@ export default function AccessNew() {
 
           {scopeType === "CUSTOMER" ? (
             <CustomerPicker
-              onSelect={(c)=>setSelectedCustomer(c)}
-              selectedId={selectedCustomer?.id || null}
+              onToggle={toggleCustomer}
+              selectedIds={selectedCustomers.map(x => x.id)}
             />
           ) : (
             <StorePicker
-              onSelect={(s)=>setSelectedStore(s)}
-              selectedId={selectedStore?.id || null}
+              onToggle={toggleStore}
+              selectedIds={selectedStores.map(x => x.id)}
             />
           )}
         </section>

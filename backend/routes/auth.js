@@ -1,5 +1,6 @@
 ﻿// backend/routes/auth.js
 import { Router } from "express";
+import { auth } from "../middleware/auth.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
@@ -11,62 +12,6 @@ const router = Router();
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET;
 
-/* ---------------------------------------------------
- * REGISTER (sadece admin/employee eklemek için mevcut)
- * --------------------------------------------------- */
-router.post("/register", async (req, res) => {
-  try {
-    const { fullName, email, password, role, assignedTo } = req.body;
-
-    if (!fullName || !email || !password || !role)
-      return res.status(400).json({ error: "Eksik alanlar var." });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    let user;
-
-    if (role === "admin") {
-      user = await prisma.admin.create({
-        data: {
-          fullName,
-          email,
-          password: hashedPassword,
-          lastLoginAt: null,
-          lastSeenAt: null,
-          lastProfileAt: null,
-        },
-      });
-    } else if (role === "employee") {
-      user = await prisma.employee.create({
-        data: {
-          fullName,
-          email,
-          password: hashedPassword,
-          adminId: assignedTo || null,
-          lastLoginAt: null,
-          lastSeenAt: null,
-          lastProfileAt: null,
-        },
-      });
-    } else {
-      return res.status(400).json({ error: "Sadece admin veya employee eklenebilir." });
-    }
-
-    res.status(201).json({
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      role,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    });
-  } catch (err) {
-    console.error("Register hatası:", err);
-    if (err.code === "P2002")
-      return res.status(409).json({ error: "Bu email zaten kayıtlı." });
-
-    res.status(500).json({ error: "Sunucu hatası." });
-  }
-});
 
 /* ----------------
  * LOGIN (yeni sistem)
@@ -110,12 +55,20 @@ router.post("/login", async (req, res) => {
 
     // FE yönlendirmesi için (accessOwner → customer gibi davranır)
     const jwtRole = userType === "accessOwner" ? "customer" : userType;
-    const dbRole  = userType === "accessOwner" ? "accessOwner" : userType;
+    const dbRole = userType === "accessOwner" ? "accessOwner" : userType;
 
     // Access (15 dk)
-    const accessToken = jwt.sign({ id: user.id, role: jwtRole }, JWT_SECRET, { expiresIn: "15m" });
+    const accessToken = jwt.sign(
+      { id: user.id, role: jwtRole, hasAcceptedTerms: user.hasAcceptedTerms || false },
+      JWT_SECRET,
+      { expiresIn: "15m" }
+    );
     // Refresh (7 gün) — payload.role = jwtRole (customer)
-    const refreshToken = jwt.sign({ id: user.id, role: jwtRole }, JWT_SECRET, { expiresIn: "7d" });
+    const refreshToken = jwt.sign(
+      { id: user.id, role: jwtRole, hasAcceptedTerms: user.hasAcceptedTerms || false },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     // DB'ye kaydet (unique userId+role)
     await prisma.refreshToken.upsert({
@@ -148,6 +101,7 @@ router.post("/login", async (req, res) => {
       role: jwtRole,     // "customer" | "admin" | "employee"
       fullName,
       email: user.email,
+      hasAcceptedTerms: user.hasAcceptedTerms || false,
     });
   } catch (err) {
     console.error("Login hatası:", err);
@@ -167,14 +121,35 @@ router.post("/refresh", async (req, res) => {
     if (!stored) return res.status(403).json({ message: "Geçersiz refresh token" });
 
     jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
-      if (err) return res.status(403).json({ message: "Token doğrulanamadı" });
+      if (err) {
+        // Geçersiz veya süresi dolmuşsa DB'den temizle
+        await prisma.refreshToken.delete({ where: { id: stored.id } });
+        return res.status(403).json({ message: "Token doğrulanamadı" });
+      }
 
+      // Yeni Access Token
       const newAccessToken = jwt.sign(
-        { id: decoded.id, role: decoded.role },
+        { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
         JWT_SECRET,
         { expiresIn: "15m" }
       );
 
+      // Refresh Token Rotation (RTR) - Güvenlik için her kullanımda RT yenilenir
+      const newRefreshToken = jwt.sign(
+        { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
+        JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      await prisma.refreshToken.update({
+        where: { id: stored.id },
+        data: {
+          token: newRefreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      res.cookie("refreshToken", newRefreshToken, cookieOpts);
       return res.json({ accessToken: newAccessToken });
     });
   } catch (err) {
@@ -201,6 +176,57 @@ router.post("/logout", async (req, res) => {
     return res.json({ message: "Çıkış yapıldı" });
   } catch (err) {
     console.error("Logout hatası:", err);
+    return res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
+/* -----------------
+ * KVKK CONSENT LOG
+ * ----------------- */
+router.post("/consent", auth, async (req, res) => {
+  try {
+    const { id, role } = req.user;
+    const { consentType } = req.body;
+
+    // Convert frontend role to db role
+    const dbRole = role === "customer" ? "accessOwner" : role;
+
+    if (dbRole === "admin") await prisma.admin.update({ where: { id }, data: { hasAcceptedTerms: true } });
+    else if (dbRole === "employee") await prisma.employee.update({ where: { id }, data: { hasAcceptedTerms: true } });
+    else if (dbRole === "accessOwner") await prisma.accessOwner.update({ where: { id }, data: { hasAcceptedTerms: true } });
+
+    await prisma.consentLog.create({
+      data: {
+        userId: id,
+        userRole: dbRole,
+        consentType: consentType || "COMBINED_TOS_PRIVACY",
+        ipAddress: req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress,
+        userAgent: req.headers["user-agent"],
+      },
+    });
+
+    const newAccessToken = jwt.sign(
+      { id, role, hasAcceptedTerms: true },
+      JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    const newRefreshToken = jwt.sign(
+      { id, role, hasAcceptedTerms: true },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    await prisma.refreshToken.updateMany({
+      where: { userId: id, role: dbRole },
+      data: { token: newRefreshToken, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+    });
+
+    res.cookie("refreshToken", newRefreshToken, cookieOpts);
+
+    return res.json({ message: "Consent recorded successfully", accessToken: newAccessToken });
+  } catch (err) {
+    console.error("Consent error:", err);
     return res.status(500).json({ error: "Sunucu hatası" });
   }
 });

@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SignatureCanvas from 'react-signature-canvas';
+import api from '../api/axios';
 import '../styles/SignatureModal.scss';
 
 /**
@@ -61,11 +62,17 @@ export default function SignatureModal({
     if (!empty) setStrokeCount((c) => c + 1);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!sigPad.current || sigPad.current.isEmpty()) {
       alert("Lütfen imzalamadan geçmeyiniz.");
       return;
     }
+
+    try {
+      // Biyometrik imza iznini arka planda logla (hata verse bile imzayı engelleme)
+      await api.post("/auth/consent", { consentType: "BIOMETRIC_SIGNATURE" });
+    } catch (e) { console.warn("KVKK consent loglanamadı:", e); }
+
     try {
       const canvas = sigPad.current.getCanvas();
       onConfirm(canvas.toDataURL('image/png'));

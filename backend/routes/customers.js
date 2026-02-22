@@ -13,6 +13,7 @@ const prisma = new PrismaClient();
 router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     const customers = await prisma.customer.findMany({
+      where: { code: { not: "FREE" } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
