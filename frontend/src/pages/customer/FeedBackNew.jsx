@@ -1,5 +1,6 @@
 // src/pages/customer/FeedbackNew.jsx
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -7,15 +8,18 @@ import "./Feedback.scss";
 import FeedbackList from "./FeedbackList.jsx";
 
 export default function FeedbackNew() {
+  const location = useLocation();
+  const { initialStoreId, initialTitle } = location.state || {};
+
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const [tab, setTab] = useState("complaint"); // complaint | suggestion
   const [stores, setStores] = useState([]);
 
   // Complaint form
   const [cType, setCType] = useState("PERSONEL");
-  const [cStoreId, setCStoreId] = useState("");
+  const [cStoreId, setCStoreId] = useState(initialStoreId ? String(initialStoreId) : "");
   const [cEmployeeName, setCEmployeeName] = useState("");
-  const [cTitle, setCTitle] = useState("");
+  const [cTitle, setCTitle] = useState(initialTitle || "");
   const [cMessage, setCMessage] = useState("");
   const [cImage, setCImage] = useState(null);
 
@@ -41,10 +45,12 @@ export default function FeedbackNew() {
       .then(({ data }) => {
         const list = Array.isArray(data) ? data : [];
         setStores(list);
-        if (list[0]?.id) setCStoreId(String(list[0].id));
+        if (!initialStoreId && list[0]?.id) {
+          setCStoreId(String(list[0].id));
+        }
       })
-      .catch(() => {});
-  }, [role]);
+      .catch(() => { });
+  }, [role, initialStoreId]);
 
   // --- Drag & Drop helpers ---
   const acceptTypes = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
@@ -295,7 +301,7 @@ export default function FeedbackNew() {
           </div>
         )}
 
-        <FeedbackList/>
+        <FeedbackList />
       </div>
     </Layout>
   );

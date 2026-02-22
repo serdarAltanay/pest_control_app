@@ -34,9 +34,7 @@ const minutesOf = (hhmm) => {
 };
 const sameDay = (a, b) => a?.toDateString?.() === b?.toDateString?.();
 
-/* ───────── role ───────── */
-const role = (localStorage.getItem("role") || "").toLowerCase();
-const isCustomer = role === "customer";
+// role constants moved inside component for reactivity
 
 /* ───────── API ───────── */
 async function fetchEventById(id) {
@@ -99,6 +97,9 @@ export default function VisitDetail() {
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
   }, [idParam]);
+
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  const isCustomer = role === "customer";
 
   const [event, setEvent] = useState(null);
   const [store, setStore] = useState(null);
@@ -250,7 +251,24 @@ export default function VisitDetail() {
             {event.notes && <div className="kv"><div className="k">Notlar</div><div className="v">{event.notes}</div></div>}
             <div className="kv">
               <div className="k">Durum</div>
-              <div className="v"><span className={`badge ${statusClass(event.status)}`}>{statusLabel(event.status)}</span></div>
+              <div className="v">
+                <span className={`badge ${statusClass(event.status)}`}>{statusLabel(event.status)}</span>
+                {isCustomer && (event?.status === "PLANNED" || event?.status === "COMPLETED") && (
+                  <div style={{ marginTop: "8px" }}>
+                    <Link
+                      to="/customer/feedback/new"
+                      state={{
+                        initialStoreId: store?.id,
+                        initialTitle: `${store?.name || ""} mağazama yapılan ${fmtDate(event.start)} tarihli ve ${fmtTime(event.start)} saatli ziyarete dair şikayetimdir`
+                      }}
+                      className="btn ghost xsmall"
+                      style={{ fontSize: "0.75rem", padding: "3px 8px" }}
+                    >
+                      Şikayette Bulun
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Admin/Employee durumu değiştirebilir — müşteri asla görmez */}
@@ -266,7 +284,9 @@ export default function VisitDetail() {
                           name="visit-status"
                           value={s}
                           checked={event.status === s}
+                          disabled={isCustomer} // Ekstra önlem
                           onChange={async () => {
+                            if (isCustomer) return; // Ekstra önlem
                             const ok = await updateStatus(event.id, s);
                             if (ok) {
                               setEvent(prev => ({ ...prev, status: s }));

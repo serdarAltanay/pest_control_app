@@ -24,7 +24,7 @@
     overflow: hidden;
     animation: vsm-in 0.3s ease-out;
 
-    &__header {
+    .vsm-header {
         background: #f8fafc;
         padding: 20px 24px;
         border-bottom: 1px solid #e2e8f0;
@@ -43,7 +43,7 @@
         }
     }
 
-    &__content {
+    .vsm-content {
         padding: 24px;
 
         .status-grid {
@@ -131,7 +131,7 @@
         }
     }
 
-    &__footer {
+    .vsm-footer {
         padding: 16px 24px;
         background: #f8fafc;
         border-top: 1px solid #e2e8f0;

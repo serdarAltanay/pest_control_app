@@ -98,7 +98,7 @@ export default function SerbestEk1() {
     date: todayStr(), startTime: "", endTime: "",
     visitType: "TEK_SEFERLIK", targetPests: [], notes: "",
   });
-  const [selectedEmpIds, setSelectedEmpIds] = useState([]);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [lines, setLines] = useState([]);
   const [ncrs, setNcrs] = useState([]);
   const [lineForm, setLineForm] = useState({ biosidalId: "", method: "PULVERIZE", amount: "" });
@@ -119,11 +119,6 @@ export default function SerbestEk1() {
       }
     })();
   }, []);
-
-  const selectedEmpNames = useMemo(
-    () => selectedEmpIds.map((id) => empOptions.find((e) => e.id === id)?.label).filter(Boolean),
-    [selectedEmpIds, empOptions]
-  );
 
   const onChange = (setter) => (e) =>
     setter((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -189,7 +184,7 @@ export default function SerbestEk1() {
         visitType: vForm.visitType,
         targetPests: vForm.targetPests,
         notes: vForm.notes,
-        employees: selectedEmpNames,
+        employees: selectedEmployees,
         lines: lines.map((l) => ({ biosidalId: l.biosidalId, method: l.method, amount: l.amount })),
         ncrs: ncrs.map((n) => ({ title: n.title, notes: n.notes, observedAt: n.observedAt })),
       };
@@ -293,7 +288,18 @@ export default function SerbestEk1() {
           </div>
           <div className="group">
             <label>Uygulayıcı Personel</label>
-            <MultiSelectDropdown options={empOptions} value={selectedEmpIds} onChange={setSelectedEmpIds} placeholder="Personel seçiniz…" />
+            <MultiSelectDropdown
+              options={empOptions}
+              value={selectedEmployees.map(e => e.id)}
+              onChange={(ids) => {
+                const emps = ids.map(id => {
+                  const opt = empOptions.find(o => o.id === id);
+                  return { id: opt.id, fullName: opt.label };
+                });
+                setSelectedEmployees(emps);
+              }}
+              placeholder="Personel seçiniz…"
+            />
           </div>
           <div className="group">
             <label>Hedef Zararlılar</label>

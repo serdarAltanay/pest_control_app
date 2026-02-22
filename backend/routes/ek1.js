@@ -321,12 +321,14 @@ async function hSubmit(req, res) {
         include: { store: true }
       });
       const sName = v?.store?.name || `Ziyaret #${visitId}`;
+      const storeId = v?.storeId || 0;
+
       await prisma.notification.create({
         data: {
           type: "EK1_SUBMITTED",
           title: "Tamamlanmış EK-1 Geldi",
           body: `${sName} için yeni bir EK-1 formu iletildi.`,
-          link: `/ek1/${visitId}`,
+          link: `/admin/stores/${storeId}/visits/${visitId}/preview`,
           recipientRole: "ADMIN"
         }
       });
@@ -558,7 +560,7 @@ async function hCreateFreeEk1(req, res) {
           type: "EK1_SUBMITTED",
           title: "Tamamlanmış EK-1 Geldi (Serbest)",
           body: `${storeName} için serbest EK-1 formu oluşturuldu.`,
-          link: `/ek1/${visit.id}`,
+          link: `/admin/stores/${freeStore.id}/visits/${visit.id}/preview`,
           recipientRole: "ADMIN"
         }
       });

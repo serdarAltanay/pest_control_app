@@ -212,28 +212,34 @@ export default function Ek1Preview() {
     const opts = [];
     const seen = new Set();
 
-    // Current user
-    if (selfName && !seen.has(selfName)) {
-      opts.push(selfName);
-      seen.add(selfName);
-    }
-
-    // Visit's assigned employees
+    // Visit's assigned employees (PRIMARY)
     const visitEmps = visit?.employees;
     if (Array.isArray(visitEmps)) {
       visitEmps.forEach((e) => {
         const name = typeof e === "string" ? e : e?.fullName || e?.name || "";
-        if (name && !seen.has(name)) { opts.push(name); seen.add(name); }
+        if (name && !seen.has(name)) {
+          opts.push(name);
+          seen.add(name);
+        }
       });
     } else if (typeof visitEmps === "string" && visitEmps && !seen.has(visitEmps)) {
       opts.push(visitEmps);
       seen.add(visitEmps);
     }
 
+    // Current user
+    if (selfName && !seen.has(selfName)) {
+      opts.push(selfName);
+      seen.add(selfName);
+    }
+
     // All employees from API
     employeeList.forEach((e) => {
       const name = e.fullName || e.name || "";
-      if (name && !seen.has(name)) { opts.push(name); seen.add(name); }
+      if (name && !seen.has(name)) {
+        opts.push(name);
+        seen.add(name);
+      }
     });
 
     return opts;
@@ -244,7 +250,7 @@ export default function Ek1Preview() {
     if (providerOptions.length > 0 && !providerSignerName) {
       setProviderSignerName(providerOptions[0]);
     }
-  }, [providerOptions]);
+  }, [providerOptions, providerSignerName]);
 
   useEffect(() => {
     if (!customerSignerName) {
