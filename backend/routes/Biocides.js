@@ -5,16 +5,15 @@ import { auth, roleCheck } from "../middleware/auth.js";
 const prisma = new PrismaClient();
 const router = Router();
 
-const UNIT_VALUES = ["ML","GR","LT","KG","ADET"];
+const UNIT_VALUES = ["ML", "GR", "LT", "KG", "ADET"];
 const toId = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
 /* Listeleme:
-   - Admin + Employee erişebilir.
-   - Eğer müşterinin de görmesi istenirse roleCheck içine "customer" ekleyebilirsin. */
-router.get("/", auth, roleCheck(["admin","employee"]), async (_req,res) => {
+   - Admin + Employee + Customer erişebilir. */
+router.get("/", auth, roleCheck(["admin", "employee", "customer"]), async (_req, res) => {
   try {
     const rows = await prisma.biocide.findMany({ orderBy: { name: "asc" } });
     res.json(rows);
@@ -26,7 +25,7 @@ router.get("/", auth, roleCheck(["admin","employee"]), async (_req,res) => {
 
 /* Ekleme:
    - Admin + Employee */
-router.post("/", auth, roleCheck(["admin","employee"]), async (req,res) => {
+router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     let { name, activeIngredient, antidote, unit } = req.body || {};
     name = String(name || "").trim();
@@ -35,7 +34,7 @@ router.post("/", auth, roleCheck(["admin","employee"]), async (req,res) => {
     unit = String(unit || "").trim().toUpperCase();
 
     if (!name || !activeIngredient || !antidote || !unit) {
-      return res.status(400).json({ message: "name, activeIngredient, antidote, unit zorunludur."});
+      return res.status(400).json({ message: "name, activeIngredient, antidote, unit zorunludur." });
     }
     if (!UNIT_VALUES.includes(unit)) return res.status(400).json({ message: "Geçersiz unit" });
 
@@ -54,7 +53,7 @@ router.post("/", auth, roleCheck(["admin","employee"]), async (req,res) => {
 
 /* Güncelleme:
    - Admin + Employee */
-router.put("/:id", auth, roleCheck(["admin","employee"]), async (req,res) => {
+router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     const id = toId(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
@@ -81,7 +80,7 @@ router.put("/:id", auth, roleCheck(["admin","employee"]), async (req,res) => {
 
 /* Silme:
    - Admin + Employee */
-router.delete("/:id", auth, roleCheck(["admin","employee"]), async (req,res) => {
+router.delete("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
     const id = toId(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });

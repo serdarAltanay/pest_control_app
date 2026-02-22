@@ -335,7 +335,13 @@
   /* ─── Yazdırma ─── */
   @media print {
     padding: 0;
-    background: var(--surface);
+    margin: 0;
+    min-height: auto;
+    background: transparent;
+
+    @page {
+      margin: 0;
+    }
 
     .no-print {
       display: none !important;
@@ -345,12 +351,114 @@
       margin: 0;
       box-shadow: none;
       width: 100%;
-      padding: 10mm 12mm;
+      max-width: 100%;
+      min-height: auto;
+      padding: 5mm;
+      border: none;
+      page-break-after: avoid;
+      page-break-inside: avoid;
     }
 
     * {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+  }
+}
+
+/*  Mobile Responsive  */
+@media (max-width: 767px) {
+  .ek1-print {
+    padding-bottom: 40px;
+
+    .toolbar {
+      padding: 8px 10px;
+      gap: 6px;
+
+      .btn {
+        height: 30px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      .btn-group {
+        gap: 3px;
+        width: 100%;
+      }
+
+      .btn-group>* {
+        flex: 1;
+        min-width: 0;
+      }
+
+      select.btn {
+        padding-right: 22px;
+      }
+
+      .status-pill {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+      }
+    }
+
+    .page.A4 {
+      width: 100%;
+      min-height: auto;
+      margin: 8px;
+      padding: 10px 12px;
+      font-size: 10.5px;
+      border-radius: 8px;
+
+      .doc-head {
+        grid-template-columns: 40px 1fr 40px;
+        gap: 6px;
+      }
+
+      .doc-head__logo {
+        width: 38px;
+        height: 38px;
+      }
+
+      .doc-head__title {
+        font-size: 12px;
+      }
+
+      .doc-head__sup {
+        font-size: 8px;
+      }
+
+      .doc-head__meta {
+        font-size: 8px;
+      }
+
+      table th,
+      table td {
+        padding: 3px 4px;
+        font-size: 9.5px;
+      }
+
+      .sig-box__area {
+        min-height: 50px;
+      }
+
+      .sig-box__img {
+        max-height: 50px;
+      }
+
+      .note {
+        font-size: 8.5px;
+        padding: 4px 6px;
+      }
+    }
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ek1-print .page.A4 {
+    width: 100%;
+    max-width: 210mm;
+    margin: 12px auto;
+    padding: 10mm 12mm;
   }
 }

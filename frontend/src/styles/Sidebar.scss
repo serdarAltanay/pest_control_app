@@ -8,7 +8,7 @@
   top: 60px;
   left: 0;
   bottom: 0;
-  z-index: 15;
+  z-index: 1050;
 
   display: flex; // menü + toggle hizalaması
   flex-direction: column;
@@ -155,6 +155,56 @@
 
     &::-webkit-scrollbar-thumb:hover {
       background: var(--active-bg);
+    }
+  }
+
+  /* ─── MOBILE ─── */
+  @include mobile {
+    position: fixed;
+    top: $navbar-height;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    z-index: 1100;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.mobile-open {
+      transform: translateX(0);
+    }
+
+    &.closed {
+      width: 260px; // mobilde her zaman tam genişlik
+      transform: translateX(-100%);
+
+      &.mobile-open {
+        transform: translateX(0);
+      }
+
+      .section-title {
+        display: block; // mobilde açıkken başlıklar görünür
+      }
+    }
+  }
+}
+
+/* Mobil sidebar backdrop */
+.sidebar-backdrop {
+  display: none;
+
+  @include mobile {
+    display: block;
+    position: fixed;
+    inset: $navbar-height 0 0 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1099;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+
+    &.visible {
+      opacity: 1;
+      pointer-events: auto;
     }
   }
 }

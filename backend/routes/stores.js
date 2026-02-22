@@ -149,7 +149,7 @@ router.get("/mine", auth, async (req, res) => {
     if (!storeIds.length) return res.json([]);
 
     const stores = await prisma.store.findMany({
-      where: { id: { in: storeIds } },
+      where: { id: { in: storeIds }, code: { not: "FREE" } },
       select: {
         id: true,
         name: true,
@@ -185,7 +185,7 @@ router.get("/", auth, async (req, res, next) => {
 
     // Ekran için gerekli minimum data
     const stores = await prisma.store.findMany({
-      where: { id: { in: storeIds } },
+      where: { id: { in: storeIds }, code: { not: "FREE" } },
       select: {
         id: true,
         name: true,
@@ -216,6 +216,7 @@ router.get(
 
       if (!q) {
         const latest = await prisma.store.findMany({
+          where: { code: { not: "FREE" } },
           orderBy: { createdAt: "desc" },
           take: 20,
           select: {
@@ -233,7 +234,7 @@ router.get(
       }
 
       const list = await prisma.store.findMany({
-        where: { OR: [{ name: { contains: q } }, { code: { contains: q } }] },
+        where: { AND: [{ OR: [{ name: { contains: q } }, { code: { contains: q } }] }, { code: { not: "FREE" } }] },
         orderBy: { name: "asc" },
         take: 30,
         select: {
@@ -267,7 +268,7 @@ router.get(
       if (!customerId) return res.status(400).json({ message: "Geçersiz müşteri" });
 
       const list = await prisma.store.findMany({
-        where: { customerId },
+        where: { customerId, code: { not: "FREE" } },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -301,6 +302,7 @@ router.get(
   async (_req, res) => {
     try {
       const list = await prisma.store.findMany({
+        where: { code: { not: "FREE" } },
         select: { id: true, name: true, code: true, latitude: true, longitude: true },
         orderBy: { id: "asc" },
       });
@@ -341,7 +343,6 @@ router.get("/:id", auth, async (req, res) => {
       where: { id },
       include: {
         customer: { select: { id: true, title: true } },
-        manager: { select: { id: true, fullName: true, title: true } },
         _count: {
           select: {
             Visit: true,

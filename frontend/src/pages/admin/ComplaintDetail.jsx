@@ -1,19 +1,20 @@
 // src/pages/admin/ComplaintDetail.jsx
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import "./ComplaintAdmin.scss";
 
 export default function ComplaintDetailAdmin() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [item, setItem] = useState(null);
 
   useEffect(() => {
     api
       .get(`/feedback/admin/complaints/${id}`)
       .then(({ data }) => setItem(data))
-      .catch(() => {});
+      .catch(() => { });
   }, [id]);
 
   if (!item)
@@ -34,6 +35,11 @@ export default function ComplaintDetailAdmin() {
   return (
     <Layout title="Şikayet Detayı">
       <div className="complaints-admin">
+        <div style={{ marginBottom: "16px" }}>
+          <button className="btn ghost" onClick={() => navigate(-1)}>
+            &larr; Geri Dön
+          </button>
+        </div>
         <div className="detail card">
           <div className="row">
             <div className="k">Başlık</div>

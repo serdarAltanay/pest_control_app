@@ -2,37 +2,24 @@
 :root[data-theme="light"] {
   /* temel yüzeyler */
   --bg: #f5f7fb;
-  /* original sayfa zemini */
   --surface: #ffffff;
-  /* white */
   --card: #ffffff;
-  /* white */
   --card-alt: #f3f5f8;
-  /* original kart header */
   --row-odd: #fafbfc;
-  /* zebra-odd */
   --row-even: #ffffff;
-  /* white */
   --muted-surface: #eef2f6;
-  /* original muted */
 
   /* metin ve çizgiler */
   --text: #0f172a;
-  /* slate-900 */
   --text-muted: #475569;
-  /* slate-600 */
   --border: #e2e8f0;
-  /* slate-200 */
 
-  /* aksanlar (orijinal marka renkleri) */
+  /* aksanlar */
   --primary: #0077b6;
-  /* orijinal mavi */
   --primary-contrast: #ffffff;
   --secondary: #00b894;
-  /* orijinal yeşil */
   --secondary-contrast: #ffffff;
   --brand-dark: #2d3436;
-  /* orijinal koyu (footer vb.) */
 
   --accent: #00b894;
   --ring: rgba(0, 119, 182, .35);
@@ -47,44 +34,28 @@
 
 /* ========= DARK ========= */
 :root[data-theme="dark"] {
-  /* temel yüzeyler */
   --bg: #0b1220;
-  /* orijinal lacivert siyaha yakın */
   --surface: #0f172a;
-  /* slate-900 */
   --card: #101828;
-  /* koyu kart */
   --card-alt: #0b1527;
-  /* kart header */
   --row-odd: #0e1a30;
-  /* zebra-odd */
   --row-even: #101828;
-  /* zebra-even */
   --muted-surface: #121b33;
-  /* slate-700 */
 
-  /* metin ve çizgiler */
   --text: #e6edf7;
-  /* slate-50 */
   --text-muted: #a8b3cf;
-  /* slate-400 */
   --border: rgba(255, 255, 255, 0.12);
 
-  /* aksanlar */
   --primary: #38bdf8;
-  /* dark mode okunaklı açık mavi */
   --primary-contrast: #0b1220;
   --secondary: #34d399;
-  /* dark mode okunaklı yeşil */
   --secondary-contrast: #0b1220;
   --brand-dark: #1e293b;
-  /* dark mode için footer arka planı */
 
   --accent: #2dd4bf;
   --ring: rgba(56, 189, 248, .45);
   --primary-rgb: 56, 189, 248;
 
-  /* interaktif */
   --hover-bg: rgba(255, 255, 255, 0.05);
   --active-bg: rgba(255, 255, 255, 0.10);
 
@@ -98,6 +69,7 @@ body,
   height: 100%;
   background: var(--bg);
   color: var(--text);
+  overflow-x: hidden;
 }
 
 * {
@@ -121,6 +93,7 @@ textarea {
   color: var(--text);
   border: 1px solid var(--border);
   outline: none;
+  max-width: 100%;
 }
 
 input:focus,
@@ -172,4 +145,88 @@ td {
 
 .surface {
   background: var(--surface);
+}
+
+/* ========= GLOBAL RESPONSIVE ========= */
+
+/* Tablo sarmalayıcısı — yatay kaydırma */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobil: tablo font küçültme + satır wrap */
+@media (max-width: 767px) {
+  table {
+    font-size: 13px;
+  }
+
+  th,
+  td {
+    padding: 8px 6px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  /* Toolbar/filtre responsive wrap */
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar .search {
+    min-width: 0;
+    width: 100%;
+    order: -1;
+  }
+
+  .toolbar .right-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  /* Pagination responsive */
+  .pagination {
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  /* Card padding küçültme */
+  .card,
+  .panel,
+  .sheet {
+    padding: 10px;
+  }
+
+  /* Action butonları wrap */
+  .actions {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Genel başlık küçültme */
+  h1 {
+    font-size: 20px;
+  }
+
+  h2 {
+    font-size: 17px;
+  }
+
+  h3 {
+    font-size: 15px;
+  }
+}
+
+/* Tablet: orta boy ayarlar */
+@media (min-width: 768px) and (max-width: 1023px) {
+  table {
+    font-size: 13px;
+  }
+
+  th,
+  td {
+    padding: 8px 10px;
+  }
 }

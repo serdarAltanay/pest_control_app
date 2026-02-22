@@ -1,16 +1,17 @@
 // src/pages/customer/ComplaintDetail.jsx
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import "./Feedback.scss";
 
 export default function ComplaintDetailCustomer() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [item, setItem] = useState(null);
 
   useEffect(() => {
-    api.get(`/feedback/${id}`).then(({ data }) => setItem(data)).catch(()=>{});
+    api.get(`/feedback/${id}`).then(({ data }) => setItem(data)).catch(() => { });
   }, [id]);
 
   if (!item) return (
@@ -22,6 +23,11 @@ export default function ComplaintDetailCustomer() {
   return (
     <Layout title="Şikayet Detayı">
       <div className="feedback-page">
+        <div style={{ marginBottom: "16px" }}>
+          <button className="btn ghost" onClick={() => navigate(-1)}>
+            &larr; Geri Dön
+          </button>
+        </div>
         <div className="card detail">
           <div className="row">
             <div className="k">Başlık</div><div className="v">{item.title}</div>

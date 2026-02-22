@@ -391,45 +391,19 @@ export default function Ek1List() {
               </div>
             )}
             <div className="c appr">
-              <Badge ok={!!r.customerSignedAt} />
+              <Badge ok={!!r.customerSignedAt} textOk="Müşteri Onayladı" textNo="Müşteri Onayı Bekleniyor" />
             </div>
             {!isCustomer && (
               <div className="c appr">
-                <Badge ok={!!r.providerSignedAt} textOk="İmzalandı" textNo="Bekliyor" />
+                <Badge ok={!!r.providerSignedAt} textOk="Şirket Onayladı" textNo="Şirket Onayı Bekleniyor" />
               </div>
             )}
             <div className="c actions">
-              <button className="btn ghost" onClick={() => onView(r)}>
-                Görüntüle
-              </button>
-              {isCustomer ? (
-                <button
-                  className="btn primary"
-                  onClick={() => startSign(r, "customer")}
-                  disabled={!r.visitId || !!r.customerSignedAt || sigBusy}
-                >
-                  İmzala
+              <div className="act-group top">
+                <button className="btn ghost" onClick={() => onView(r)}>
+                  Görüntüle
                 </button>
-              ) : (
-                <>
-                  {!r.providerSignedAt && (
-                    <button
-                      className="btn primary"
-                      onClick={() => startSign(r, "provider")}
-                      disabled={!r.visitId || sigBusy}
-                    >
-                      İmzala
-                    </button>
-                  )}
-                  {!r.customerSignedAt && (
-                    <button
-                      className="btn warn"
-                      onClick={() => startSign(r, "customer")}
-                      disabled={!r.visitId || sigBusy}
-                    >
-                      Müşteri Onayı
-                    </button>
-                  )}
+                {!isCustomer && (
                   <button
                     className="btn danger"
                     onClick={() => onDelete(r)}
@@ -437,8 +411,40 @@ export default function Ek1List() {
                   >
                     Sil
                   </button>
-                </>
-              )}
+                )}
+              </div>
+              <div className="act-group bottom">
+                {isCustomer ? (
+                  <button
+                    className="btn primary"
+                    onClick={() => startSign(r, "customer")}
+                    disabled={!r.visitId || !!r.customerSignedAt || sigBusy}
+                  >
+                    İmzala
+                  </button>
+                ) : (
+                  <>
+                    {!r.providerSignedAt && (
+                      <button
+                        className="btn primary"
+                        onClick={() => startSign(r, "provider")}
+                        disabled={!r.visitId || sigBusy}
+                      >
+                        İmzala
+                      </button>
+                    )}
+                    {!r.customerSignedAt && (
+                      <button
+                        className="btn warn"
+                        onClick={() => startSign(r, "customer")}
+                        disabled={!r.visitId || sigBusy}
+                      >
+                        Müşteri Onayı
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ))

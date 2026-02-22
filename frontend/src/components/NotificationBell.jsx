@@ -1,4 +1,3 @@
-// src/components/NotificationBell.jsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
@@ -17,9 +16,9 @@ const TYPE_TR = {
   COMPLAINT_NEW: "Şikâyet",
   COMPLAINT_SEEN: "Şikâyet (Görüldü)",
   SUGGESTION_NEW: "Öneri",
-  VISIT_NEW: "Ziyaret",
-  VISIT_UPDATED: "Ziyaret",
-  EK1_READY: "EK-1",
+  VISIT_PLANNED: "Ziyaret Planı",
+  VISIT_ASSIGNED: "Ziyaret Ataması",
+  EK1_SUBMITTED: "EK-1 Formu",
 };
 
 export default function NotificationBell() {
@@ -152,7 +151,9 @@ export default function NotificationBell() {
         aria-expanded={open ? "true" : "false"}
       >
         <span className="icon" aria-hidden>
-          🔔
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 00-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
+          </svg>
         </span>
         {!loading && count > 0 && <span className="badge">{count}</span>}
       </button>

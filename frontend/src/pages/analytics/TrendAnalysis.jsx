@@ -10,7 +10,7 @@ import "./TrendAnalysis.scss";
 
 // recharts yoksa uygulama patlamasın
 let Recharts = null;
-try { Recharts = require("recharts"); } catch {}
+try { Recharts = require("recharts"); } catch { }
 
 // İstasyon tipleri (UI labels)
 const TYPE_TR = {
@@ -22,7 +22,7 @@ const TYPE_TR = {
 };
 
 const MONTHS_TR = [
-  "Ocak","Şubat","Mart","Nisan","Mayıs","Haz.","Tem.","Ağu.","Eyl.","Eki.","Kas.","Ara."
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haz.", "Tem.", "Ağu.", "Eyl.", "Eki.", "Kas.", "Ara."
 ];
 
 const COLORS = {
@@ -59,9 +59,9 @@ function buildMonthRange(year, startM, endM) {
   const m1 = Math.max(m0, Math.min(12, endM));
   const out = [];
   for (let m = m0; m <= m1; m++) {
-    const label = MONTHS_TR[m-1];
-    const start = new Date(year, m-1, 1, 0, 0, 0, 0);
-    const end   = new Date(year, m,   1, 0, 0, 0, 0); // [start, end)
+    const label = MONTHS_TR[m - 1];
+    const start = new Date(year, m - 1, 1, 0, 0, 0, 0);
+    const end = new Date(year, m, 1, 0, 0, 0, 0); // [start, end)
     out.push({ y: year, m, label, start, end });
   }
   return out;
@@ -91,7 +91,7 @@ export default function TrendAnalysis() {
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
   const [startMonth, setStartMonth] = useState(1);
-  const [endMonth, setEndMonth] = useState(new Date().getMonth()+1);
+  const [endMonth, setEndMonth] = useState(new Date().getMonth() + 1);
   const [showPicker, setShowPicker] = useState(true);
 
   // Mağaza + istasyonlar + uygunsuzluklar (temel yükleme)
@@ -222,7 +222,7 @@ export default function TrendAnalysis() {
           const hit =
             a.aktiviteVar === true ||
             Number(a.hedefZararliSayisi) > 0 ||
-            (Number(a.karasinek||0) + Number(a.sivrisinek||0) + Number(a.diger||0) + Number(a.guve||0)) > 0;
+            (Number(a.karasinek || 0) + Number(a.sivrisinek || 0) + Number(a.diger || 0) + Number(a.guve || 0)) > 0;
           if (hit) byType[t][i].count += 1;
           break;
         }
@@ -257,7 +257,7 @@ export default function TrendAnalysis() {
       noncons.map(n => n.category).filter(Boolean)
     ));
     const merged = Array.from(new Set([...fromMaster, ...fromGlobal, ...fromData]));
-    return merged.sort((a,b) => a.localeCompare(b, "tr"));
+    return merged.sort((a, b) => a.localeCompare(b, "tr"));
   }, [noncons]);
 
   const ncrByCategory = useMemo(() => {
@@ -285,7 +285,7 @@ export default function TrendAnalysis() {
       <div className="report-meta">
         <div className="title">Trend Analiz Raporu</div>
         <div className="range">
-          {MONTHS_TR[startMonth-1]} – {MONTHS_TR[endMonth-1]} {year}
+          {MONTHS_TR[startMonth - 1]} – {MONTHS_TR[endMonth - 1]} {year}
         </div>
       </div>
       <div className="store-name">{store?.name || "Mağaza"}</div>
@@ -301,7 +301,7 @@ export default function TrendAnalysis() {
             <div className="ta-modal">
               <div className="ta-modal-head">
                 <h3>{store?.name ? `${store.name} için Trend Analizi` : "Trend Analizi"}</h3>
-                <button className="close" onClick={()=>navigate(-1)}>×</button>
+                <button className="close" onClick={() => navigate(-1)}>×</button>
               </div>
 
               <form className="ta-modal-body" onSubmit={handleCreate}>
@@ -312,26 +312,26 @@ export default function TrendAnalysis() {
                     value={year}
                     min="2000"
                     max="2100"
-                    onChange={(e)=>setYear(Number(e.target.value||thisYear))}
+                    onChange={(e) => setYear(Number(e.target.value || thisYear))}
                   />
                 </div>
 
                 <div className="form-row">
                   <label>Başlangıç Ayı</label>
-                  <select value={startMonth} onChange={(e)=>setStartMonth(Number(e.target.value))}>
-                    {MONTHS_TR.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
+                  <select value={startMonth} onChange={(e) => setStartMonth(Number(e.target.value))}>
+                    {MONTHS_TR.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                   </select>
                 </div>
 
                 <div className="form-row">
                   <label>Bitiş Ayı</label>
-                  <select value={endMonth} onChange={(e)=>setEndMonth(Number(e.target.value))}>
-                    {MONTHS_TR.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
+                  <select value={endMonth} onChange={(e) => setEndMonth(Number(e.target.value))}>
+                    {MONTHS_TR.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                   </select>
                 </div>
 
                 <div className="actions">
-                  <button type="button" className="btn ghost" onClick={()=>navigate(-1)}>Vazgeç</button>
+                  <button type="button" className="btn ghost" onClick={() => navigate(-1)}>Vazgeç</button>
                   <button type="submit" className="btn primary">Grafik Oluştur</button>
                 </div>
               </form>
@@ -359,19 +359,21 @@ export default function TrendAnalysis() {
                         <Recharts.ComposedChart data={series}>
                           <Recharts.CartesianGrid strokeDasharray="3 3" />
                           <Recharts.XAxis dataKey="label" />
-                          <Recharts.YAxis yAxisId="left"  domain={[0,100]} tickFormatter={(v)=>`${v}%`} />
+                          <Recharts.YAxis yAxisId="left" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                           <Recharts.YAxis yAxisId="right" orientation="right" />
                           <Recharts.Tooltip />
                           <Recharts.Legend />
                           <Recharts.Bar
+                            isAnimationActive={false}
                             yAxisId="right"
                             dataKey="count"
                             name="Aktivite Sayısı"
                             fill={color}
                             opacity={0.85}
-                            radius={[4,4,0,0]}
+                            radius={[4, 4, 0, 0]}
                           />
                           <Recharts.Line
+                            isAnimationActive={false}
                             yAxisId="left"
                             type="monotone"
                             dataKey="percent"
@@ -400,8 +402,8 @@ export default function TrendAnalysis() {
                       <Recharts.YAxis />
                       <Recharts.Tooltip />
                       <Recharts.Legend />
-                      <Recharts.Bar dataKey="reported" name="Bildirilen" fill={COLORS.ncrBarReported} radius={[4,4,0,0]} />
-                      <Recharts.Bar dataKey="resolved" name="Çözülen"   fill={COLORS.ncrBarResolved} radius={[4,4,0,0]} />
+                      <Recharts.Bar isAnimationActive={false} dataKey="reported" name="Bildirilen" fill={COLORS.ncrBarReported} radius={[4, 4, 0, 0]} />
+                      <Recharts.Bar isAnimationActive={false} dataKey="resolved" name="Çözülen" fill={COLORS.ncrBarResolved} radius={[4, 4, 0, 0]} />
                     </Recharts.BarChart>
                   </Recharts.ResponsiveContainer>
                 ) : (
@@ -420,8 +422,8 @@ export default function TrendAnalysis() {
                       <Recharts.YAxis />
                       <Recharts.Tooltip />
                       <Recharts.Legend />
-                      <Recharts.Bar dataKey="reported" name="Bildirilen" fill={COLORS.categoryA} radius={[6,6,0,0]} />
-                      <Recharts.Bar dataKey="resolved" name="Çözülen"   fill={COLORS.categoryB} radius={[6,6,0,0]} />
+                      <Recharts.Bar isAnimationActive={false} dataKey="reported" name="Bildirilen" fill={COLORS.categoryA} radius={[6, 6, 0, 0]} />
+                      <Recharts.Bar isAnimationActive={false} dataKey="resolved" name="Çözülen" fill={COLORS.categoryB} radius={[6, 6, 0, 0]} />
                     </Recharts.BarChart>
                   </Recharts.ResponsiveContainer>
                 ) : (
@@ -503,7 +505,7 @@ export default function TrendAnalysis() {
             {/* Alt aksiyonlar */}
             <div className="ta-bottom-actions print-hide">
               <button className="btn ghost" onClick={resetRange}>Tarih Aralığını Değiştir</button>
-              <button className="btn" onClick={()=>window.print()}>Yazdır</button>
+              <button className="btn" onClick={() => window.print()}>Yazdır</button>
               {/* ▼ Müşteri sayfasına geri dönüş */}
               <Link className="btn primary" to={`/customer/stores/${storeId}`}>Mağazaya Dön</Link>
             </div>

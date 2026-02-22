@@ -7,11 +7,11 @@ const prisma = new PrismaClient();
 const router = Router();
 
 /* ========== helpers ========== */
-const parseId  = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
+const parseId = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
 const parseISO = (v) => { try { const d = new Date(v); return isNaN(d.getTime()) ? null : d; } catch { return null; } };
 const isQuarter = (date) => date.getMinutes() % 15 === 0;
 
-const ALLOWED_STATUSES = ["PENDING","PLANNED","COMPLETED","FAILED","CANCELLED","POSTPONED"];
+const ALLOWED_STATUSES = ["PENDING", "PLANNED", "COMPLETED", "FAILED", "CANCELLED", "POSTPONED"];
 const asStatus = (val) => {
   const s = String(val || "").toUpperCase();
   return ALLOWED_STATUSES.includes(s) ? s : null;
@@ -137,13 +137,13 @@ router.get(
   async (req, res) => {
     try {
       const from = parseISO(req.query.from);
-      const to   = parseISO(req.query.to);
+      const to = parseISO(req.query.to);
       if (!from || !to) return res.status(400).json({ error: "from/to zorunludur (ISO tarih)" });
-      if (to <= from)  return res.status(400).json({ error: "to, from'dan büyük olmalı" });
+      if (to <= from) return res.status(400).json({ error: "to, from'dan büyük olmalı" });
 
       const employeeIdQ = req.query.employeeId ? parseId(req.query.employeeId) : null;
-      const storeIdQ    = req.query.storeId ? parseId(req.query.storeId) : null;
-      const scope       = String(req.query.scope || "").toLowerCase(); // "mine" (employee)
+      const storeIdQ = req.query.storeId ? parseId(req.query.storeId) : null;
+      const scope = String(req.query.scope || "").toLowerCase(); // "mine" (employee)
 
       const role = (req.user?.role || "").toLowerCase();
 
@@ -162,7 +162,7 @@ router.get(
       }
 
       if (employeeIdQ) whereAND.push({ employeeId: employeeIdQ });
-      if (storeIdQ)    whereAND.push({ storeId: storeIdQ });
+      if (storeIdQ) whereAND.push({ storeId: storeIdQ });
 
       const where = { AND: whereAND };
 
@@ -171,16 +171,18 @@ router.get(
         orderBy: { start: "asc" },
       });
 
-      const empIds   = Array.from(new Set(list.map(x => x.employeeId).filter(Boolean)));
+      const empIds = Array.from(new Set(list.map(x => x.employeeId).filter(Boolean)));
       const storeIds = Array.from(new Set(list.map(x => x.storeId).filter(Boolean)));
 
       let empMap = {};
+      let empAvatarMap = {};
       if (empIds.length) {
         const emps = await prisma.employee.findMany({
           where: { id: { in: empIds } },
-          select: { id: true, fullName: true, email: true },
+          select: { id: true, fullName: true, email: true, profileImage: true },
         });
         empMap = Object.fromEntries(emps.map(u => [u.id, u.fullName || u.email || `Personel #${u.id}`]));
+        empAvatarMap = Object.fromEntries(emps.map(u => [u.id, u.profileImage]));
       }
 
       let storeMap = {};
@@ -201,6 +203,7 @@ router.get(
         employeeId: ev.employeeId,
         storeId: ev.storeId,
         employeeName: empMap[ev.employeeId] || null,
+        employeeAvatar: empAvatarMap[ev.employeeId] || null,
         storeName: storeMap[ev.storeId] || null,
         status: ev.status,
         plannedById: ev.plannedById ?? null,
@@ -227,19 +230,19 @@ router.get(
 ========================================= */
 router.post(
   "/events",
-  auth, roleCheck(["admin","employee"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
-      const title      = String(req.body?.title || "").trim() || "Ziyaret";
-      const notes      = req.body?.notes ? String(req.body.notes) : null;
-      let   employeeId = Number(req.body?.employeeId) || null;
-      const storeId    = Number(req.body?.storeId) || null;
-      const start      = req.body?.start ? new Date(req.body.start) : null;
-      const end        = req.body?.end ? new Date(req.body.end) : null;
-      const status     = req.body?.status ? asStatus(req.body.status) : null;
+      const title = String(req.body?.title || "").trim() || "Ziyaret";
+      const notes = req.body?.notes ? String(req.body.notes) : null;
+      let employeeId = Number(req.body?.employeeId) || null;
+      const storeId = Number(req.body?.storeId) || null;
+      const start = req.body?.start ? new Date(req.body.start) : null;
+      const end = req.body?.end ? new Date(req.body.end) : null;
+      const status = req.body?.status ? asStatus(req.body.status) : null;
 
       const reqRole = (req.user?.role || "").toLowerCase();
-      const selfId  = Number(req.user?.id ?? req.user?.userId) || null;
+      const selfId = Number(req.user?.id ?? req.user?.userId) || null;
 
       // Employee → sadece kendi adına planlayabilir
       if (reqRole === "employee") {
@@ -251,7 +254,7 @@ router.post(
       }
 
       if (!employeeId) return res.status(400).json({ error: "employeeId zorunludur" });
-      if (!storeId)    return res.status(400).json({ error: "storeId zorunludur" });
+      if (!storeId) return res.status(400).json({ error: "storeId zorunludur" });
       if (!start || !end || isNaN(start) || isNaN(end))
         return res.status(400).json({ error: "start/end zorunludur (ISO)" });
       if (end <= start) return res.status(400).json({ error: "end, start'tan büyük olmalı" });
@@ -265,7 +268,7 @@ router.post(
       if (conflict) return res.status(409).json({ error: "Personelin aynı zamanda başka bir ziyareti var." });
 
       // planlayan bilgisi
-      const plannedById   = Number(req.user?.id ?? req.user?.userId) || null;
+      const plannedById = Number(req.user?.id ?? req.user?.userId) || null;
       const plannedByRole = req.user?.role ?? null;
       const plannedByName = await resolvePlannerName(prisma, plannedByRole, plannedById, req.user);
 
@@ -303,7 +306,7 @@ router.post(
               link: detailPath,
               recipientRole: "EMPLOYEE",
             },
-          }).catch(() => {});
+          }).catch(() => { });
 
           // 2) Atanan çalışana özel bildirim
           if (emp?.id) {
@@ -316,12 +319,12 @@ router.post(
                 recipientRole: "EMPLOYEE",
                 recipientId: emp.id,
               },
-            }).catch(() => {});
+            }).catch(() => { });
           }
 
           // 3) Atanan çalışana e-posta
           if (emp?.email) {
-            const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/,"");
+            const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
             await sendVisitPlannedToEmployee({
               to: emp.email,
               data: {
@@ -334,7 +337,7 @@ router.post(
                 end,
                 detailUrl: `${appUrl}${detailPath}`,
               },
-            }).catch(() => {});
+            }).catch(() => { });
           }
         } catch (err) {
           console.warn("VISIT notify/email error:", err?.message);
@@ -356,7 +359,7 @@ router.post(
 ========================================= */
 router.put(
   "/events/:id",
-  auth, roleCheck(["admin","employee"]),
+  auth, roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
       const id = parseId(req.params.id);
@@ -409,7 +412,7 @@ router.put(
       }
 
       const s = data.start ?? current.start;
-      const e = data.end   ?? current.end;
+      const e = data.end ?? current.end;
       if (e <= s) return res.status(400).json({ error: "end, start'tan büyük olmalı" });
 
       const eid = data.employeeId ?? current.employeeId;
@@ -452,12 +455,16 @@ router.get(
       }
 
       let employeeName = null;
+      let employeeAvatar = null;
       if (ev.employeeId) {
         const emp = await prisma.employee.findUnique({
           where: { id: ev.employeeId },
-          select: { id: true, fullName: true, email: true },
+          select: { id: true, fullName: true, email: true, profileImage: true },
         });
-        if (emp) employeeName = emp.fullName || emp.email || `Personel #${emp.id}`;
+        if (emp) {
+          employeeName = emp.fullName || emp.email || `Personel #${emp.id}`;
+          employeeAvatar = emp.profileImage || null;
+        }
       }
 
       let storeName = null;
@@ -470,7 +477,7 @@ router.get(
       const plannedByName =
         ev.plannedByName ??
         (ev.plannedByRole === "admin" && ev.plannedById ? `Admin #${ev.plannedById}` :
-         ev.plannedByRole === "employee" && ev.plannedById ? `Personel #${ev.plannedById}` : null);
+          ev.plannedByRole === "employee" && ev.plannedById ? `Personel #${ev.plannedById}` : null);
 
       res.json({
         id: ev.id,
@@ -481,6 +488,7 @@ router.get(
         employeeId: ev.employeeId,
         storeId: ev.storeId,
         employeeName,
+        employeeAvatar,
         storeName,
         store,
         status: ev.status,

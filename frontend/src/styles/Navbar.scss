@@ -326,16 +326,66 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--primary-contrast);
+  font-size: 22px;
+  padding: 8px;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--hover-bg);
+  }
+
+  @include mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@include mobile {
   .navbar {
     padding: 0 8px;
+    gap: 6px;
+  }
+
+  .navbar-left {
+    font-size: 14px;
+  }
+
+  .navbar-right {
+    gap: 6px;
+
+    .notif-bell {
+      height: 32px;
+      min-width: 32px;
+      padding: 0 8px;
+    }
   }
 
   .profile-dropdown .profile-trigger {
-    padding: 6px 8px;
+    padding: 4px 6px;
+    gap: 6px;
 
     .who {
       display: none;
     }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+    }
+  }
+}
+
+@include tablet {
+  .profile-dropdown .profile-trigger .who .role {
+    display: none;
   }
 }

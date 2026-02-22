@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import VisitStatusModal from "../../components/VisitStatusModal";
 import "./Ek1.scss";
 
 const PEST_OPTIONS = [
@@ -43,7 +44,10 @@ export default function Ek1Flow() {
 
   const [store, setStore] = useState(null);
   const [biocides, setBiocides] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]);
   const [savingAll, setSavingAll] = useState(false);
+  const [existingEvent, setExistingEvent] = useState(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
   /* Visit Form */
   const [formVisit, setFormVisit] = useState({
@@ -67,17 +71,68 @@ export default function Ek1Flow() {
   useEffect(() => {
     (async () => {
       try {
-        const [resS, resB] = await Promise.all([
+        const [resS, resB, resE] = await Promise.all([
           api.get(`/stores/${storeId}`),
           api.get("/biocides"),
+          api.get("/employees").catch(() => api.get("/admin/employees")),
         ]);
         setStore(resS.data);
         setBiocides(Array.isArray(resB.data) ? resB.data : []);
+        setAllEmployees(Array.isArray(resE.data) ? resE.data : []);
       } catch {
-        toast.error("Mağaza/biyosidal verisi yüklenemedi.");
+        toast.error("Mağaza/biyosidal/personel verisi yüklenemedi.");
       }
     })();
   }, [storeId]);
+
+  // Seçilen tarih ve mağaza için planlı bir ziyaret var mı kontrol et
+  useEffect(() => {
+    if (!storeId || !formVisit.date) return;
+    (async () => {
+      try {
+        const d = new Date(formVisit.date);
+        const from = new Date(d.setHours(0, 0, 0, 0)).toISOString();
+        const to = new Date(d.setHours(23, 59, 59, 999)).toISOString();
+
+        const resEv = await api.get("/schedule/events", {
+          params: { storeId: Number(storeId), from, to }
+        });
+        if (resEv.data?.length > 0) {
+          const ev = resEv.data[0];
+          setExistingEvent(ev);
+
+          // OTOMATIK DOLDURMA (Eğer alanlar boşsa)
+          setFormVisit(prev => {
+            const updates = {};
+
+            // Saatleri HH:mm formatına çevir
+            if (!prev.startTime && ev.start) {
+              const sd = new Date(ev.start);
+              updates.startTime = `${String(sd.getHours()).padStart(2, "0")}:${String(sd.getMinutes()).padStart(2, "0")}`;
+            }
+            if (!prev.endTime && ev.end) {
+              const ed = new Date(ev.end);
+              updates.endTime = `${String(ed.getHours()).padStart(2, "0")}:${String(ed.getMinutes()).padStart(2, "0")}`;
+            }
+
+            // Personeli ekle (Object formatında bekliyor olabilir)
+            if (prev.employees.length === 0 && ev.employee) {
+              updates.employees = [ev.employee];
+            }
+
+            if (Object.keys(updates).length > 0) {
+              return { ...prev, ...updates };
+            }
+            return prev;
+          });
+        } else {
+          setExistingEvent(null);
+        }
+      } catch (err) {
+        console.warn("Event check error", err);
+      }
+    })();
+  }, [storeId, formVisit.date]);
 
   const onVisitChange = (e) =>
     setFormVisit((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -119,7 +174,28 @@ export default function Ek1Flow() {
   /* Validasyon → Direkt Kaydet */
   const handleStartSaveFlow = () => {
     if (!formVisit.date) return toast.error("Ziyaret tarihi zorunludur.");
-    onFinalConfirm();
+
+    // Eğer bugün/o tarih için planlı bir ziyaret varsa modalı aç
+    if (existingEvent) {
+      setIsStatusModalOpen(true);
+    } else {
+      onFinalConfirm();
+    }
+  };
+
+  /* Modal Onayı */
+  const handleStatusConfirm = async (newStatus) => {
+    try {
+      setSavingAll(true);
+      if (existingEvent?.id) {
+        await api.put(`/schedule/events/${existingEvent.id}`, { status: newStatus });
+      }
+      setIsStatusModalOpen(false);
+      await onFinalConfirm();
+    } catch {
+      setSavingAll(false);
+      toast.error("Ziyaret durumu güncellenemedi.");
+    }
   };
 
   /* Kaydet → Preview'a Yönlendir */
@@ -148,6 +224,9 @@ export default function Ek1Flow() {
           return api.post(`/nonconformities/store/${storeId}`, fd);
         }),
       ]);
+
+      /* 3) Bildirim Tetikle (Onaya Gönder) */
+      await api.post(`/ek1/visit/${visitId}/submit`);
 
       toast.success("Ziyaret kaydedildi. Önizleme açılıyor…");
       navigate(`/admin/stores/${storeId}/visits/${visitId}/preview`);
@@ -193,6 +272,22 @@ export default function Ek1Flow() {
               <select name="endTime" value={formVisit.endTime} onChange={onVisitChange}>
                 <option value="">Seçiniz</option>
                 {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Uygulayıcı Personel</label>
+              <select
+                name="employees"
+                value={formVisit.employees?.[0]?.id || ""}
+                onChange={(e) => {
+                  const emp = allEmployees.find(x => String(x.id) === e.target.value);
+                  setFormVisit(p => ({ ...p, employees: emp ? [emp] : [] }));
+                }}
+              >
+                <option value="">Seçiniz</option>
+                {allEmployees.map((e) => (
+                  <option key={e.id} value={e.id}>{e.fullName || e.name || e.email}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -325,6 +420,14 @@ export default function Ek1Flow() {
             Kayıt sonrası önizlemede müşteri/personel imzası alınabilir.
           </div>
         </div>
+
+        <VisitStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={() => setIsStatusModalOpen(false)}
+          onConfirm={handleStatusConfirm}
+          initialStatus={existingEvent?.status}
+          visitTitle={existingEvent?.title || "Ziyaret"}
+        />
       </div>
     </Layout>
   );

@@ -39,6 +39,8 @@ import StoreReports from "./pages/reports/StoreReports.jsx";
 import TrendAnalysis from "./pages/analytics/TrendAnalysis.jsx";
 import ReportDetail from "./pages/reports/ReportDetail.jsx";
 
+import CompanyCertificates from "./pages/shared/CompanyCertificates.jsx";
+
 import VisitCalendar from "./pages/calendar/VisitCalendar.jsx";
 import VisitDetail from "./pages/calendar/VisitDetail.jsx";
 import CustomerAgenda from "./pages/customer/CustomerAgenda.jsx";
@@ -88,7 +90,7 @@ function App() {
             <Route
               path="/notifications"
               element={
-                <PrivateRoute allowedRoles={['admin','employee','customer']}>
+                <PrivateRoute allowedRoles={['admin', 'employee', 'customer']}>
                   <NotificationsPage />
                 </PrivateRoute>
               }
@@ -127,7 +129,7 @@ function App() {
             <Route
               path="/admin/customers/new"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
                   <AddCustomer />
                 </PrivateRoute>
               }
@@ -137,7 +139,7 @@ function App() {
             <Route
               path="/work"
               element={
-                <PrivateRoute allowedRoles={['employee','admin']}>
+                <PrivateRoute allowedRoles={['employee', 'admin']}>
                   <WorkDashboard />
                 </PrivateRoute>
               }
@@ -146,7 +148,7 @@ function App() {
               path="/customers"
               element={
                 <PrivateRoute allowedRoles={["employee", "admin"]}>
-                  <CustomerManagementPage/>
+                  <CustomerManagementPage />
                 </PrivateRoute>
               }
             />
@@ -155,7 +157,7 @@ function App() {
             <Route
               path="/admin/customers"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
                   <CustomerList />
                 </PrivateRoute>
               }
@@ -190,7 +192,7 @@ function App() {
               path="/admin/stores"
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
-                  <StoreList  />
+                  <StoreList />
                 </PrivateRoute>
               }
             />
@@ -198,7 +200,7 @@ function App() {
               path="/admin/stores/:storeId/edit"
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
-                  <StoreEdit  />
+                  <StoreEdit />
                 </PrivateRoute>
               }
             />
@@ -206,7 +208,7 @@ function App() {
               path="/admin/stores/:storeId"
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
-                  <StoreDetail  />
+                  <StoreDetail />
                 </PrivateRoute>
               }
             />
@@ -214,7 +216,7 @@ function App() {
               path="/admin/stores/:storeId/stations"
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
-                  <StoreStations  />
+                  <StoreStations />
                 </PrivateRoute>
               }
             />
@@ -230,7 +232,7 @@ function App() {
               path="/admin/biocides"
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
-                  <Biocides/>
+                  <Biocides />
                 </PrivateRoute>
               }
             />
@@ -253,7 +255,7 @@ function App() {
             <Route
               path="/ek1/visit/:visitId"
               element={
-                <PrivateRoute allowedRoles={['admin','employee','customer']}>
+                <PrivateRoute allowedRoles={['admin', 'employee', 'customer']}>
                   <Ek1Preview />
                 </PrivateRoute>
               }
@@ -262,7 +264,7 @@ function App() {
               path="/admin/stores/:storeId/visits/:visitId/preview"
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
-                  <Ek1Preview  />
+                  <Ek1Preview />
                 </PrivateRoute>
               }
             />
@@ -270,7 +272,7 @@ function App() {
               path="/ek1/serbest"
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
-                  <SerbestEk1  />
+                  <SerbestEk1 />
                 </PrivateRoute>
               }
             />
@@ -389,7 +391,7 @@ function App() {
             <Route
               path="/admin/stores/:storeId/nonconformities/:ncrId"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
                   <NonconformityDetail />
                 </PrivateRoute>
               }
@@ -423,8 +425,16 @@ function App() {
             <Route
               path="/customer/reports"
               element={
-                <PrivateRoute allowedRoles={['customer','admin','employee']}>
+                <PrivateRoute allowedRoles={['customer', 'admin', 'employee']}>
                   <CustomerReports />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/certificates"
+              element={
+                <PrivateRoute allowedRoles={['customer', 'admin', 'employee']}>
+                  <CompanyCertificates />
                 </PrivateRoute>
               }
             />
@@ -432,7 +442,7 @@ function App() {
             <Route
               path="/customer/reports/:storeId/:reportId"
               element={
-                <PrivateRoute allowedRoles={['customer','admin','employee']}>
+                <PrivateRoute allowedRoles={['customer', 'admin', 'employee']}>
                   <ReportDetail />
                 </PrivateRoute>
               }
@@ -440,7 +450,7 @@ function App() {
             <Route
               path="/admin/stores/:storeId/reports/:reportId"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
                   <ReportDetail />
                 </PrivateRoute>
               }
@@ -450,7 +460,7 @@ function App() {
             <Route
               path="/calendar"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
                   <VisitCalendar />
                 </PrivateRoute>
               }
@@ -458,7 +468,7 @@ function App() {
             <Route
               path="/calendar/visit/:id"
               element={
-                <PrivateRoute allowedRoles={['admin','employee','customer']}>
+                <PrivateRoute allowedRoles={['admin', 'employee', 'customer']}>
                   <VisitDetail />
                 </PrivateRoute>
               }
@@ -494,40 +504,40 @@ function App() {
             <Route
               path="/admin/access"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
-                  <AccessOwnersList  />
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
+                  <AccessOwnersList />
                 </PrivateRoute>
               }
             />
             <Route
               path="/admin/access/new"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
-                  <AccessNew   />
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
+                  <AccessNew />
                 </PrivateRoute>
               }
             />
             <Route
               path="/admin/access/owner/:ownerId"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
-                  <AccessOwnerDetail   />
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
+                  <AccessOwnerDetail />
                 </PrivateRoute>
               }
             />
             <Route
               path="/admin/stores/:storeId/access"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
-                  <AccessManageStore    />
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
+                  <AccessManageStore />
                 </PrivateRoute>
               }
             />
             <Route
               path="/admin/customers/:customerId/access"
               element={
-                <PrivateRoute allowedRoles={['admin','employee']}>
-                  <AccessManageCustomer    />
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
+                  <AccessManageCustomer />
                 </PrivateRoute>
               }
             />
@@ -537,7 +547,7 @@ function App() {
               path="/mail/visit/:visitId"
               element={
                 <PrivateRoute allowedRoles={['admin']}>
-                  <VisitMailCompose  />
+                  <VisitMailCompose />
                 </PrivateRoute>
               }
             />

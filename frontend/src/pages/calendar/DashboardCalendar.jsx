@@ -7,17 +7,17 @@ import "./DashboardCalendar.scss";
 /* ───────── utils ───────── */
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-const endOfDay   = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
-const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
+const COLORS = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#f472b6", "#f97316", "#84cc16", "#e879f9", "#38bdf8"];
 const hashColorFromId = (id) =>
-  COLORS[(String(id ?? "x").split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
+  COLORS[(String(id ?? "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COLORS.length];
 
 const STATUS_LABEL = {
-  PENDING:   "Henüz yapılmadı",
-  PLANNED:   "Planlandı",
+  PENDING: "Henüz yapılmadı",
+  PLANNED: "Planlandı",
   COMPLETED: "Yapıldı",
-  FAILED:    "Yapılamadı",
+  FAILED: "Yapılamadı",
   CANCELLED: "İptal edildi",
   POSTPONED: "Ertelendi",
 };
@@ -56,7 +56,7 @@ function useEvents(from, to, filterFn) {
         color: e.color || hashColorFromId(e.employeeId),
       }));
       if (typeof filterFn === "function") norm = norm.filter(filterFn);
-      norm.sort((a,b)=> a.start - b.start);
+      norm.sort((a, b) => b.start - a.start);
       setItems(norm);
     })();
     // filterFn dependency'ye bilinçli alınmadı
@@ -67,7 +67,7 @@ function useEvents(from, to, filterFn) {
 /* ───────── shared row ───────── */
 function Row({ ev, showDate }) {
   const navigate = useNavigate();
-  const datePart = `${pad2(ev.start.getDate())}.${pad2(ev.start.getMonth()+1)}`;
+  const datePart = `${pad2(ev.start.getDate())}.${pad2(ev.start.getMonth() + 1)}`;
   const timePart = `${pad2(ev.start.getHours())}:${pad2(ev.start.getMinutes())} – ${pad2(ev.end.getHours())}:${pad2(ev.end.getMinutes())}`;
 
   return (
@@ -140,7 +140,7 @@ function DashCalTodayCompleted() {
 function DashCalNext3() {
   const today = new Date();
   const from = useMemo(() => startOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)), [today]); // yarın
-  const to   = useMemo(() => endOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3)), [today]);  // +3 gün
+  const to = useMemo(() => endOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3)), [today]);  // +3 gün
   const items = useEvents(from, to, (e) => (e.status || "PLANNED") === "PLANNED");
 
   return (
@@ -167,8 +167,8 @@ function DashCalNext3() {
 function DashCalFailedLast7() {
   const today = new Date();
   const from = useMemo(() => startOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7)), [today]);
-  const to   = useMemo(() => endOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)), [today]); // dünü dahil
-  const FAILED_SET = new Set(["FAILED","CANCELLED","POSTPONED"]);
+  const to = useMemo(() => endOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)), [today]); // dünü dahil
+  const FAILED_SET = new Set(["FAILED", "CANCELLED", "POSTPONED"]);
   const items = useEvents(from, to, (e) => FAILED_SET.has((e.status || "").toUpperCase()));
 
   return (
@@ -197,7 +197,7 @@ function CompletedVisitsTable() {
 
   // geniş aralık: tüm completed’ları çek
   const from = useMemo(() => new Date(2000, 0, 1, 0, 0, 0, 0), []);
-  const to   = useMemo(() => new Date(2100, 0, 1, 0, 0, 0, 0), []);
+  const to = useMemo(() => new Date(2100, 0, 1, 0, 0, 0, 0), []);
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -232,8 +232,8 @@ function CompletedVisitsTable() {
   }, [from, to]);
 
   const fmtDT = (d) =>
-    `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()} ` +
-    `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()} ` +
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
   // Arama filtresi
   const filtered = useMemo(() => {
@@ -250,10 +250,10 @@ function CompletedVisitsTable() {
   }, [all, query]);
 
   // Sayfalama
-  const totalPages  = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const startIdx    = (currentPage - 1) * pageSize;
-  const pageItems   = filtered.slice(startIdx, startIdx + pageSize);
+  const startIdx = (currentPage - 1) * pageSize;
+  const pageItems = filtered.slice(startIdx, startIdx + pageSize);
 
   useEffect(() => { setPage(1); }, [query, pageSize]);
 

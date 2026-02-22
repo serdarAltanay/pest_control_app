@@ -20,6 +20,7 @@ import profileRouter from "./routes/profile.js";
 import uploadRoutes from "./routes/upload.js";
 import nonconformitiesRoutes from "./routes/nonconformities.js";
 import reportsRoutes from "./routes/reports.js";
+import certificatesRouter from "./routes/certificates.js";
 
 import employeeRouter from "./routes/employee.js";
 import heartbeatRoutes from "./routes/heartbeat.js";
@@ -27,7 +28,7 @@ import onlineRoutes from "./routes/online.js";
 import presenceRouter from "./routes/presence.js";
 
 import storesRouter from "./routes/stores.js";
-import { stationsRouter,stationsNestedRouter } from "./routes/stations.js";
+import { stationsRouter, stationsNestedRouter } from "./routes/stations.js";
 
 import biocidesRouter from "./routes/Biocides.js";
 import visitsRouter from "./routes/visits.js";
@@ -123,6 +124,7 @@ app.use("/api/biocides", biocidesRouter);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/nonconformities", nonconformitiesRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/certificates", certificatesRouter);
 
 // Online/presence
 app.use("/api/heartbeat", heartbeatRoutes);

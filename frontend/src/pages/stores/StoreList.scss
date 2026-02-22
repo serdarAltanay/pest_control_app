@@ -68,3 +68,21 @@
   -webkit-line-clamp: 2; /* en fazla 2 satır */
   overflow: hidden;
 }
+
+/* --- Responsive --- */
+@media (max-width: 767px) {
+  .store-list-page {
+    .toolbar {
+      flex-direction: column;
+      .search { width: 100%; min-width: 0; }
+      .right-controls { width: 100%; flex-wrap: wrap; }
+    }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table.store-table {
+      min-width: 600px;
+      th, td { padding: 8px 8px; font-size: 13px; }
+    }
+    .pagination { flex-wrap: wrap; }
+    .actions .btn { font-size: 11px; padding: 4px 6px; }
+  }
+}

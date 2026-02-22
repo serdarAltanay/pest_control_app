@@ -161,16 +161,16 @@ async function ensureFreeContainerStore() {
   let cust = await prisma.customer.findFirst({ where: { code: "FREE" } });
   if (!cust) {
     cust = await prisma.customer.create({
-      data: { code: "FREE", title: "[FREE] SERBEST" },
+      data: { code: "FREE", title: "Serbest Oluşturma" },
     });
   }
-  let store = await prisma.store.findFirst({ where: { code: "FREE-CONTAINER" } });
+  let store = await prisma.store.findFirst({ where: { code: "FREE" } });
   if (!store) {
     store = await prisma.store.create({
       data: {
-        code: "FREE-CONTAINER",
-        name: "[FREE] SERBEST (CONTAINER)",
-        address: "",
+        code: "FREE",
+        name: "Serbest Oluşturma",
+        address: "Serbest Kayıtlar",
         customerId: cust.id,
       },
     });
@@ -314,6 +314,24 @@ async function hSubmit(req, res) {
       where: { visitId },
       data: { status: "SUBMITTED" },
     });
+
+    try {
+      const v = await prisma.visit.findUnique({
+        where: { id: visitId },
+        include: { store: true }
+      });
+      const sName = v?.store?.name || `Ziyaret #${visitId}`;
+      await prisma.notification.create({
+        data: {
+          type: "EK1_SUBMITTED",
+          title: "Tamamlanmış EK-1 Geldi",
+          body: `${sName} için yeni bir EK-1 formu iletildi.`,
+          link: `/ek1/${visitId}`,
+          recipientRole: "ADMIN"
+        }
+      });
+    } catch (err) { console.error("EK1 submit notify admin err", err); }
+
     res.json({ message: "Onaya gönderildi", report });
   } catch (e) {
     console.error("SUBMIT", e);
@@ -533,6 +551,18 @@ async function hCreateFreeEk1(req, res) {
         })
       );
     }
+
+    try {
+      await prisma.notification.create({
+        data: {
+          type: "EK1_SUBMITTED",
+          title: "Tamamlanmış EK-1 Geldi (Serbest)",
+          body: `${storeName} için serbest EK-1 formu oluşturuldu.`,
+          link: `/ek1/${visit.id}`,
+          recipientRole: "ADMIN"
+        }
+      });
+    } catch (err) { console.error("Free EK1 submit notify admin err", err); }
 
     return res
       .status(201)

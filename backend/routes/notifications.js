@@ -11,21 +11,33 @@ const EMPLOYEE_BLOCKED_TYPES = ["COMPLAINT_NEW", "COMPLAINT_SEEN", "SUGGESTION_N
 
 /** Ortak where yardımcısı */
 function baseWhereForRole(role, userId, extra = {}) {
+  const adminPool = {
+    recipientRole: "ADMIN",
+    NOT: { type: { in: EMPLOYEE_BLOCKED_TYPES } },
+  };
+
   if (role === "admin") {
-    return { recipientRole: "ADMIN", ...extra };
-  }
-  if (role === "employee") {
-    // Admin havuzunu görür ama şikayet/öneri bildirimleri hariç
     return {
       recipientRole: "ADMIN",
-      NOT: { type: { in: EMPLOYEE_BLOCKED_TYPES } },
       ...extra,
+    };
+  }
+  if (role === "employee") {
+    return {
+      AND: [
+        {
+          OR: [
+            adminPool,
+            { recipientRole: "EMPLOYEE", recipientId: userId },
+          ],
+        },
+        extra,
+      ],
     };
   }
   if (role === "customer") {
     return { recipientRole: "CUSTOMER", recipientId: userId, ...extra };
   }
-  // Diğer rollere kapalı
   return { id: -1 };
 }
 

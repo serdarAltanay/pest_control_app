@@ -4,18 +4,28 @@
 
 * {
   font-family: "Inter", sans-serif;
+  box-sizing: border-box;
 }
 
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
 }
 
 main {
-  margin-left: 220px; /* Sidebar'ın genişliği kadar boşluk bırakır */
+  margin-left: $sidebar-width;
   transition: margin-left $transition;
+
+  @include mobile {
+    margin-left: 0;
+  }
 }
 
 main.sidebar-closed {
-  margin-left: 60px; /* Sidebar kapalıyken boşluğu küçültür */
+  margin-left: $sidebar-collapsed;
+
+  @include mobile {
+    margin-left: 0;
+  }
 }

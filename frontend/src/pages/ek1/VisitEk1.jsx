@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import VisitStatusModal from "../../components/VisitStatusModal";
 import "./Ek1.scss";
 
 const METHOD_OPTIONS = [
@@ -19,25 +20,92 @@ const METHOD_TR = {
   SISLEME: "Sisleme", YEMLEME: "Yemleme", YENILEME: "Yenileme",
 };
 
+const timeOptions = (() => {
+  const out = [];
+  for (let t = 8 * 60; t <= 20 * 60; t += 15) {
+    out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+  }
+  return out;
+})();
+
 export default function VisitEk1() {
   const { storeId, visitId } = useParams();
   const navigate = useNavigate();
 
   const [biocides, setBiocides] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]);
   const [lines, setLines] = useState([]);
+  const [bundle, setBundle] = useState(null);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [existingEvent, setExistingEvent] = useState(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+
+  /* Visit Info Form */
+  const [formVisit, setFormVisit] = useState({
+    startTime: "", endTime: "",
+    employees: [],
+  });
 
   const [form, setForm] = useState({ biosidalId: "", method: "PULVERIZE", amount: "" });
 
   const loadAll = async () => {
     try {
-      const [resB, resL] = await Promise.all([
+      const [resB, resL, resBundle, resE] = await Promise.all([
         api.get("/biocides"),
         api.get(`/ek1/visit/${visitId}/lines`),
+        api.get(`/ek1/visit/${visitId}`),
+        api.get("/employees").catch(() => api.get("/admin/employees")),
       ]);
       setBiocides(Array.isArray(resB.data) ? resB.data : []);
       setLines(Array.isArray(resL.data) ? resL.data : []);
+      setAllEmployees(Array.isArray(resE.data) ? resE.data : []);
+      const bData = resBundle.data;
+      setBundle(bData);
+
+      // Metada doldur
+      if (bData?.visit) {
+        setFormVisit({
+          startTime: bData.visit.startTime || "",
+          endTime: bData.visit.endTime || "",
+          employees: Array.isArray(bData.visit.employees) ? bData.visit.employees :
+            (typeof bData.visit.employees === 'string' ? [bData.visit.employees] : [])
+        });
+      }
+
+      // Mevcut ziyarete bağlı bir takvim kaydı (ScheduleEvent) var mı?
+      // Not: visit.date ve storeId ile sorgulayalım.
+      if (bData?.visit?.date && bData?.visit?.storeId) {
+        const d = new Date(bData.visit.date);
+        const from = new Date(d.setHours(0, 0, 0, 0)).toISOString();
+        const to = new Date(d.setHours(23, 59, 59, 999)).toISOString();
+
+        const resEv = await api.get("/schedule/events", {
+          params: { storeId: bData.visit.storeId, from, to }
+        });
+        if (resEv.data?.length > 0) {
+          const ev = resEv.data[0];
+          setExistingEvent(ev);
+
+          // OTOMATIK DOLDURMA (Eğer visit verisi eksikse)
+          setFormVisit(prev => {
+            const updates = {};
+            if (!prev.startTime && ev.start) {
+              const sd = new Date(ev.start);
+              updates.startTime = `${String(sd.getHours()).padStart(2, "0")}:${String(sd.getMinutes()).padStart(2, "0")}`;
+            }
+            if (!prev.endTime && ev.end) {
+              const ed = new Date(ev.end);
+              updates.endTime = `${String(ed.getHours()).padStart(2, "0")}:${String(ed.getMinutes()).padStart(2, "0")}`;
+            }
+            if (prev.employees.length === 0 && ev.employee) {
+              updates.employees = [ev.employee];
+            }
+            if (Object.keys(updates).length > 0) return { ...prev, ...updates };
+            return prev;
+          });
+        }
+      }
     } catch {
       toast.error("Veriler yüklenemedi.");
     }
@@ -79,7 +147,28 @@ export default function VisitEk1() {
   /* Direkt Kaydet */
   const handleSubmitWithSignature = () => {
     if (lines.length === 0) return toast.error("Önce en az bir ürün eklemelisiniz.");
-    onConfirmFinalSubmission();
+
+    // Eğer takvimde planlı bir kayıt varsa modalı aç
+    if (existingEvent) {
+      setIsStatusModalOpen(true);
+    } else {
+      onConfirmFinalSubmission();
+    }
+  };
+
+  /* Modal Onayı */
+  const handleStatusConfirm = async (newStatus) => {
+    try {
+      setSubmitting(true);
+      if (existingEvent?.id) {
+        await api.put(`/schedule/events/${existingEvent.id}`, { status: newStatus });
+      }
+      setIsStatusModalOpen(false);
+      await onConfirmFinalSubmission();
+    } catch {
+      setSubmitting(false);
+      toast.error("Ziyaret durumu güncellenemedi.");
+    }
   };
 
   /* Kaydet → Preview'a Yönlendir */
@@ -87,6 +176,13 @@ export default function VisitEk1() {
     setSubmitting(true);
 
     try {
+      /* Meta Güncelle */
+      await api.put(`/visits/${visitId}`, {
+        startTime: formVisit.startTime,
+        endTime: formVisit.endTime,
+        employees: formVisit.employees,
+      });
+
       /* Onaya gönder */
       await api.post(`/ek1/visit/${visitId}/submit`);
 
@@ -111,10 +207,54 @@ export default function VisitEk1() {
           </div>
         </div>
 
+        {/* Ziyaret Bilgileri (Zaman ve Personel) */}
+        <section className="card form">
+          <div className="card-title">
+            <span className="card-num">1</span> Ziyaret Detayları
+          </div>
+          <div className="grid-3">
+            <div>
+              <label>Giriş Saati</label>
+              <select
+                value={formVisit.startTime}
+                onChange={(e) => setFormVisit({ ...formVisit, startTime: e.target.value })}
+              >
+                <option value="">Seçiniz</option>
+                {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Çıkış Saati</label>
+              <select
+                value={formVisit.endTime}
+                onChange={(e) => setFormVisit({ ...formVisit, endTime: e.target.value })}
+              >
+                <option value="">Seçiniz</option>
+                {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Uygulayıcı Personel</label>
+              <select
+                value={formVisit.employees?.[0]?.id || ""}
+                onChange={(e) => {
+                  const emp = allEmployees.find(x => String(x.id) === e.target.value);
+                  setFormVisit({ ...formVisit, employees: emp ? [emp] : [] });
+                }}
+              >
+                <option value="">Seçiniz</option>
+                {allEmployees.map((e) => (
+                  <option key={e.id} value={e.id}>{e.fullName || e.name || e.email}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
         {/* Ürün Ekleme Formu */}
         <section className="card">
           <div className="card-title">
-            <span className="card-num">1</span> Kullanılan Biyosidal Ürünler
+            <span className="card-num">2</span> Kullanılan Biyosidal Ürünler
           </div>
           <form onSubmit={addLine} className="line-form">
             <select
@@ -205,6 +345,14 @@ export default function VisitEk1() {
             </div>
           )}
         </div>
+
+        <VisitStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={() => setIsStatusModalOpen(false)}
+          onConfirm={handleStatusConfirm}
+          initialStatus={existingEvent?.status}
+          visitTitle={existingEvent?.title || "Ziyaret"}
+        />
       </div>
     </Layout>
   );

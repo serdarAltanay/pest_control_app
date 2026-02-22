@@ -9,7 +9,7 @@ import { getAvatarUrl } from "../utils/getAssetUrl";
 import { useTheme } from "../context/ThemeContext";
 import NotificationBell from "./NotificationBell";
 
-export default function Navbar() {
+export default function Navbar({ onHamburgerClick }) {
   const navigate = useNavigate();
   const { profile, setProfile } = useContext(ProfileContext);
   const { theme, setTheme } = useTheme();
@@ -63,6 +63,9 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
+      <button className="hamburger-btn" onClick={onHamburgerClick} aria-label="Menü">
+        ☰
+      </button>
       <div className="navbar-left">Pest Control</div>
 
       <div className="navbar-right">

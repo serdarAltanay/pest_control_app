@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/Sidebar.scss";
 import api from "../api/axios";
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen, onMobileClose }) {
   const [open, setOpen] = useState(false);
   const [myStores, setMyStores] = useState(null); // null=yükleniyor, []=yok
   const navigate = useNavigate();
@@ -54,11 +54,11 @@ export default function Sidebar() {
     myStores == null ? "Mağaza…" : (myStores.length === 1 ? "Mağazam" : "Mağazalarım");
 
   return (
-    <aside className={`sidebar ${open ? "open" : "closed"}`}>
+    <aside className={`sidebar ${open ? "open" : "closed"} ${mobileOpen ? "mobile-open" : ""}`}>
       <button className="sidebar-toggle" onClick={() => setOpen(!open)}>☰</button>
 
-      {open && (
-        <ul className="sidebar-menu">
+      {(open || mobileOpen) && (
+        <ul className="sidebar-menu" onClick={() => { if (window.innerWidth < 768 && onMobileClose) onMobileClose(); }}>
           {/* MÜŞTERİ İŞLERİ */}
           {isCustomer && (
             <>
@@ -111,6 +111,11 @@ export default function Sidebar() {
               <li className={`sidebar-item ${location.pathname.startsWith("/admin/suggestions") ? "active" : ""}`} onClick={() => navigate("/admin/suggestions")}>Öneriler</li>
             </>
           )}
+
+          {/* TÜM ROL VE KULLANICILAR İÇİN ORTAK (Sertifikalar) */}
+          <li className="section-title">Sertifikalar</li>
+          <li className={`sidebar-item ${location.pathname === "/certificates" ? "active" : ""}`} onClick={() => navigate("/certificates")}>Şirket Sertifikaları</li>
+
         </ul>
       )}
     </aside>

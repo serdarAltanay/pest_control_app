@@ -7,15 +7,15 @@ import "./VisitCalendar.scss";
 
 /* ───────── Yardımcılar ───────── */
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
-const toDateInput  = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const toDateInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const toMonthInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
-const startOfDay   = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-const endOfDay     = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-const endOfMonth   = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-const startOfYear  = (d) => new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
-const endOfYear    = (d) => new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
+const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+const startOfYear = (d) => new Date(d.getFullYear(), 0, 1, 0, 0, 0, 0);
+const endOfYear = (d) => new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
 
 const VIEW = { DAY: "day", MONTH: "month", YEAR: "year" };
 
@@ -24,14 +24,14 @@ const GRID_HOURS = 19;
 const HOUR_PX = 60;      // 1 saat = 60px
 const MIN_EVENT_PX = 72; // event minimum yüksekliği
 
-const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
-const hashColorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
+const COLORS = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#f472b6", "#f97316", "#84cc16", "#e879f9", "#38bdf8"];
+const hashColorFromId = (id) => COLORS[(String(id ?? "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COLORS.length];
 
 const STATUS_LABEL = {
-  PENDING:   "Henüz yapılmadı",
-  PLANNED:   "Planlandı",
+  PENDING: "Henüz yapılmadı",
+  PLANNED: "Planlandı",
   COMPLETED: "Yapıldı",
-  FAILED:    "Yapılamadı",
+  FAILED: "Yapılamadı",
   CANCELLED: "İptal edildi",
   POSTPONED: "Ertelendi",
 };
@@ -102,7 +102,7 @@ async function fetchCustomers() {
     try {
       const { data } = await api.get(t);
       if (Array.isArray(data)) return data;
-    } catch {}
+    } catch { }
   }
   return [];
 }
@@ -280,8 +280,8 @@ export default function VisitCalendar() {
     if (view !== VIEW.DAY) return [];
     const offsets =
       dayCols === 3 ? [-1, 0, 1] :
-      dayCols === 2 ? [0, 1] :
-      [0];
+        dayCols === 2 ? [0, 1] :
+          [0];
     return offsets.map((off) => {
       const d = new Date(anchor);
       d.setDate(d.getDate() + off);
@@ -322,7 +322,7 @@ export default function VisitCalendar() {
   const monthMatrix = useMemo(() => {
     if (view !== VIEW.MONTH) return [];
     const first = startOfMonth(anchor);
-    const last  = endOfMonth(anchor);
+    const last = endOfMonth(anchor);
     const start = new Date(first);
     start.setDate(first.getDate() - (first.getDay() || 7) + 1);
     const weeks = [];
@@ -358,12 +358,12 @@ export default function VisitCalendar() {
   // UI helpers
   const goToday = () => setAnchor(new Date());
   const prev = () => {
-    if (view === VIEW.DAY)   { const d = new Date(anchor); d.setDate(d.getDate() - 1); setAnchor(d); }
+    if (view === VIEW.DAY) { const d = new Date(anchor); d.setDate(d.getDate() - 1); setAnchor(d); }
     else if (view === VIEW.MONTH) { const d = new Date(anchor); d.setMonth(d.getMonth() - 1); setAnchor(d); }
     else { const d = new Date(anchor); d.setFullYear(d.getFullYear() - 1); setAnchor(d); }
   };
   const next = () => {
-    if (view === VIEW.DAY)   { const d = new Date(anchor); d.setDate(d.getDate() + 1); setAnchor(d); }
+    if (view === VIEW.DAY) { const d = new Date(anchor); d.setDate(d.getDate() + 1); setAnchor(d); }
     else if (view === VIEW.MONTH) { const d = new Date(anchor); d.setMonth(d.getMonth() + 1); setAnchor(d); }
     else { const d = new Date(anchor); d.setFullYear(d.getFullYear() + 1); setAnchor(d); }
   };
@@ -401,7 +401,7 @@ export default function VisitCalendar() {
     if (!pickedStoreId) return toast.error("Mağaza seçin");
 
     const startTime = fd.get("start");
-    const endTime   = fd.get("end");
+    const endTime = fd.get("end");
     if (!startTime || !endTime) return toast.error("Başlangıç ve bitiş saati seçin");
 
     const [sh, sm] = startTime.split(":").map(Number);
@@ -534,12 +534,25 @@ export default function VisitCalendar() {
 
                     <div
                       className="col-grid"
-                      onClick={() => openCreateForDay(d)}
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const y = e.clientY - rect.top;
+                        const totalGridHeight = rect.height; // e.g. 24 hours * HOUR_PX
+                        const fractionalDay = y / totalGridHeight;
+                        const rawMinutes = fractionalDay * GRID_HOURS * 60;
+                        const roundedMinutes = Math.max(0, Math.floor(rawMinutes / 15) * 15);
+                        // Grid 07:00'de başlar, o yüzden 7 saat (420 dk) eklemeliyiz
+                        const finalMinutes = roundedMinutes + 420;
+                        openCreateForDay(d, {
+                          startMin: finalMinutes,
+                          endMin: finalMinutes + 30
+                        });
+                      }}
                       style={{ "--lane-count": meta.laneCount }}
                     >
                       {meta.events.map((ev) => {
-                        const topPx    = (ev._relStartMin / 60) * HOUR_PX;
-                        const durMin   = Math.max(1, ev._relEndMin - ev._relStartMin);
+                        const topPx = (ev._relStartMin / 60) * HOUR_PX;
+                        const durMin = Math.max(1, ev._relEndMin - ev._relStartMin);
                         const heightPx = Math.max((durMin / 60) * HOUR_PX, MIN_EVENT_PX);
 
                         return (
@@ -587,7 +600,7 @@ export default function VisitCalendar() {
             </div>
 
             <div className="dow">
-              {["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map((l) => <div key={l}>{l}</div>)}
+              {["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((l) => <div key={l}>{l}</div>)}
             </div>
 
             <div className="grid">
@@ -595,7 +608,7 @@ export default function VisitCalendar() {
                 <div className="row" key={ri}>
                   {row.map((d) => {
                     const key = toDateInput(d);
-                    const dayEvs = (monthEventsByDayKey[key] || []).sort((a,b)=>a.start-b.start);
+                    const dayEvs = (monthEventsByDayKey[key] || []).sort((a, b) => a.start - b.start);
                     const isOtherMonth = d.getMonth() !== anchor.getMonth();
                     return (
                       <div
@@ -629,7 +642,7 @@ export default function VisitCalendar() {
                               </span>
                             </div>
                           ))}
-                          {dayEvs.length > 3 && <div className="more" onClick={(e)=>{e.stopPropagation(); goToDay(d);}}>+{dayEvs.length - 3} daha</div>}
+                          {dayEvs.length > 3 && <div className="more" onClick={(e) => { e.stopPropagation(); goToDay(d); }}>+{dayEvs.length - 3} daha</div>}
                         </div>
                       </div>
                     );
@@ -671,7 +684,12 @@ export default function VisitCalendar() {
                 <button className="close" onClick={() => setModalOpen(false)}>×</button>
               </div>
 
-              <form className="vc-modal-body" onSubmit={onCreate} ref={formRef}>
+              <form
+                className="vc-modal-body"
+                onSubmit={onCreate}
+                ref={formRef}
+                key={modalDate?.toISOString() + (modalDefaults?.startMin || 0)}
+              >
                 <input type="hidden" name="storeId" value={selectedStoreId ?? ""} />
 
                 <div className="field">
@@ -683,7 +701,7 @@ export default function VisitCalendar() {
                   <label>Başlangıç</label>
                   <select name="start" defaultValue={
                     modalDefaults?.startMin != null
-                      ? `${pad2(Math.floor(modalDefaults.startMin/60))}:${pad2(modalDefaults.startMin%60)}`
+                      ? `${pad2(Math.floor(modalDefaults.startMin / 60))}:${pad2(modalDefaults.startMin % 60)}`
                       : "09:00"
                   }>
                     {Array.from({ length: 96 }, (_, i) => {
@@ -697,7 +715,7 @@ export default function VisitCalendar() {
                   <label>Bitiş</label>
                   <select name="end" defaultValue={
                     modalDefaults?.endMin != null
-                      ? `${pad2(Math.floor(modalDefaults.endMin/60))}:${pad2(modalDefaults.endMin%60)}`
+                      ? `${pad2(Math.floor(modalDefaults.endMin / 60))}:${pad2(modalDefaults.endMin % 60)}`
                       : "10:00"
                   }>
                     {Array.from({ length: 96 }, (_, i) => {
@@ -714,7 +732,7 @@ export default function VisitCalendar() {
                     required
                     value={isEmployee ? (selfId || "") : undefined}
                     defaultValue={isEmployee ? undefined : ""}
-                    onChange={() => {}}
+                    onChange={() => { }}
                     disabled={isEmployee}
                   >
                     {!isEmployee && <option value="">Seçin…</option>}

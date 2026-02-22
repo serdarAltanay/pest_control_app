@@ -162,12 +162,16 @@ enum ComplaintType {
 enum NotificationRecipientRole {
   ADMIN
   CUSTOMER
+  EMPLOYEE
 }
 
 enum NotificationType {
   COMPLAINT_NEW
   SUGGESTION_NEW
   COMPLAINT_SEEN
+  EK1_SUBMITTED
+  VISIT_PLANNED
+  VISIT_ASSIGNED
 }
 
 model Complaint {
@@ -578,4 +582,16 @@ model RefreshToken {
   expiresAt DateTime
 
   @@unique([userId, role], name: "userId_role_unique")
+}
+
+model CompanyCertificate {
+  id         Int      @id @default(autoincrement())
+  title      String
+  file       String
+  mime       String?
+  notes      String?
+  uploadedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([uploadedAt])
 }

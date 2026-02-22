@@ -5,11 +5,16 @@
     border-bottom: 1px solid var(--border);
     background: var(--muted-surface);
     border-radius: 10px 10px 0 0;
-    .t { font-weight: 700; }
+
+    .t {
+      font-weight: 700;
+    }
   }
 
   .list {
     padding: 8px 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 
     .empty {
       padding: 12px;
@@ -21,7 +26,8 @@
     .cols-head,
     .row {
       display: grid;
-      grid-template-columns: 16px 1.2fr 1fr 1fr 170px 150px; /* dot, başlık, mağaza, personel, saat, durum */
+      grid-template-columns: 16px 1.2fr 1fr 1fr 170px 150px;
+      /* dot, başlık, mağaza, personel, saat, durum */
       gap: 10px;
       align-items: center;
       padding: 8px 6px;
@@ -34,19 +40,53 @@
       border-bottom: 1px solid var(--border);
       background: var(--muted-surface);
       border-radius: 8px;
-      > div:first-child { width: 16px; height: 1px; }
+
+      >div:first-child {
+        width: 16px;
+        height: 1px;
+      }
     }
 
     .row {
       border-bottom: 1px dashed var(--border);
 
-      &:last-child { border-bottom: 0; }
-      &.clickable { cursor: pointer; &:hover { background: var(--muted-surface); border-radius: 8px; } }
+      &:last-child {
+        border-bottom: 0;
+      }
 
-      .dot { width: 12px; height: 12px; border-radius: 999px; }
-      .c-title { font-weight: 700; font-size: 13px; }
-      .c-store, .c-emp, .c-when { font-size: 13px; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .c-status { text-align: right; }
+      &.clickable {
+        cursor: pointer;
+
+        &:hover {
+          background: var(--muted-surface);
+          border-radius: 8px;
+        }
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+      }
+
+      .c-title {
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      .c-store,
+      .c-emp,
+      .c-when {
+        font-size: 13px;
+        color: #334155;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .c-status {
+        text-align: right;
+      }
 
       /* Rozet sadece dash-cal içinde (scope’lu) */
       .c-status .badge {
@@ -58,12 +98,41 @@
         border: 1px solid transparent;
         white-space: nowrap;
 
-        &.st-planned   { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
-        &.st-pending   { background: var(--muted-surface); color: #374151; border: var(--border); }
-        &.st-completed { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
-        &.st-failed    { background: #fee2e2; color: #7f1d1d; border-color: #fecaca; }
-        &.st-cancelled { background: #e5e7eb; color: #374151; border: var(--border); }
-        &.st-postponed { background: #fff7ed; color: #7c2d12; border-color: #ffedd5; }
+        &.st-planned {
+          background: #e0f2fe;
+          color: #075985;
+          border-color: #bae6fd;
+        }
+
+        &.st-pending {
+          background: var(--muted-surface);
+          color: #374151;
+          border: var(--border);
+        }
+
+        &.st-completed {
+          background: #dcfce7;
+          color: #166534;
+          border-color: #bbf7d0;
+        }
+
+        &.st-failed {
+          background: #fee2e2;
+          color: #7f1d1d;
+          border-color: #fecaca;
+        }
+
+        &.st-cancelled {
+          background: #e5e7eb;
+          color: #374151;
+          border: var(--border);
+        }
+
+        &.st-postponed {
+          background: #fff7ed;
+          color: #7c2d12;
+          border-color: #ffedd5;
+        }
       }
     }
   }
@@ -72,19 +141,33 @@
 /* Basit responsive: küçük ekranlarda 3 kart kompakt görünsün */
 @media (max-width: 720px) {
   .dash-cal .list {
-    .cols-head { display: none; }
+    .cols-head {
+      display: none;
+    }
+
     .row {
       grid-template-columns: 16px 1fr auto;
       grid-auto-rows: auto;
       row-gap: 6px;
 
-      .c-title   { grid-column: 2 / 3; }
-      .c-status  { grid-column: 3 / 4; }
-      .c-store, .c-emp, .c-when {
+      .c-title {
+        grid-column: 2 / 3;
+      }
+
+      .c-status {
+        grid-column: 3 / 4;
+      }
+
+      .c-store,
+      .c-emp,
+      .c-when {
         grid-column: 2 / 4;
         display: inline;
         font-size: 12px;
-        &:not(:last-child)::after { content: " · "; }
+
+        &:not(:last-child)::after {
+          content: " · ";
+        }
       }
     }
   }
@@ -94,7 +177,7 @@
 .completed-visits {
   padding: 16px;
   background: var(--surface);
-  border: 1px solid rgba(0,0,0,.06);
+  border: 1px solid rgba(0, 0, 0, .06);
   border-radius: 12px;
   margin-top: 12px;
 
@@ -113,7 +196,10 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 0 12px;
-      background: var(--surface); color: var(--text); font-size: 13px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+
       &:focus {
         outline: none;
         border-color: #7c3aed;
@@ -122,67 +208,168 @@
     }
 
     .right-controls {
-      display: flex; align-items: center; gap: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
       .page-size {
-        display: flex; align-items: center; gap: 6px;
-        label { color: var(--text-muted); font-size: 13px; }
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        label {
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+
         select {
-          height: 30px; border: 1px solid var(--border); border-radius: 8px;
-          padding: 0 8px; background: var(--surface); color: var(--text); font-size: 13px;
+          height: 30px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 0 8px;
+          background: var(--surface);
+          color: var(--text);
+          font-size: 13px;
         }
       }
     }
   }
 
-  .table-wrap { border-top: 1px solid #f1f5f9; margin-top: 8px; overflow: hidden; }
+  .table-wrap {
+    border-top: 1px solid #f1f5f9;
+    margin-top: 8px;
+    overflow: hidden;
+  }
 
   .completed-table {
-    width: 100%; border-collapse: collapse; font-size: 13px;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
 
     thead th {
-      background: var(--muted-surface); color: #334155; text-align: left;
-      padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap;
+      background: var(--muted-surface);
+      color: #334155;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
-    thead .th-status { text-align: right; }
+
+    thead .th-status {
+      text-align: right;
+    }
 
     tbody td {
-      padding: 8px 10px; border-bottom: 1px solid #f1f5f9;
-      vertical-align: middle; white-space: nowrap;
+      padding: 8px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+      white-space: nowrap;
     }
 
-    tbody tr:nth-child(odd) { background: var(--muted-surface); }
-    tbody tr.clickable { cursor: pointer; }
-    tbody tr.clickable:hover { background: var(--muted-surface); }
+    tbody tr:nth-child(odd) {
+      background: var(--muted-surface);
+    }
 
-    td.strong { font-weight: 700; }
-    td.td-status { text-align: right; }
+    tbody tr.clickable {
+      cursor: pointer;
+    }
+
+    tbody tr.clickable:hover {
+      background: var(--muted-surface);
+    }
+
+    td.strong {
+      font-weight: 700;
+    }
+
+    td.td-status {
+      text-align: right;
+    }
   }
 
   /* Rozet sadece completed-visits içinde (scope’lu) */
   .badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 11px; font-weight: 700;
-    padding: 2px 8px; border-radius: 999px; border: 1px solid transparent;
-    line-height: 1.25; white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    line-height: 1.25;
+    white-space: nowrap;
   }
-  .badge.st-planned   { background:#dbeafe; color:#1e3a8a; border-color:#bfdbfe; }
-  .badge.st-pending   { background: var(--muted-surface); color:#374151; border: var(--border); }
-  .badge.st-completed { background:#dcfce7; color:#166534; border-color:#bbf7d0; }
-  .badge.st-failed    { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
-  .badge.st-cancelled { background:#e5e7eb; color:#374151; border: var(--border); }
-  .badge.st-postponed { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+
+  .badge.st-planned {
+    background: #dbeafe;
+    color: #1e3a8a;
+    border-color: #bfdbfe;
+  }
+
+  .badge.st-pending {
+    background: var(--muted-surface);
+    color: #374151;
+    border: var(--border);
+  }
+
+  .badge.st-completed {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+  }
+
+  .badge.st-failed {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+  }
+
+  .badge.st-cancelled {
+    background: #e5e7eb;
+    color: #374151;
+    border: var(--border);
+  }
+
+  .badge.st-postponed {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+  }
 
   .pagination {
-    display: flex; align-items: center; gap: 8px; margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
 
     .page-btn {
-      height: 30px; padding: 0 10px;
-      border: 1px solid var(--border); background: var(--surface); border-radius: 8px; cursor: pointer;
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 8px;
+      cursor: pointer;
       font-size: 12px;
-      &:disabled { opacity: .6; cursor: not-allowed; }
+
+      &:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+      }
     }
 
-    .page-indicator { background: #7c3aed; color: #fff; border-radius: 6px; padding: 4px 8px; font-weight: 700; }
-    .count-info { margin-left: auto; color: var(--text-muted); font-size: 12.5px; }
+    .page-indicator {
+      background: #7c3aed;
+      color: #fff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-weight: 700;
+    }
+
+    .count-info {
+      margin-left: auto;
+      color: var(--text-muted);
+      font-size: 12.5px;
+    }
   }
 }

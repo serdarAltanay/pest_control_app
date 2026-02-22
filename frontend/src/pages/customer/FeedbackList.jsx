@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import "./Feedback.scss";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function FeedbackList() {
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
@@ -15,7 +16,7 @@ export default function FeedbackList() {
       const s = await api.get("/feedback/suggestions/me");
       setComplaints(Array.isArray(c.data) ? c.data : []);
       setSuggestions(Array.isArray(s.data) ? s.data : []);
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => { load(); }, []);
@@ -23,7 +24,12 @@ export default function FeedbackList() {
   return (
     <Layout title="Şikayet/Önerilerim">
       <div className="feedback-page">
-        <h2>Şikayetlerim</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+          <button className="btn ghost" onClick={() => navigate(-1)} title="Geri Dön" style={{ padding: "0 8px", fontSize: "18px" }}>
+            &larr;
+          </button>
+          <h2 style={{ margin: 0 }}>Şikayetlerim</h2>
+        </div>
         <div className="list">
           {complaints.length === 0 && <div className="empty">Henüz şikayet yok.</div>}
           {complaints.map(it => (

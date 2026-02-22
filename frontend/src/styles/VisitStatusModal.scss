@@ -1,0 +1,154 @@
+@import "./variables";
+
+.vsm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+}
+
+.vsm-modal {
+    background: #fff;
+    width: 100%;
+    max-width: 480px;
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    animation: vsm-in 0.3s ease-out;
+
+    &__header {
+        background: #f8fafc;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e2e8f0;
+
+        h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: #1e293b;
+            font-weight: 700;
+        }
+
+        p {
+            margin: 4px 0 0;
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+    }
+
+    &__content {
+        padding: 24px;
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 12px;
+
+            @media (min-width: 600px) {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .status-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            border: 2px solid #f1f5f9;
+            border-radius: 12px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 8px;
+
+            span {
+                font-weight: 600;
+                font-size: 0.95rem;
+                color: #475569;
+            }
+
+            i {
+                font-size: 1.25rem;
+            }
+
+            &:hover {
+                border-color: #cbd5e1;
+                background: #fff;
+                transform: translateY(-2px);
+            }
+
+            &.active {
+                background: #fff;
+
+                &--PLANNED {
+                    border-color: #3b82f6;
+
+                    span {
+                        color: #3b82f6;
+                    }
+                }
+
+                &--COMPLETED {
+                    border-color: #10b981;
+
+                    span {
+                        color: #10b981;
+                    }
+                }
+
+                &--FAILED {
+                    border-color: #ef4444;
+
+                    span {
+                        color: #ef4444;
+                    }
+                }
+
+                &--CANCELLED {
+                    border-color: #64748b;
+
+                    span {
+                        color: #64748b;
+                    }
+                }
+
+                &--POSTPONED {
+                    border-color: #f59e0b;
+
+                    span {
+                        color: #f59e0b;
+                    }
+                }
+            }
+        }
+    }
+
+    &__footer {
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+}
+
+@keyframes vsm-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

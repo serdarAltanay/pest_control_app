@@ -8,7 +8,7 @@ import "./VisitDetail.scss";
 
 /* ───────── helpers ───────── */
 const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
-const COLORS = ["#60a5fa","#34d399","#fbbf24","#f87171","#a78bfa","#22d3ee","#f472b6","#f97316","#84cc16","#e879f9","#38bdf8"];
+const COLORS = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#f472b6", "#f97316", "#84cc16", "#e879f9", "#38bdf8"];
 const hashColorFromId = (id) => {
   if (!id && id !== 0) return COLORS[0];
   let h = 0; const s = String(id);
@@ -129,7 +129,7 @@ export default function VisitDetail() {
             const visits = await listStoreVisits(ev.storeId);
             const vId = pickVisitIdForEvent(ev, visits);
             if (vId) setVisitId(vId);
-          } catch {}
+          } catch { }
         }
       } catch (e) {
         const st = e?.response?.status;
@@ -156,7 +156,7 @@ export default function VisitDetail() {
   }, [event]);
 
   const employeeAvatar = useMemo(() => {
-    const raw = event?.employee?.profileImage || null;
+    const raw = event?.employeeAvatar || event?.employee?.profileImage || null;
     const url = getAvatarUrl(raw);
     return url || "/noavatar.jpg";
   }, [event]);
@@ -259,7 +259,7 @@ export default function VisitDetail() {
                 <div className="k">Durumu Değiştir</div>
                 <div className="v">
                   <div className="status-radios">
-                    {["PENDING","PLANNED","COMPLETED","FAILED","CANCELLED","POSTPONED"].map(s => (
+                    {["PENDING", "PLANNED", "COMPLETED", "FAILED", "CANCELLED", "POSTPONED"].map(s => (
                       <label key={s} className={`radio ${statusClass(s)}`}>
                         <input
                           type="radio"
