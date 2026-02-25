@@ -646,12 +646,108 @@ async function hListEk1(req, res) {
   }
 }
 
+async function hBatchPrintData(req, res) {
+  try {
+    const { from, to } = req.query || {};
+    if (!from || !to) {
+      return res.status(400).json({ message: "Başlangıç ve bitiş tarihleri zorunludur" });
+    }
+
+    const start = new Date(from);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(to);
+    end.setHours(23, 59, 59, 999);
+
+    const reports = await prisma.ek1Report.findMany({
+      where: {
+        status: "APPROVED",
+        visit: {
+          date: {
+            gte: start,
+            lte: end,
+          },
+        },
+      },
+      include: {
+        visit: {
+          include: {
+            store: {
+              include: {
+                customer: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { visit: { date: "asc" } },
+    });
+
+    if (!reports.length) {
+      return res.json([]);
+    }
+
+    const provider = await ensureProviderProfile();
+
+    const bundles = await Promise.all(
+      reports.map(async (report) => {
+        const visit = report.visit;
+        const visitId = visit.id;
+
+        const lines = await prisma.ek1Line.findMany({
+          where: { visitId },
+          include: { biosidal: true },
+          orderBy: { id: "asc" },
+        });
+
+        const meta = report.freeMeta || null;
+
+        let store = visit.store || null;
+        if ((!store || !store.name) && meta) {
+          store = {
+            id: null,
+            name: meta.storeName || "—",
+            address: meta.address || "",
+            placeType: meta.placeType || "",
+            areaM2: meta.areaM2 ?? null,
+            customer: null,
+          };
+        }
+
+        let customer = store?.customer || null;
+        if ((!customer || !customer.title) && meta) {
+          customer = {
+            id: null,
+            title: meta.customerTitle || "—",
+            email: meta.customerEmail || null,
+            contactFullName: meta.customerContactName || null,
+          };
+        }
+
+        return {
+          visit,
+          store,
+          customer,
+          lines,
+          report,
+          provider,
+        };
+      })
+    );
+
+    res.json(bundles);
+  } catch (e) {
+    console.error("BATCH PRINT DATA", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+}
+
 /* ───────── routes ───────── */
 // FREE (Serbest) EK-1
 router.post("/free", auth, roleCheck(["admin", "employee"]), hCreateFreeEk1);
 
 // LIST
 router.get("/", auth, roleCheck(["admin", "employee", "customer"]), hListEk1);
+router.get("/batch-print", auth, roleCheck(["admin"]), hBatchPrintData);
 
 // Bundle & Lines
 router.get("/visit/:visitId", auth, roleCheck(["admin", "employee", "customer"]), hGetBundle);

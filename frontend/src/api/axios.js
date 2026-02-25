@@ -13,6 +13,36 @@ const API_BASE = `${String(API_ORIGIN).replace(/\/+$/, "")}/api`;
 const isAuthPath = (u = "") =>
   /\/auth\/(login|refresh|logout)(?:[/?#]|$)/.test(String(u));
 
+/** ───────────────────── Global Loading State ───────────────────── */
+export const apiLoadingState = {
+  activeRequests: 0,
+  listeners: [],
+  timer: null,
+  subscribe(fn) {
+    this.listeners.push(fn);
+    return () => { this.listeners = this.listeners.filter(l => l !== fn); };
+  },
+  notify() {
+    clearTimeout(this.timer);
+    if (this.activeRequests > 0) {
+      // Sadece 200ms'den uzun süren isteklerde loader görünsün (pır pır yapmaması için)
+      this.timer = setTimeout(() => {
+        this.listeners.forEach(fn => fn(true));
+      }, 200);
+    } else {
+      // İstek biter bitmez gizle
+      this.listeners.forEach(fn => fn(false));
+    }
+  }
+};
+
+const isSilent = (config) => {
+  const url = String(config?.url || "");
+  if (config?._isHeartbeat) return true;
+  if (/\/(presence\/heartbeat|auth\/refresh)/.test(url)) return true;
+  return false;
+};
+
 /** ───────────────────── Instances ───────────────────── */
 const api = axios.create({
   baseURL: API_BASE,
@@ -34,8 +64,8 @@ export function clearAuth() {
     localStorage.removeItem("email");
     localStorage.removeItem("profileImage");
     localStorage.removeItem("accessOwnerRole");
-  } catch {}
-  try { delete api.defaults.headers.common.Authorization; } catch {}
+  } catch { }
+  try { delete api.defaults.headers.common.Authorization; } catch { }
 }
 
 export function setAuthToken(token) {
@@ -46,6 +76,11 @@ export function setAuthToken(token) {
 
 /** ───────────────────── Request ───────────────────── */
 api.interceptors.request.use((config) => {
+  if (!isSilent(config)) {
+    apiLoadingState.activeRequests++;
+    apiLoadingState.notify();
+  }
+
   const url = String(config.url || "");
   const t = localStorage.getItem("accessToken");
 
@@ -62,6 +97,10 @@ api.interceptors.request.use((config) => {
     }
   }
   return config;
+}, (error) => {
+  apiLoadingState.activeRequests = Math.max(0, apiLoadingState.activeRequests - 1);
+  apiLoadingState.notify();
+  return Promise.reject(error);
 });
 
 /** ───────────────────── Response (401 refresh) ───────────────────── */
@@ -77,8 +116,19 @@ function flushWaiters(err, token) {
 }
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    if (!isSilent(res.config)) {
+      apiLoadingState.activeRequests = Math.max(0, apiLoadingState.activeRequests - 1);
+      apiLoadingState.notify();
+    }
+    return res;
+  },
   async (error) => {
+    if (!isSilent(error.config)) {
+      apiLoadingState.activeRequests = Math.max(0, apiLoadingState.activeRequests - 1);
+      apiLoadingState.notify();
+    }
+
     const original = error.config || {};
     const status = error.response?.status;
     const url = String(original.url || "");
@@ -122,7 +172,7 @@ api.interceptors.response.use(
         isRefreshing = false;
         flushWaiters(e, null);
 
-        try { await apiBare.post("/auth/logout", {}, { headers: { Authorization: "" } }); } catch {}
+        try { await apiBare.post("/auth/logout", {}, { headers: { Authorization: "" } }); } catch { }
         clearAuth();
         return Promise.reject(e);
       }

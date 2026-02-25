@@ -45,35 +45,31 @@
 
     /* Bölüm başlığı */
     .section-title {
-      padding: 8px 16px 8px 14px;
-      margin: 16px 12px 8px;
+      padding: 8px 16px 2px 12px;
+      margin: 20px 12px 4px;
       color: #fff;
-      opacity: 1;
-      font-size: 13px;
-      font-weight: 800;
+      opacity: 0.45;
+      font-size: 11.5px;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .08em;
-      border-left: 3px solid rgba(255, 255, 255, 0.7);
-      border-radius: $border-radius;
-      background: rgba(255, 255, 255, 0.10);
-      backdrop-filter: blur(2px);
       user-select: none;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
     }
 
     /* Menü öğeleri */
     .sidebar-item {
       display: block;
-      padding: 12px 16px;
-      margin: 6px 12px;
+      padding: 10px 16px;
+      margin: 4px 12px;
       color: var(--primary-contrast);
-      opacity: 0.9;
+      opacity: 0.85;
       text-decoration: none;
-      background-color: var(--hover-bg);
+      background-color: transparent;
       border-radius: $border-radius;
       transition: all $transition ease;
       cursor: pointer;
       font-weight: 500;
+      font-size: 13.5px;
 
       // Prevent text selection when clicking fast
       user-select: none;
@@ -85,7 +81,7 @@
       }
 
       &:hover {
-        background-color: var(--active-bg);
+        background-color: var(--hover-bg);
         opacity: 1;
         transform: translateX(4px); // subtle hover effect
       }
@@ -97,15 +93,13 @@
 
       &.active {
         position: relative;
-        background: rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.22) !important;
         backdrop-filter: blur(4px);
         color: #fff;
         opacity: 1;
         font-weight: 700;
         letter-spacing: 0.02em;
-        box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.22),
-          0 2px 12px rgba(0, 0, 0, 0.10);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
         transform: none;
         border-radius: $border-radius;
 

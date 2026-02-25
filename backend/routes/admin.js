@@ -2,6 +2,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { auth, roleCheck } from "../middleware/auth.js";
+import { createBackup } from "../lib/backup.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -110,18 +111,27 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Admin sil */
-router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
+/** Sistem Yedeği İndir */
+router.get("/backup/download", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ message: "Geçersiz id" });
-    await prisma.admin.delete({ where: { id } });
-    res.json({ ok: true });
+    await createBackup({ res });
   } catch (e) {
-    if (e.code === "P2025")
-      return res.status(404).json({ message: "Kayıt bulunamadı" });
-    console.error("DELETE /admin/:id", e);
-    res.status(500).json({ message: "Sunucu hatası" });
+    console.error("GET /admin/backup/download", e);
+    // Eğer başlıklar gönderilmemişse json dönebiliriz
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Yedekleme oluşturulamadı" });
+    }
+  }
+});
+
+/** Sunucuya Yedekleme Yap */
+router.post("/backup/server", auth, roleCheck(["admin"]), async (_req, res) => {
+  try {
+    const filename = await createBackup({ saveToDisk: true });
+    res.json({ ok: true, message: `Yedekleme başarıyla tamamlandı: ${filename}` });
+  } catch (e) {
+    console.error("POST /admin/backup/server", e);
+    res.status(500).json({ message: "Sunucu yedeklemesi başarısız oldu" });
   }
 });
 

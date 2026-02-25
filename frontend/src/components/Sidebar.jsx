@@ -109,12 +109,21 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               <li className="section-title">İletişim</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/admin/complaints") ? "active" : ""}`} onClick={() => navigate("/admin/complaints")}>Şikayetler</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/admin/suggestions") ? "active" : ""}`} onClick={() => navigate("/admin/suggestions")}>Öneriler</li>
+
             </>
           )}
 
           {/* TÜM ROL VE KULLANICILAR İÇİN ORTAK (Sertifikalar) */}
           <li className="section-title">Sertifikalar</li>
           <li className={`sidebar-item ${location.pathname === "/certificates" ? "active" : ""}`} onClick={() => navigate("/certificates")}>Şirket Sertifikaları</li>
+
+          {/* ARAÇLAR — EN ALTA ALINDI */}
+          {isAdmin && (
+            <>
+              <li className="section-title">Araçlar</li>
+              <li className={`sidebar-item ${location.pathname === "/tools/ek1-batch-print" ? "active" : ""}`} onClick={() => navigate("/tools/ek1-batch-print")}>Toplu Ek-1 Yazdır</li>
+            </>
+          )}
 
         </ul>
       )}

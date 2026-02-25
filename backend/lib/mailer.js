@@ -9,7 +9,7 @@ const {
   SMTP_PASS,
   MAIL_FROM,   // örn: '"Pest Control" <no-reply@domain.com>'
   MAIL_DISABLE, // "1" ise gerçek gönderim yapma, logla
-  APP_NAME = "Pest Control",
+  APP_NAME = "TuraÇevre",
   APP_URL = "http://localhost:3000",
 } = process.env;
 
@@ -61,8 +61,9 @@ function baseBox(innerHtml) {
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); overflow: hidden;">
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 40px 40px; text-align: center;">
-              <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 700; letter-spacing: 0.5px;">${APP_NAME}</h1>
+            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px 40px; text-align: center;">
+              <img src="${APP_URL}/logo.png" alt="${APP_NAME}" style="max-height: 60px; width: auto; object-fit: contain; margin-bottom: 8px;" />
+              <h1 style="color: #ffffff; font-size: 24px; margin: 0; font-weight: 700; letter-spacing: 0.5px;">${APP_NAME}</h1>
             </td>
           </tr>
           <!-- Body -->
@@ -413,7 +414,7 @@ function textComplaintAdmin({ complaint, detailPath }) {
   ].filter(Boolean).join("\n");
 }
 export async function sendComplaintCreatedToAdmins({ to, complaint, detailPath }) {
-  const subject = `${process.env.APP_NAME || "Pest Control"}: Yeni Şikayet #${complaint?.id}`;
+  const subject = `${process.env.APP_NAME || "TuraÇevre"}: Yeni Şikayet #${complaint?.id}`;
   return sendMail({
     to,
     subject,
@@ -459,7 +460,7 @@ function textSuggestionAdmin({ suggestion, detailPath }) {
   ].filter(Boolean).join("\n");
 }
 export async function sendSuggestionCreatedToAdmins({ to, suggestion, detailPath }) {
-  const subject = `${process.env.APP_NAME || "Pest Control"}: Yeni Öneri #${suggestion?.id}`;
+  const subject = `${process.env.APP_NAME || "TuraÇevre"}: Yeni Öneri #${suggestion?.id}`;
   return sendMail({
     to,
     subject,

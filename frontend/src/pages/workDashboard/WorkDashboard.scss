@@ -1,75 +1,98 @@
 /* src/pages/workDashboard/WorkDashboard.scss */
 .work-dashboard {
-  h1 {
-    margin: 0 0 14px;
-    font-size: 22px;
-    font-weight: 800;
-  }
+  .dashboard-header {
+    margin-bottom: 18px;
 
-  .admin-tools {
-    display: flex;
-    gap: 10px;
-    margin: 12px 0 20px;
-
-    .seed-btn,
-    .wipe-btn {
-      height: 38px;
-      padding: 0 14px;
-      border: 1px solid rgba(0,0,0,.08);
-      border-radius: 8px;
-      background: var(--surface);
-      cursor: pointer;
-      transition: box-shadow .2s ease, transform .08s ease;
-      &:hover { box-shadow: var(--shadow); }
-      &:active { transform: translateY(1px) scale(.99); }
-      &:disabled { opacity: .6; cursor: not-allowed; }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+      color: #111827;
     }
 
-    .seed-btn { border-color: #16a34a33; }
-    .wipe-btn {
-      border-color: #ef444433;
-      background: #fee2e2;
-      color: #7f1d1d;
+    .welcome-text {
+      margin: 4px 0 0;
+      font-size: 15px;
+      color: var(--text-muted);
+
+      span {
+        color: var(--primary-color);
+        font-weight: 700;
+      }
     }
   }
 
-  /* ------- Shortcuts (sol) + Presence (sağ) ------- */
+  /* ------- Shortcuts (sol) + Chart (orta) + Presence (sağ) ------- */
   .customer-section {
-    h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
-      font-weight: 700;
-    }
-
     .ps-grid {
       display: grid;
-      grid-template-columns: 1fr 1.6fr; /* SOL: kısayollar | SAĞ: Presence (geniş) */
-      gap: 12px;
-      align-items: start;
-      margin-bottom: 16px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: stretch;
+      margin-bottom: 24px;
+      width: 100%;
     }
 
-    .ps-left { display: block; }   /* Kısayollar */
-    .ps-right { display: block; }  /* PresenceOverview */
-
-    .qa-card {
+    .ps-left,
+    .ps-mid,
+    .ps-right {
       display: flex;
-      flex-direction: column;
+    }
+
+    .qa-card,
+    .admin-stats-card {
       width: 100%;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 12px;
       background: var(--surface);
-      padding: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
 
+    .admin-stats-card {
+      display: flex;
+      flex-direction: column;
+
+      &.placeholder {
+        justify-content: center;
+        align-items: center;
+        color: var(--text-muted);
+        padding: 40px;
+      }
+
+      .card-header {
+        margin-bottom: 12px;
+
+        .card-title {
+          font-size: 15px;
+          font-weight: 700;
+          margin: 0;
+        }
+
+        .card-subtitle {
+          font-size: 12px;
+          color: var(--text-muted);
+        }
+      }
+
+      .chart-wrapper {
+        flex: 1;
+        min-height: 160px;
+      }
+    }
+
+    .qa-card {
       .qa-head {
-        margin-bottom: 8px;
+        margin-bottom: 12px;
+
         h3 {
-          margin: 0 0 2px;
-          font-size: 16px;
+          margin: 0;
+          font-size: 15px;
           font-weight: 700;
         }
+
         .qa-sub {
-          margin: 0;
+          margin: 2px 0 0;
           font-size: 12px;
           color: var(--text-muted);
         }
@@ -77,71 +100,77 @@
 
       .qa-actions {
         display: grid;
-        grid-template-columns: 1fr; /* dikey buton listesi */
+        grid-template-columns: 1fr;
         gap: 8px;
 
         .qa-btn {
-          width: 100%;
-          height: 38px;
+          height: 36px;
           padding: 0 12px;
           border: 1px solid var(--border);
-          border-radius: 10px;
-          background: var(--muted-surface);
-          color: #111827;
-          text-align: left;
+          border-radius: 8px;
+          background: #f9fafb;
+          font-size: 13px;
           font-weight: 600;
+          text-align: left;
           cursor: pointer;
-          transition: box-shadow .2s ease, transform .08s ease, background .2s ease;
+          transition: all 0.2s;
 
           &:hover {
             background: var(--surface);
-            box-shadow: var(--shadow);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
           }
-          &:active { transform: translateY(1px) scale(.99); }
         }
       }
     }
   }
 
-  /* ------- EK-1 ve Ziyaret özetleri ------- */
-  .ek1-wrap,
-  .calendar-section {
-    margin-top: 20px;
-  }
-
-  .calendar-section {
-    h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .dash-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      align-items: stretch;
-    }
-
-    .dash-cal.card {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      .list { flex: 1 1 auto; }
-    }
-  }
-
   /* ------- responsive ------- */
-  @media (max-width: 1100px) {
+  @media (max-width: 1280px) {
     .customer-section .ps-grid {
-      grid-template-columns: 1fr; /* alt alta */
+      grid-template-columns: 1fr 1fr;
+
+      /* 2 col on tablets */
+      .ps-right {
+        grid-column: span 2;
+      }
+
+      /* Presence takes full width below */
     }
   }
-  @media (max-width: 1200px) {
-    .calendar-section .dash-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (max-width: 768px) {
+    .customer-section .ps-grid {
+      grid-template-columns: 1fr;
+
+      /* Single col on mobile */
+      .ps-right {
+        grid-column: span 1;
+      }
+    }
+
+    .dashboard-header h1 {
+      font-size: 20px;
     }
   }
+
+  /* Unify all section headings */
+  h2 {
+    margin: 0 0 16px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    border-left: 4px solid var(--primary-color);
+    padding-left: 12px;
+  }
+
+  .ek1-wrap,
+  .completed-visits,
+  .calendar-section {
+    margin-top: 24px;
+    width: 100%;
+  }
+
   @media (max-width: 720px) {
     .calendar-section .dash-grid {
       grid-template-columns: 1fr;

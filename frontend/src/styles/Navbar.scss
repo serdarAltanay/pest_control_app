@@ -20,6 +20,34 @@
     letter-spacing: .2px;
   }
 
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+    max-height: 48px;
+    /* Navbar dışına taşmasını engelle */
+    overflow: hidden;
+    text-decoration: none;
+    /* Link alt çizgisini kaldırır */
+    gap: 12px;
+    /* Logo ve yazı arası boşluk */
+    cursor: pointer;
+
+    img {
+      max-height: 44px;
+      /* Logonuza göre bu değeri ayarlayabilirsiniz */
+      width: auto;
+      object-fit: contain;
+    }
+
+    .navbar-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary-contrast);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+  }
+
   .navbar-right {
     display: flex;
     align-items: center;

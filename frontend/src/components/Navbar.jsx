@@ -1,6 +1,6 @@
 // frontend/src/components/Navbar.jsx
 import "../styles/Navbar.scss";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useContext, useEffect, useRef, useState } from "react";
 import { ProfileContext } from "../context/ProfileContext";
 import { toast } from "react-toastify";
@@ -66,7 +66,10 @@ export default function Navbar({ onHamburgerClick }) {
       <button className="hamburger-btn" onClick={onHamburgerClick} aria-label="Menü">
         ☰
       </button>
-      <div className="navbar-left">Pest Control</div>
+      <Link to="/" className="navbar-logo">
+        <img src="/logo.png" alt="TuraÇevre Logo" />
+        <span className="navbar-title">Tura Çevre</span>
+      </Link>
 
       <div className="navbar-right">
         {/* PROFİL DROPDOWN */}

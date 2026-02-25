@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import path from "path";
+import rateLimit from "express-rate-limit";
 
 // 🔐 middleware
 import { auth } from "./middleware/auth.js";
@@ -41,6 +42,8 @@ import feedbackRouter from "./routes/feedback.js";
 import notificationsRouter from "./routes/notifications.js";
 
 import contactsRouter from "./routes/contacts.js";
+
+import { initCronJobs } from "./lib/cron.js";
 
 dotenv.config();
 
@@ -83,8 +86,17 @@ app.get("/api/customer/stores", auth, (req, res, next) => {
   return storesRouter(req, res, next);
 });
 
+/* ------------ Rate Limiting ------------ */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 20, // Her IP için 15 dakikada en fazla 20 istek
+  message: { message: "Çok fazla giriş denemesi yaptınız. Lütfen daha sonra tekrar deneyin." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /* ------------ Primary Route Mounts ------------ */
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRouter);
@@ -154,4 +166,7 @@ app.use((err, _req, res, _next) => {
 
 /* ------------ Boot ------------ */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server ${PORT} portunda açıldı`));
+app.listen(PORT, () => {
+  console.log(`Server ${PORT} portunda açıldı`);
+  initCronJobs();
+});

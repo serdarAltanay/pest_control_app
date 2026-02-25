@@ -1,0 +1,281 @@
+/* ═══════════════════════════════════════════════
+   Ek1BatchPrint.scss
+   (Official Style Sync - Final)
+   ═══════════════════════════════════════════════ */
+
+.batch-print-container {
+    background: #e8e8e8;
+    min-height: 100vh;
+    padding-bottom: 60px;
+
+    .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px 18px;
+        background: #fff;
+        border-bottom: 1px solid #ddd;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        align-items: center;
+
+        .title {
+            font-weight: 700;
+            color: #111;
+            margin-right: auto;
+        }
+
+        .date-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+
+            .field {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+
+                label {
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                }
+
+                input {
+                    padding: 4px 8px;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                }
+            }
+        }
+
+        .btn {
+            height: 34px;
+            padding: 0 14px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #fff;
+            font-weight: 600;
+            cursor: pointer;
+
+            &.primary {
+                background: #1d4ed8;
+                color: #fff;
+                border-color: #1d4ed8;
+            }
+
+            &.success {
+                background: #059669;
+                color: #fff;
+                border-color: #059669;
+            }
+        }
+    }
+
+    .print-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* ─── A4 Page (Official Copy) ─── */
+    .page.A4 {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 20px auto;
+        background: #fff;
+        padding: 14mm 16mm 14mm;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
+
+        color: #000;
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 11.5px;
+        line-height: 1.45;
+
+        .doc-head {
+            display: grid;
+            grid-template-columns: 70px 1fr 70px;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #000;
+            margin-bottom: 10px;
+
+            &__logo {
+                width: 66px;
+                height: 66px;
+                object-fit: contain;
+            }
+
+            &__center {
+                text-align: center;
+            }
+
+            &__title {
+                font-size: 14.5px;
+                font-weight: 900;
+                margin: 0;
+            }
+        }
+
+        .block {
+            margin-top: 9px;
+        }
+
+        .block-title {
+            font-weight: 900;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            background: #000;
+            color: #fff;
+            padding: 3px 7px;
+        }
+
+        table {
+            display: table !important;
+            width: 100% !important;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 0 !important;
+
+            th,
+            td {
+                border: 1px solid #000;
+                padding: 4px 7px;
+                font-size: 11px;
+                vertical-align: top;
+            }
+
+            th {
+                background: #f4f4f4;
+                font-weight: 700;
+                text-align: left;
+            }
+        }
+
+        .sig-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border: 1px solid #000;
+            border-top: none;
+        }
+
+        .sig-col {
+            &:first-child {
+                border-right: 1px solid #000;
+            }
+        }
+
+        .sig-col__header {
+            background: #f4f4f4;
+            font-weight: 700;
+            font-size: 10.5px;
+            padding: 4px 7px;
+            border-bottom: 1px solid #000;
+        }
+
+        .sig-box {
+            padding: 8px 7px;
+
+            &__area {
+                min-height: 70px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            &__img {
+                max-height: 65px;
+                max-width: 100%;
+            }
+
+            &__name {
+                text-align: center;
+                font-weight: 700;
+                font-size: 10px;
+            }
+
+            &__description {
+                text-align: center;
+                font-style: italic;
+                font-size: 9.5px;
+                border-top: 1px solid #000;
+                padding-top: 4px;
+            }
+
+            &__audit-sentence {
+                text-align: center;
+                color: #999;
+                font-size: 7.5px;
+                font-style: italic;
+                margin-top: 4px;
+            }
+        }
+
+        .note {
+            border: 1px solid #000;
+            padding: 6px 9px;
+            margin-top: 12px;
+            font-size: 9.5px;
+            line-height: 1.5;
+            background: #fdfdfd;
+        }
+    }
+
+    @media print {
+
+        nav,
+        footer,
+        .sidebar,
+        .sidebar-backdrop,
+        .no-print,
+        .navbar {
+            display: none !important;
+        }
+
+        html,
+        body,
+        #root,
+        .layout,
+        .content,
+        .batch-print-container,
+        .print-area {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: #fff !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+        }
+
+        .content {
+            margin-left: 0 !important;
+        }
+
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
+
+        .page.A4 {
+            margin: 0 !important;
+            padding: 10mm 15mm !important;
+            width: 100% !important;
+            height: auto !important;
+            border: none !important;
+            box-shadow: none !important;
+            page-break-inside: avoid !important;
+
+            &:not(:last-child) {
+                page-break-after: always !important;
+            }
+        }
+
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+}

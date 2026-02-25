@@ -141,7 +141,9 @@ export default function Login() {
   return (
     <div className="login-page-container" style={{ backgroundImage: "url('/login-bg.png')" }}>
       <form className="login-form" onSubmit={handleSubmit} noValidate>
-        <h2>Giriş Yap</h2>
+        <div className="login-logo" style={{ textAlign: "center", marginBottom: "20px" }}>
+          <img src="/logo.png" alt="TuraÇevre Logo" style={{ maxWidth: "200px", height: "auto" }} />
+        </div>
 
         <label>
           <span>E-posta</span>

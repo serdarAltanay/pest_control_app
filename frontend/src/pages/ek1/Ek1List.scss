@@ -12,11 +12,12 @@ $brand: #ef4444;
 .ek1-list.card {
   background: var(--card, #fff);
   border: 1px solid var(--card-border, var(--border));
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 0;
   overflow: hidden;
   box-shadow: var(--shadow);
-  margin: 16px;
+  margin: 0 0 24px 0;
+  /* Vertical spacing only, no horizontal margin */
 }
 
 /* ─── Head ─── */

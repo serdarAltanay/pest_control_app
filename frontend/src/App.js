@@ -21,6 +21,7 @@ import StoreEk1 from "./pages/ek1/StoreEk1.jsx";
 import VisitEk1 from "./pages/ek1/VisitEk1.jsx";
 import Ek1Preview from "./pages/ek1/Ek1Preview.jsx";
 import SerbestEk1 from "./pages/ek1/SerbestEk1";
+import Ek1BatchPrint from "./pages/tools/Ek1BatchPrint.jsx";
 
 import RodentBaitActivation from "./pages/Stations/activations/RodentBaitActivation.jsx";
 import LiveCatchActivation from "./pages/Stations/activations/LiveCatchActivation.jsx";
@@ -73,6 +74,7 @@ import AdminSuggestionsList from "./pages/admin/AdminSuggestionList.jsx";
 import AdminSuggestionDetail from "./pages/admin/AdminSuggestionDetail.jsx";
 
 import Contacts from "./pages/customer/Contacts.jsx";
+import Settings from "./pages/settings/Settings.jsx";
 
 import "react-toastify/dist/ReactToastify.css";
 import "./main.scss"
@@ -264,6 +266,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
                   <SerbestEk1 />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/tools/ek1-batch-print"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <Ek1BatchPrint />
                 </PrivateRoute>
               }
             />
@@ -649,6 +659,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['admin']}>
                   <AdminSuggestionDetail />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <PrivateRoute allowedRoles={['admin', 'employee', 'customer']}>
+                  <Settings />
                 </PrivateRoute>
               }
             />

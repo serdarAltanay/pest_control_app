@@ -19,7 +19,7 @@ export function ProfileProvider({ children }) {
       localStorage.removeItem("email");
       localStorage.removeItem("profileImage");
       localStorage.removeItem("accessOwnerRole");
-    } catch {}
+    } catch { }
   };
 
   const attemptRefresh = async () => {
@@ -33,7 +33,7 @@ export function ProfileProvider({ children }) {
         localStorage.setItem("accessToken", t);
         return true;
       }
-    } catch {}
+    } catch { }
     return false;
   };
 
@@ -89,7 +89,7 @@ export function ProfileProvider({ children }) {
           try {
             await readProfile();
             return;
-          } catch {}
+          } catch { }
         }
         clearSession();
         setProfile(null);
@@ -99,8 +99,8 @@ export function ProfileProvider({ children }) {
       console.error("Profil yükleme hatası:", err);
       toast.error(
         err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Profil bilgisi alınamadı ❌"
+        err?.response?.data?.error ||
+        "Profil bilgisi alınamadı ❌"
       );
       setProfile(null);
     }
@@ -112,29 +112,7 @@ export function ProfileProvider({ children }) {
     fetchProfile();
   }, []);
 
-  // Heartbeat (presence)
-  useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token || !profile) return;
 
-    if (hbTimerRef.current) clearInterval(hbTimerRef.current);
-
-    const beat = async () => {
-      try {
-        await api.post("/presence/heartbeat", null, {
-          headers: { "x-silent": "1" },
-          _isHeartbeat: true,
-        });
-      } catch {}
-    };
-
-    beat();
-    hbTimerRef.current = setInterval(beat, 60_000);
-    return () => {
-      clearInterval(hbTimerRef.current);
-      hbTimerRef.current = null;
-    };
-  }, [profile]);
 
   return (
     <ProfileContext.Provider value={{ profile, setProfile, fetchProfile }}>

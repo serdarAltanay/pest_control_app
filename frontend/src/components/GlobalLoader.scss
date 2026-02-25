@@ -1,0 +1,56 @@
+@import "../styles/variables";
+
+.global-loader-overlay {
+    position: fixed;
+    top: $navbar-height;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - #{$navbar-height});
+    /* Kalan tüm ekranı kaplar */
+    background: rgba(0, 0, 0, 0.4);
+    /* Ekranı hafif karartır */
+    z-index: 99999;
+    pointer-events: auto;
+    /* Kullanıcının tıklamalarını durdurur */
+    display: flex;
+    flex-direction: column;
+}
+
+.global-loader-bar {
+    width: 100%;
+    height: 6px;
+    /* Şeritin kalınlığı */
+    background: rgba(255, 255, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.global-loader-progress {
+    position: absolute;
+    top: 0;
+    left: -200%;
+    width: 100%;
+    height: 100%;
+    background: var(--secondary, #10b981);
+    /* Çizginin rengi, sidebar rengi ile uyumlu olması için secondary yapıldı */
+    box-shadow: 0 0 10px var(--secondary), 0 0 5px var(--secondary);
+    animation: loadingStrip 1.5s infinite linear;
+}
+
+@keyframes loadingStrip {
+    0% {
+        left: -100%;
+        width: 20%;
+    }
+
+    50% {
+        left: 40%;
+        width: 60%;
+    }
+
+    100% {
+        left: 100%;
+        width: 20%;
+    }
+}

@@ -2,6 +2,7 @@
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
+import GlobalLoader from "./GlobalLoader";
 import "../styles/Layout.scss";
 import { useContext, useState, useCallback, useEffect } from "react";
 import { ProfileContext } from "../context/ProfileContext";
@@ -29,6 +30,7 @@ export default function Layout({ children, onCustomerClick }) {
   return (
     <div className="layout">
       <Navbar onHamburgerClick={toggleMobileSidebar} />
+      <GlobalLoader />
       <div
         className={`sidebar-backdrop ${mobileOpen ? "visible" : ""}`}
         onClick={closeMobileSidebar}

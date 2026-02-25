@@ -1,9 +1,11 @@
 // src/pages/workDashboard/WorkDashboard.jsx
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import "./WorkDashboard.scss";
 import PresenceOverview from "../../components/PrecenceOverview";
+import AdminStatsChart from "../../components/AdminStatsChart";
+import { ProfileContext } from "../../context/ProfileContext";
 
 import DashCalToday, {
   DashCalNext3,
@@ -15,23 +17,29 @@ import Ek1List from "../ek1/Ek1List.jsx";
 
 export default function WorkDashboard() {
   const navigate = useNavigate();
+  const { profile } = useContext(ProfileContext);
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const isAdmin = role === "admin";
 
   const [showCustomerSection, setShowCustomerSection] = useState(true);
-
+  const displayName = profile?.fullName || profile?.name || "";
 
   return (
     <Layout onCustomerClick={() => setShowCustomerSection(true)}>
       <div className="work-dashboard">
-        <h1>İş Takip Paneli</h1>
+        <header className="dashboard-header">
+          <h1>İş Takip Paneli</h1>
+          {isAdmin && displayName && (
+            <p className="welcome-text">Hoş geldin, <span>{displayName}</span> 👋</p>
+          )}
+        </header>
 
 
         {showCustomerSection && (
           <section className="customer-section">
             <h2>Müşteri İşleri</h2>
 
-            {/* SOL: Kısayollar — SAĞ: PresenceOverview */}
+            {/* SOL: Kısayollar | ORTA: Grafik | SAĞ: PresenceOverview */}
             <div className="ps-grid">
               <div className="ps-left">
                 <div className="qa-card">
@@ -66,6 +74,12 @@ export default function WorkDashboard() {
                   </div>
                 </div>
               </div>
+
+              {isAdmin && (
+                <div className="ps-mid">
+                  <AdminStatsChart />
+                </div>
+              )}
 
               <div className="ps-right">
                 <PresenceOverview />
