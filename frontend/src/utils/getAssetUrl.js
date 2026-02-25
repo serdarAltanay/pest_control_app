@@ -5,7 +5,7 @@ const viteEnv =
     : undefined;
 /* eslint-enable no-undef */
 
-const DEBUG = true;
+const DEBUG = false;
 const dbg = (...a) => { if (DEBUG && typeof console !== "undefined") console.log("[asset-url]", ...a); };
 
 function normalizeSlashes(p) {

@@ -159,7 +159,10 @@ api.interceptors.response.use(
 
         isRefreshing = true;
 
-        const r = await apiBare.post("/auth/refresh", {}, { headers: { Authorization: "" } });
+        const r = await apiBare.post("/auth/refresh", {}, {
+          headers: { Authorization: "" },
+          _silent: true
+        });
         const token = r.data?.accessToken;
         if (!token) throw new Error("No accessToken from refresh");
 
