@@ -1,10 +1,11 @@
 import axios from "axios";
 
 /** ───────────────────── Base URL ───────────────────── */
-const API_ORIGIN =
-  process.env.REACT_APP_API_ORIGIN ||
-  (typeof window !== "undefined" && window.__API_ORIGIN__) ||
-  "http://localhost:5000";
+const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+const API_ORIGIN = isLocal
+  ? "http://localhost:5000"
+  : "https://pest-control-app.onrender.com";
 
 const API_BASE = `${String(API_ORIGIN).replace(/\/+$/, "")}/api`;
 
