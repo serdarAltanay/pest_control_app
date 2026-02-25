@@ -23,18 +23,9 @@ export const apiLoadingState = {
     return () => { this.listeners = this.listeners.filter(l => l !== fn); };
   },
   notify() {
-    clearTimeout(this.timer);
-    if (this.activeRequests > 0) {
-      // Sadece 200ms'den uzun süren isteklerde loader görünsün (pır pır yapmaması için)
-      this.timer = setTimeout(() => {
-        if (this.activeRequests > 0) {
-          this.listeners.forEach(fn => fn(true));
-        }
-      }, 200);
-    } else {
-      // İstek biter bitmez gizle
-      this.listeners.forEach(fn => fn(false));
-    }
+    // Geçici olarak kapatıldı (Kullanıcı talebi üzerine iptal)
+    // clearTimeout(this.timer);
+    // ...
   }
 };
 
