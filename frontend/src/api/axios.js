@@ -27,7 +27,9 @@ export const apiLoadingState = {
     if (this.activeRequests > 0) {
       // Sadece 200ms'den uzun süren isteklerde loader görünsün (pır pır yapmaması için)
       this.timer = setTimeout(() => {
-        this.listeners.forEach(fn => fn(true));
+        if (this.activeRequests > 0) {
+          this.listeners.forEach(fn => fn(true));
+        }
       }, 200);
     } else {
       // İstek biter bitmez gizle
