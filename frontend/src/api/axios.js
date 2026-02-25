@@ -40,7 +40,7 @@ export const apiLoadingState = {
 
 const isSilent = (config) => {
   const url = String(config?.url || "");
-  if (config?._isHeartbeat) return true;
+  if (config?._silent || config?._isHeartbeat) return true;
   if (/\/(presence\/heartbeat|auth\/refresh)/.test(url)) return true;
   return false;
 };

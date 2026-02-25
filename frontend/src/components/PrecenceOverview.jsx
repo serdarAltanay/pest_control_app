@@ -5,9 +5,9 @@ import "../styles/PrecenceOverview.scss";
 
 // FREE müşteriyi belirleyen yardımcı
 const isFreeCustomer = (c) => {
-  const code  = (c?.code  || "").toUpperCase();
+  const code = (c?.code || "").toUpperCase();
   const title = (c?.title || c?.fullName || c?.name || "").toUpperCase();
-  const seg   = (c?.segment || c?.tier || c?.plan || "").toUpperCase();
+  const seg = (c?.segment || c?.tier || c?.plan || "").toUpperCase();
   return (
     code === "FREE" ||
     title === "FREE" ||
@@ -26,7 +26,7 @@ export default function PresenceOverview() {
   const fetchSummary = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/presence/summary");
+      const res = await api.get("/presence/summary", { _silent: true });
       setData(res.data || null);
     } catch {
       // sessiz geçebiliriz; dashboard’da kritik değil
@@ -38,7 +38,7 @@ export default function PresenceOverview() {
   // /customers → FREE olmayan sayısı
   const fetchCustomersCount = async () => {
     try {
-      const { data } = await api.get("/customers");
+      const { data } = await api.get("/customers", { _silent: true });
       const list = Array.isArray(data) ? data : [];
       const cleaned = list.filter((c) => !isFreeCustomer(c));
       setNonFreeCustomerCount(cleaned.length);
@@ -100,7 +100,7 @@ export default function PresenceOverview() {
       <div className="grid">
         <Card title="Yöneticiler" bucket={data?.admins} />
         <Card title="Personeller" bucket={data?.employees} />
-        <Card title="Erişim Sahipleri"  bucket={customersBucket} />
+        <Card title="Erişim Sahipleri" bucket={customersBucket} />
         <TotalsCard totals={data?.totals} customersOverride={nonFreeCustomerCount} />
       </div>
 

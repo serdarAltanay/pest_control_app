@@ -39,7 +39,7 @@ export default function NotificationBell() {
   const fetchCount = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/notifications/unread-count");
+      const { data } = await api.get("/notifications/unread-count", { _silent: true });
       let c = Number(data?.count || 0);
 
       // Emniyet: Backend zaten filtreliyor ama yine de "employee" isek
@@ -62,7 +62,7 @@ export default function NotificationBell() {
   const fetchPreview = async () => {
     try {
       setPreviewBusy(true);
-      const { data } = await api.get("/notifications");
+      const { data } = await api.get("/notifications", { _silent: true });
       let list = Array.isArray(data) ? data : [];
 
       // Personel için FE tarafında da filtrele
