@@ -55,21 +55,26 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
 // FE için izinli origin’ler (dev & prod)
-const allowedOrigins = new Set([
+const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  // gerekiyorsa intranet ya da IP:
-  // "http://192.168.1.100:5173",
-]);
+  "https://app.turacevre.com"
+];
 
 app.use(
   cors({
     origin: (origin, cb) => {
       // Postman / server-to-server gibi Origin gelmeyebilir → izin ver
       if (!origin) return cb(null, true);
-      if (allowedOrigins.has(origin)) return cb(null, true);
+
+      // Tam eşleşme varsa izin ver
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+
+      // Vercel branch/preview linklerine otomatik izin ver
+      if (origin.endsWith(".vercel.app")) return cb(null, true);
+
       return cb(null, false);
     },
     credentials: true, // refresh cookie için şart
