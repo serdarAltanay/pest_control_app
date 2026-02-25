@@ -2,8 +2,7 @@ import axios from "axios";
 
 /** ───────────────────── Base URL ───────────────────── */
 const API_ORIGIN =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_ORIGIN) ||
-  (typeof process !== "undefined" && process.env?.REACT_APP_API_ORIGIN) ||
+  process.env.REACT_APP_API_ORIGIN ||
   (typeof window !== "undefined" && window.__API_ORIGIN__) ||
   "http://localhost:5000";
 
