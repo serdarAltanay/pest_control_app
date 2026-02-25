@@ -106,7 +106,7 @@ async function ensureOwnerHandler(req, res) {
         to: trimmedEmail,
         name: display,
         code,
-      }).catch(() => { });
+      }).catch((err) => { console.error("Yeni kullanıcı karşılama maili hatası:", err); });
       emailed = true;
     } else if (forceReset) {
       const code = random6();
@@ -458,8 +458,8 @@ router.post(
             name: display,
             code: rawPassword,
             scopeText,
-          }).catch(() => { });
-        } catch { }
+          }).catch((err) => { console.error("Kombine hoşgeldin maili hatası:", err); });
+        } catch (err) { console.error("Genel mail blogu hatasi:", err); }
       }
 
       res.json(createdGrants);
