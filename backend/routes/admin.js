@@ -135,4 +135,45 @@ router.post("/backup/server", auth, roleCheck(["admin"]), async (_req, res) => {
   }
 });
 
+/** Firma Ayarlarını Getir (ProviderProfile) */
+router.get("/provider-profile", auth, roleCheck(["admin"]), async (req, res) => {
+  try {
+    let p = await prisma.providerProfile.findFirst();
+    if (!p) p = await prisma.providerProfile.create({ data: { companyName: "Tura Çevre" } });
+    res.json(p);
+  } catch (e) {
+    console.error("GET /admin/provider-profile", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
+/** Firma Ayarlarını Güncelle (ProviderProfile) */
+router.put("/provider-profile", auth, roleCheck(["admin"]), async (req, res) => {
+  try {
+    let p = await prisma.providerProfile.findFirst();
+    if (!p) p = await prisma.providerProfile.create({ data: { companyName: "Tura Çevre" } });
+
+    const { companyName, address, responsibleTitle, responsibleName, phoneFax, certificateSerial, permissionNo } = req.body;
+
+    const dataToUpdate = {};
+    if (companyName !== undefined) dataToUpdate.companyName = String(companyName);
+    if (address !== undefined) dataToUpdate.address = String(address);
+    if (responsibleTitle !== undefined) dataToUpdate.responsibleTitle = String(responsibleTitle);
+    if (responsibleName !== undefined) dataToUpdate.responsibleName = String(responsibleName);
+    if (phoneFax !== undefined) dataToUpdate.phoneFax = String(phoneFax);
+    if (certificateSerial !== undefined) dataToUpdate.certificateSerial = String(certificateSerial);
+    if (permissionNo !== undefined) dataToUpdate.permissionNo = String(permissionNo);
+
+    const updated = await prisma.providerProfile.update({
+      where: { id: p.id },
+      data: dataToUpdate,
+    });
+
+    res.json({ ok: true, providerProfile: updated });
+  } catch (e) {
+    console.error("PUT /admin/provider-profile", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
 export default router;

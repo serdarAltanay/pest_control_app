@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { ProfileContext } from "../../context/ProfileContext";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
@@ -13,6 +13,38 @@ export default function Settings() {
 
     const isAdmin = profile?.role?.toLowerCase() === "admin";
 
+    // --- Provider Profile (Firma Ayarları) ---
+    const [providerProfile, setProviderProfile] = useState({
+        companyName: "", address: "", responsibleTitle: "", responsibleName: "", phoneFax: "", certificateSerial: "", permissionNo: ""
+    });
+    const [savingProvider, setSavingProvider] = useState(false);
+
+    useEffect(() => {
+        if (isAdmin) {
+            api.get("/admin/provider-profile")
+                .then(res => setProviderProfile(res.data))
+                .catch(err => console.error("Provider profile error:", err));
+        }
+    }, [isAdmin]);
+
+    const handleProviderChange = (e) => {
+        const { name, value } = e.target;
+        setProviderProfile(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleProviderSave = async () => {
+        setSavingProvider(true);
+        try {
+            await api.put("/admin/provider-profile", providerProfile);
+            toast.success("Firma ayarları başarıyla güncellendi.");
+        } catch (err) {
+            toast.error("Firma ayarları kaydedilemedi.");
+        } finally {
+            setSavingProvider(false);
+        }
+    };
+    // ------------------------------------------
+
     const handleDownloadBackup = async () => {
         if (downloading) return;
         setDownloading(true);
@@ -25,7 +57,6 @@ export default function Settings() {
             const link = document.createElement("a");
             link.href = url;
 
-            // Filename from header if possible, else default
             const contentDisposition = response.headers["content-disposition"];
             let filename = "pest_control_backup.zip";
             if (contentDisposition) {
@@ -94,35 +125,83 @@ export default function Settings() {
                 </section>
 
                 {isAdmin && (
-                    <section className="settings-section admin-section">
-                        <h2>Sistem Yönetimi (Admin)</h2>
-                        <div className="backup-controls">
-                            <h3>Veri Yedekleme</h3>
-                            <p>
-                                Tüm veritabanı şemalarını ve <code>uploads</code> klasöründeki dosyaları
-                                yedekleyebilirsiniz.
+                    <>
+                        <section className="settings-section admin-section">
+                            <h2>Firma Ayarları (EK-1 Şablonu)</h2>
+                            <p style={{ marginBottom: "1.5rem", color: "var(--text-light)" }}>
+                                Buraya gireceğiniz bilgiler <strong>EK-1 Biyosidal Uygulama Formu'na</strong> (1. Bölüm) otomatik olarak yansıyacaktır.
                             </p>
-                            <div className="button-group">
-                                <button
-                                    className="btn-download"
-                                    onClick={handleDownloadBackup}
-                                    disabled={downloading}
-                                >
-                                    {downloading ? "Hazırlanıyor..." : "Yedeği Yerel PC'ye İndir"}
-                                </button>
-                                <button
-                                    className="btn-server"
-                                    onClick={handleServerBackup}
-                                    disabled={backingUp}
-                                >
-                                    {backingUp ? "Yedekleniyor..." : "Sunucuda Yedek Oluştur"}
+                            <div className="provider-form">
+                                <label className="settings-field">
+                                    <span>Firma Adı:</span>
+                                    <input type="text" name="companyName" value={providerProfile.companyName || ""} onChange={handleProviderChange} placeholder="Tura Çevre" />
+                                </label>
+                                <label className="settings-field">
+                                    <span>Açık Adres:</span>
+                                    <textarea name="address" value={providerProfile.address || ""} onChange={handleProviderChange} rows={2} placeholder="Firma açık adresi" />
+                                </label>
+                                <div className="settings-row">
+                                    <label className="settings-field">
+                                        <span>Mesul Müdür Ünvanı:</span>
+                                        <input type="text" name="responsibleTitle" value={providerProfile.responsibleTitle || ""} onChange={handleProviderChange} placeholder="Örn: Ziraat Mühendisi" />
+                                    </label>
+                                    <label className="settings-field">
+                                        <span>Mesul Müdür Adı:</span>
+                                        <input type="text" name="responsibleName" value={providerProfile.responsibleName || ""} onChange={handleProviderChange} placeholder="Örn: Ahmet Yılmaz" />
+                                    </label>
+                                </div>
+                                <div className="settings-row">
+                                    <label className="settings-field">
+                                        <span>Telefon / Faks Numarası:</span>
+                                        <input type="text" name="phoneFax" value={providerProfile.phoneFax || ""} onChange={handleProviderChange} placeholder="Örn: 0312 123 45 67" />
+                                    </label>
+                                </div>
+                                <div className="settings-row">
+                                    <label className="settings-field">
+                                        <span>Belge Seri No:</span>
+                                        <input type="text" name="certificateSerial" value={providerProfile.certificateSerial || ""} onChange={handleProviderChange} placeholder="Örn: 12345" />
+                                    </label>
+                                    <label className="settings-field">
+                                        <span>Müdürlük İzin Tarih ve Sayısı:</span>
+                                        <input type="text" name="permissionNo" value={providerProfile.permissionNo || ""} onChange={handleProviderChange} placeholder="Örn: 01.01.2024 / 98765" />
+                                    </label>
+                                </div>
+                                <button className="btn-primary-settings" onClick={handleProviderSave} disabled={savingProvider}>
+                                    {savingProvider ? "Kaydediliyor..." : "Firma Ayarlarını Kaydet"}
                                 </button>
                             </div>
-                            <p className="note">
-                                * Sunucuda oluşturulan yedekler VPS üzerindeki <code>backups/</code> klasöründe saklanır.
-                            </p>
-                        </div>
-                    </section>
+                        </section>
+
+                        <section className="settings-section admin-section">
+                            <h2>Sistem Yönetimi (Admin)</h2>
+                            <div className="backup-controls">
+                                <h3>Veri Yedekleme</h3>
+                                <p>
+                                    Tüm veritabanı şemalarını ve <code>uploads</code> klasöründeki dosyaları
+                                    yedekleyebilirsiniz.
+                                </p>
+                                <div className="button-group">
+                                    <button
+                                        className="btn-download"
+                                        onClick={handleDownloadBackup}
+                                        disabled={downloading}
+                                    >
+                                        {downloading ? "Hazırlanıyor..." : "Yedeği Yerel PC'ye İndir"}
+                                    </button>
+                                    <button
+                                        className="btn-server"
+                                        onClick={handleServerBackup}
+                                        disabled={backingUp}
+                                    >
+                                        {backingUp ? "Yedekleniyor..." : "Sunucuda Yedek Oluştur"}
+                                    </button>
+                                </div>
+                                <p className="note">
+                                    * Sunucuda oluşturulan yedekler VPS üzerindeki <code>backups/</code> klasöründe saklanır.
+                                </p>
+                            </div>
+                        </section>
+                    </>
                 )}
             </div>
         </div>
