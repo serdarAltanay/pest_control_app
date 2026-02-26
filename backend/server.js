@@ -94,7 +94,7 @@ app.get("/api/customer/stores", auth, (req, res, next) => {
 /* ------------ Rate Limiting ------------ */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 dakika
-  max: 20, // Her IP için 15 dakikada en fazla 20 istek
+  max: 200, // Her IP için 15 dakikada en fazla 200 istek (Geçici olarak artırıldı)
   message: { message: "Çok fazla giriş denemesi yaptınız. Lütfen daha sonra tekrar deneyin." },
   standardHeaders: true,
   legacyHeaders: false,
