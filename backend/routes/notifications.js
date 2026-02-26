@@ -6,16 +6,8 @@ import { auth } from "../middleware/auth.js";
 const prisma = new PrismaClient();
 const router = Router();
 
-// Employee'ın GÖREMEYECEĞİ bildirim tipleri
-const EMPLOYEE_BLOCKED_TYPES = ["COMPLAINT_NEW", "COMPLAINT_SEEN", "SUGGESTION_NEW"];
-
 /** Ortak where yardımcısı */
 function baseWhereForRole(role, userId, extra = {}) {
-  const adminPool = {
-    recipientRole: "ADMIN",
-    NOT: { type: { in: EMPLOYEE_BLOCKED_TYPES } },
-  };
-
   if (role === "admin") {
     return {
       recipientRole: "ADMIN",
@@ -23,16 +15,11 @@ function baseWhereForRole(role, userId, extra = {}) {
     };
   }
   if (role === "employee") {
+    // Personel sadece kendisine gelen bildirimleri görür
     return {
-      AND: [
-        {
-          OR: [
-            adminPool,
-            { recipientRole: "EMPLOYEE", recipientId: userId },
-          ],
-        },
-        extra,
-      ],
+      recipientRole: "EMPLOYEE",
+      recipientId: userId,
+      ...extra,
     };
   }
   if (role === "customer") {
@@ -88,11 +75,8 @@ router.patch("/:id/read", auth, async (req, res) => {
         return res.status(403).json({ message: "Yetkisiz işlem" });
       }
     } else if (req.user.role === "employee") {
-      // Admin havuzu ama şikayet/öneri yok
-      if (n.recipientRole !== "ADMIN") {
-        return res.status(403).json({ message: "Yetkisiz işlem" });
-      }
-      if (EMPLOYEE_BLOCKED_TYPES.includes(n.type)) {
+      // Personel sadece kendisine ait bildirimleri işaretleyebilir
+      if (!(n.recipientRole === "EMPLOYEE" && n.recipientId === req.user.id)) {
         return res.status(403).json({ message: "Yetkisiz işlem" });
       }
     } else {

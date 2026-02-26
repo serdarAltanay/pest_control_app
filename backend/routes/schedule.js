@@ -297,18 +297,7 @@ router.post(
           const whenStr = `${new Date(start).toLocaleString("tr-TR")} – ${new Date(end).toLocaleString("tr-TR")}`;
           const detailPath = `/calendar/visit/${created.id}`;
 
-          // 1) Tüm çalışanlara genel bildirim
-          await prisma.notification.create({
-            data: {
-              type: "VISIT_PLANNED",
-              title: "Yeni Ziyaret Planlandı",
-              body: `${title} · ${storeName} · ${whenStr}`,
-              link: detailPath,
-              recipientRole: "EMPLOYEE",
-            },
-          }).catch(() => { });
-
-          // 2) Atanan çalışana özel bildirim
+          // 1) Atanan çalışana özel bildirim (genel personel bildirimi kaldırıldı)
           if (emp?.id) {
             await prisma.notification.create({
               data: {

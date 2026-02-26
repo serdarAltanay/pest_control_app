@@ -383,10 +383,63 @@ async function hSign(kind, req, res) {
     let report = await prisma.ek1Report.update({ where: { visitId }, data });
 
     // Durum hesapla (APPROVED / SUBMITTED)
+    const newStatus = computeStatusAfter(report);
     report = await prisma.ek1Report.update({
       where: { visitId },
-      data: { status: computeStatusAfter(report) },
+      data: { status: newStatus },
     });
+
+    // EK-1 APPROVED olunca → mağazaya erişimi olan müşterilere bildirim
+    if (newStatus === "APPROVED") {
+      (async () => {
+        try {
+          const v = await prisma.visit.findUnique({
+            where: { id: visitId },
+            include: { store: true },
+          });
+          const sName = v?.store?.name || `Ziyaret #${visitId}`;
+          const storeId = v?.storeId;
+
+          if (storeId) {
+            // Bu store'a erişimi olan tüm AccessGrant'ları bul
+            const directGrants = await prisma.accessGrant.findMany({
+              where: { scopeType: "STORE", storeId },
+              select: { ownerId: true },
+            });
+
+            // Store'un customer'ına erişimi olanlar
+            const store = v?.store;
+            let customerGrants = [];
+            if (store?.customerId) {
+              customerGrants = await prisma.accessGrant.findMany({
+                where: { scopeType: "CUSTOMER", customerId: store.customerId },
+                select: { ownerId: true },
+              });
+            }
+
+            const ownerIds = [...new Set([
+              ...directGrants.map(g => g.ownerId),
+              ...customerGrants.map(g => g.ownerId),
+            ])];
+
+            for (const ownerId of ownerIds) {
+              await prisma.notification.create({
+                data: {
+                  type: "EK1_COMPLETED",
+                  title: "EK-1 Formu Tamamlandı",
+                  body: `${sName} için EK-1 formu onaylanmıştır.`,
+                  link: `/customer/ek1/${visitId}`,
+                  recipientRole: "CUSTOMER",
+                  recipientId: ownerId,
+                },
+              }).catch(() => { });
+            }
+          }
+        } catch (err) {
+          console.error("EK1 APPROVED customer notify err", err);
+        }
+      })();
+    }
 
     res.json(report);
   } catch (e) {
