@@ -116,51 +116,63 @@ router.post("/login", async (req, res) => {
 router.post("/refresh", async (req, res) => {
   try {
     // Cookie VEYA body'den refresh token al (3rd-party cookie engellenebilir)
-    const refreshToken = req.cookies.refreshToken?.trim() || req.body.refreshToken?.trim();
-    console.log("[REFRESH] Cookie:", !!req.cookies.refreshToken, "Body:", !!req.body.refreshToken);
-    if (!refreshToken) return res.status(401).json({ message: "Refresh token gerekli" });
+    const refreshToken =
+      (req.cookies?.refreshToken || "").trim() ||
+      (req.body?.refreshToken || "").trim() ||
+      "";
 
+    console.log("[REFRESH] Cookie:", !!(req.cookies?.refreshToken), "Body:", !!(req.body?.refreshToken));
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token gerekli" });
+    }
+
+    // DB'de token var mı?
     const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
     if (!stored) {
       console.log("[REFRESH] Token not found in DB");
       return res.status(403).json({ message: "Geçersiz refresh token" });
     }
 
-    jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
-      if (err) {
-        // Geçersiz veya süresi dolmuşsa DB'den temizle
-        await prisma.refreshToken.delete({ where: { id: stored.id } });
-        return res.status(403).json({ message: "Token doğrulanamadı" });
-      }
+    // JWT doğrula (sync — hata varsa catch'e düşer)
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, JWT_SECRET);
+    } catch (jwtErr) {
+      console.log("[REFRESH] JWT verify failed:", jwtErr.message);
+      await prisma.refreshToken.delete({ where: { id: stored.id } }).catch(() => { });
+      return res.status(403).json({ message: "Token doğrulanamadı" });
+    }
 
-      // Yeni Access Token
-      const newAccessToken = jwt.sign(
-        { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
-        JWT_SECRET,
-        { expiresIn: "15m" }
-      );
+    // Yeni Access Token (15 dk)
+    const newAccessToken = jwt.sign(
+      { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
+      JWT_SECRET,
+      { expiresIn: "15m" }
+    );
 
-      // Refresh Token Rotation (RTR) - Güvenlik için her kullanımda RT yenilenir
-      const newRefreshToken = jwt.sign(
-        { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
-        JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+    // Refresh Token Rotation (RTR) - her kullanımda RT yenilenir
+    const newRefreshToken = jwt.sign(
+      { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-      await prisma.refreshToken.update({
-        where: { id: stored.id },
-        data: {
-          token: newRefreshToken,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        },
-      });
-
-      res.cookie("refreshToken", newRefreshToken, cookieOpts);
-      return res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    await prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: {
+        token: newRefreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
     });
+
+    res.cookie("refreshToken", newRefreshToken, cookieOpts);
+    return res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {
-    console.error("Refresh hatası:", err);
-    res.status(500).json({ error: "Sunucu hatası" });
+    console.error("[REFRESH] Sunucu hatası:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Sunucu hatası" });
+    }
   }
 });
 
