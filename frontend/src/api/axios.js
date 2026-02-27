@@ -51,6 +51,7 @@ const apiBare = axios.create({
 export function clearAuth() {
   try {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("role");
     localStorage.removeItem("fullName");
     localStorage.removeItem("name");
@@ -158,14 +159,18 @@ api.interceptors.response.use(
 
         isRefreshing = true;
 
-        const r = await apiBare.post("/auth/refresh", {}, {
+        // Cookie engellenmiş olabilir, localStorage'daki RT'yi body ile gönder
+        const storedRT = localStorage.getItem("refreshToken") || "";
+        const r = await apiBare.post("/auth/refresh", { refreshToken: storedRT }, {
           headers: { Authorization: "" },
           _silent: true
         });
         const token = r.data?.accessToken;
+        const newRT = r.data?.refreshToken;
         if (!token) throw new Error("No accessToken from refresh");
 
         setAuthToken(token);
+        if (newRT) localStorage.setItem("refreshToken", newRT);
         isRefreshing = false;
         flushWaiters(null, token);
 

@@ -106,8 +106,9 @@ export default function Login() {
         password,
       });
 
-      const { accessToken, role, fullName, email: serverEmail } = res.data || {};
+      const { accessToken, refreshToken, role, fullName, email: serverEmail } = res.data || {};
       setAuthToken(accessToken);
+      if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("role", role);
       localStorage.setItem("fullName", fullName || "");
       localStorage.setItem("name", fullName || "");

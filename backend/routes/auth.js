@@ -98,6 +98,7 @@ router.post("/login", async (req, res) => {
 
     res.json({
       accessToken,
+      refreshToken,      // FE localStorage'a da kaydetsin (3rd-party cookie fallback)
       role: jwtRole,     // "customer" | "admin" | "employee"
       fullName,
       email: user.email,
@@ -114,16 +115,14 @@ router.post("/login", async (req, res) => {
  * ------------- */
 router.post("/refresh", async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken?.trim();
-    console.log("[REFRESH] Cookie token exists:", !!refreshToken, "len:", refreshToken?.length || 0);
+    // Cookie VEYA body'den refresh token al (3rd-party cookie engellenebilir)
+    const refreshToken = req.cookies.refreshToken?.trim() || req.body.refreshToken?.trim();
+    console.log("[REFRESH] Cookie:", !!req.cookies.refreshToken, "Body:", !!req.body.refreshToken);
     if (!refreshToken) return res.status(401).json({ message: "Refresh token gerekli" });
 
     const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
     if (!stored) {
-      console.log("[REFRESH] Token not found in DB. Cookie token (first 20):", refreshToken.substring(0, 20));
-      // DB'deki tüm token count'unu logla
-      const count = await prisma.refreshToken.count();
-      console.log("[REFRESH] Total tokens in DB:", count);
+      console.log("[REFRESH] Token not found in DB");
       return res.status(403).json({ message: "Geçersiz refresh token" });
     }
 
@@ -157,7 +156,7 @@ router.post("/refresh", async (req, res) => {
       });
 
       res.cookie("refreshToken", newRefreshToken, cookieOpts);
-      return res.json({ accessToken: newAccessToken });
+      return res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
     });
   } catch (err) {
     console.error("Refresh hatası:", err);
