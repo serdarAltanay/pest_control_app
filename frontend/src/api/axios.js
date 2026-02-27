@@ -130,10 +130,18 @@ api.interceptors.response.use(
     const suppressRefresh =
       original._isHeartbeat === true || /\/presence\/heartbeat$/.test(url);
 
-    if (status === 403) return Promise.reject(error);
+    // 401 veya 403 geldiğinde token yenileme dene
+    if (status === 401 || status === 403) {
+      // Auth endpoint'lerinin kendi 403'ünü (refresh dahil) yakala → logout
+      if (isAuthPath(url)) {
+        clearAuth();
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
 
-    if (status === 401) {
-      if (suppressRefresh || original._retry || isAuthPath(url)) {
+      if (suppressRefresh || original._retry) {
         return Promise.reject(error);
       }
       original._retry = true;
@@ -170,6 +178,9 @@ api.interceptors.response.use(
 
         try { await apiBare.post("/auth/logout", {}, { headers: { Authorization: "" } }); } catch { }
         clearAuth();
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
         return Promise.reject(e);
       }
     }

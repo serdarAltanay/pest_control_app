@@ -114,11 +114,18 @@ router.post("/login", async (req, res) => {
  * ------------- */
 router.post("/refresh", async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.refreshToken?.trim();
+    console.log("[REFRESH] Cookie token exists:", !!refreshToken, "len:", refreshToken?.length || 0);
     if (!refreshToken) return res.status(401).json({ message: "Refresh token gerekli" });
 
     const stored = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
-    if (!stored) return res.status(403).json({ message: "Geçersiz refresh token" });
+    if (!stored) {
+      console.log("[REFRESH] Token not found in DB. Cookie token (first 20):", refreshToken.substring(0, 20));
+      // DB'deki tüm token count'unu logla
+      const count = await prisma.refreshToken.count();
+      console.log("[REFRESH] Total tokens in DB:", count);
+      return res.status(403).json({ message: "Geçersiz refresh token" });
+    }
 
     jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
       if (err) {
