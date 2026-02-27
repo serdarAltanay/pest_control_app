@@ -1,5 +1,6 @@
 // lib/mailer.js
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 const {
   SMTP_HOST,
@@ -11,38 +12,61 @@ const {
   MAIL_DISABLE, // "1" ise gerçek gönderim yapma, logla
   APP_NAME = "TuraÇevre",
   APP_URL = "http://localhost:3000",
+  RESEND_API_KEY, // Resend HTTP API anahtarı
 } = process.env;
 
+// --- Transport: Resend (HTTP) veya Nodemailer (SMTP) ---
+let resend = null;
 let transporter = null;
-if (
-  !MAIL_DISABLE &&
-  SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS
-) {
+
+if (!MAIL_DISABLE && RESEND_API_KEY) {
+  // ✅ Resend HTTP API — SMTP portu gerektirmez, Render'da sorunsuz çalışır
+  resend = new Resend(RESEND_API_KEY);
+  console.log("[MAILER] Resend HTTP API aktif.");
+} else if (!MAIL_DISABLE && SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
+  // Fallback: Nodemailer SMTP
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: Number(SMTP_PORT),
     secure: String(SMTP_SECURE || "false") === "true",
     auth: { user: SMTP_USER, pass: SMTP_PASS },
   });
+  console.log("[MAILER] Nodemailer SMTP aktif.");
 }
 
-// Genel gönderim (config yoksa mock log’lar)
+// Genel gönderim
 export async function sendMail({ to, subject, html, text }) {
-  if (!transporter) {
-    console.log("[MAIL-MOCK]");
-    console.log("TO:", to);
-    console.log("SUBJECT:", subject);
-    if (text) console.log("TEXT:", text);
-    if (html) console.log("HTML:", html);
-    return { mocked: true };
+  // 1) Resend öncelikli
+  if (resend) {
+    const toArray = Array.isArray(to) ? to : [to];
+    const result = await resend.emails.send({
+      from: MAIL_FROM || "TuraÇevre <onboarding@resend.dev>",
+      to: toArray,
+      subject,
+      html,
+      text,
+    });
+    return result;
   }
-  return transporter.sendMail({
-    from: MAIL_FROM || SMTP_USER,
-    to,
-    subject,
-    text,
-    html,
-  });
+
+  // 2) Nodemailer fallback
+  if (transporter) {
+    return transporter.sendMail({
+      from: MAIL_FROM || SMTP_USER,
+      to,
+      subject,
+      text,
+      html,
+    });
+  }
+
+  // 3) Mock (config yoksa)
+  console.log("[MAIL-MOCK]");
+  console.log("TO:", to);
+  console.log("SUBJECT:", subject);
+  if (text) console.log("TEXT:", text);
+  if (html) console.log("HTML:", html.substring(0, 200) + "...");
+  return { mocked: true };
 }
 
 /* -------------------- templates -------------------- */
