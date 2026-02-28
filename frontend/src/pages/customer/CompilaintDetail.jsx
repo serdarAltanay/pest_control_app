@@ -11,7 +11,7 @@ export default function ComplaintDetailCustomer() {
   const [item, setItem] = useState(null);
 
   useEffect(() => {
-    api.get(`/feedback/${id}`).then(({ data }) => setItem(data)).catch(() => { });
+    api.get(`/feedback/complaints/${id}`).then(({ data }) => setItem(data)).catch(() => { });
   }, [id]);
 
   if (!item) return (

@@ -13,8 +13,10 @@ export default function FeedbackList() {
   const load = async () => {
     try {
       const c = await api.get("/feedback/complaints/me");
-      const s = await api.get("/feedback/suggestions/me");
       setComplaints(Array.isArray(c.data) ? c.data : []);
+    } catch { }
+    try {
+      const s = await api.get("/feedback/suggestions/me");
       setSuggestions(Array.isArray(s.data) ? s.data : []);
     } catch { }
   };
