@@ -16,6 +16,16 @@ const normalizeMethod = (m) => {
   return up === "PULVERIZE" ? "PULVERİZE" : up;
 };
 
+/* ───────── Seri Numarası Üretici ───────── */
+async function getNextSerialNo() {
+  const last = await prisma.ek1Report.findFirst({
+    where: { serialNo: { not: null } },
+    orderBy: { serialNo: "desc" },
+    select: { serialNo: true },
+  });
+  return (last?.serialNo ?? 0) + 1;
+}
+
 /* ───────── ACCESS SCOPE (müşteri hangi mağazalara erişir?) ─────────
    Not: FE’de “customer” rolü, gerçekte AccessOwner kullanıcısını temsil eder. */
 async function getAccessibleStoreIdsForCustomer(prisma, user) {
@@ -134,7 +144,10 @@ async function ensureProviderProfile() {
 
 async function ensureReport(visitId) {
   let report = await prisma.ek1Report.findUnique({ where: { visitId } });
-  if (!report) report = await prisma.ek1Report.create({ data: { visitId, status: "DRAFT" } });
+  if (!report) {
+    const serialNo = await getNextSerialNo();
+    report = await prisma.ek1Report.create({ data: { visitId, status: "DRAFT", serialNo } });
+  }
   return report;
 }
 
@@ -575,9 +588,11 @@ async function hCreateFreeEk1(req, res) {
       ncrs,
     };
 
+    const serialNo = await getNextSerialNo();
     await prisma.ek1Report.create({
       data: {
         visitId: visit.id,
+        serialNo,
         status: b.customerSignature ? "SUBMITTED" : "DRAFT",
         ...(b.customerSignature
           ? {
@@ -661,6 +676,7 @@ async function hListEk1(req, res) {
 
       return {
         id: r.visitId,
+        serialNo: r.serialNo || null,
         title: `Ziyaret #${r.visitId}`,
         customerName,
         storeName,

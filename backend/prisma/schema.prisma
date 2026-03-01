@@ -490,8 +490,9 @@ model Visit {
 }
 
 model Ek1Report {
-  id      Int       @id @default(autoincrement())
-  visitId Int       @unique
+  id       Int       @id @default(autoincrement())
+  serialNo Int?      @unique
+  visitId  Int       @unique
   visit   Visit     @relation(fields: [visitId], references: [id], onDelete: Cascade)
   status  Ek1Status @default(DRAFT)
   pdfUrl  String?

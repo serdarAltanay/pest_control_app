@@ -31,6 +31,7 @@ const METHOD_TR = {
 };
 
 
+const fmtSerial = (n) => n ? String(n).padStart(6, '0') : null;
 const fmtTRDate = (d) => (d ? new Date(d).toLocaleDateString("tr-TR") : "—");
 const fmtTRDateTime = (d) =>
   d
@@ -404,7 +405,7 @@ export default function Ek1Preview() {
               <div className="doc-head__sup">T.C. SAĞLIK BAKANLIĞI</div>
               <h1 className="doc-head__title">EK-1 BİYOSİDAL UYGULAMA İŞLEM FORMU</h1>
               <div className="doc-head__meta">
-                Belge No: EK1-{visitId}&nbsp;&nbsp;|&nbsp;&nbsp;Tarih: {dateTR}&nbsp;&nbsp;|&nbsp;&nbsp;Durum: {report?.status || "DRAFT"}
+                Belge No: {fmtSerial(report?.serialNo) || `EK1-${visitId}`}&nbsp;&nbsp;|&nbsp;&nbsp;Tarih: {dateTR}&nbsp;&nbsp;|&nbsp;&nbsp;Durum: {report?.status || "DRAFT"}
               </div>
             </div>
             <div className="doc-head__qr">
@@ -419,7 +420,7 @@ export default function Ek1Preview() {
             <table className="kv">
               <colgroup><col style={{ width: "42%" }} /><col /></colgroup>
               <tbody>
-                <tr><th>Belge Seri No</th><td>{provider?.certificateSerial || "—"}</td></tr>
+                <tr><th>Belge Seri No</th><td>{fmtSerial(report?.serialNo) || provider?.certificateSerial || "—"}</td></tr>
                 <tr><th>Uygulamayı Yapan Firma Adı</th><td>{provider?.companyName || "—"}</td></tr>
                 <tr><th>Açık Adresi</th><td>{provider?.address || "—"}</td></tr>
                 <tr><th>Mesul Müdür</th><td>{provider?.responsibleTitle || provider?.responsibleName || "—"}</td></tr>
