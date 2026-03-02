@@ -111,9 +111,19 @@ export default function VisitEk1() {
               updates.endTime = `${String(ed.getHours()).padStart(2, "0")}:${String(ed.getMinutes()).padStart(2, "0")}`;
               filledFields.endTime = true;
             }
-            if (prev.employees.length === 0 && ev.employee) {
-              updates.employees = [ev.employee];
-              filledFields.employees = true;
+            if (prev.employees.length === 0 && ev.employeeId) {
+              const emp = (resE.data || []).find(e => e.id === ev.employeeId);
+              if (emp) {
+                updates.employees = [emp];
+                filledFields.employees = true;
+              } else {
+                // If ev.employee happens to be an object instead of string ID
+                const empObj = ev.employee && typeof ev.employee === 'object' ? ev.employee : null;
+                if (empObj && empObj.id) {
+                  updates.employees = [empObj];
+                  filledFields.employees = true;
+                }
+              }
             }
             if (Object.keys(filledFields).length > 0) {
               setAutoFilled(filledFields);
