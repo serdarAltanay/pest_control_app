@@ -3,7 +3,7 @@
    SerbestEk1 · Ek1Flow · VisitEk1
    ═══════════════════════════════════════════ */
 
-$line:  #e5e7eb;
+$line: #e5e7eb;
 $muted: #64748b;
 $brand: #ef4444;
 
@@ -43,7 +43,10 @@ $brand: #ef4444;
       letter-spacing: 0.02em;
     }
 
-    .header-actions { display: flex; gap: 8px; }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
   }
 
   /* ─── Card ─── */
@@ -97,10 +100,15 @@ $brand: #ef4444;
     color: var(--text-muted);
     margin-bottom: 5px;
 
-    .req { color: $brand; margin-left: 2px; }
+    .req {
+      color: $brand;
+      margin-left: 2px;
+    }
   }
 
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     width: 100%;
     border: 1px solid $line;
     border-radius: 9px;
@@ -118,27 +126,38 @@ $brand: #ef4444;
     }
   }
 
-  textarea { resize: vertical; min-height: 64px; }
+  textarea {
+    resize: vertical;
+    min-height: 64px;
+  }
 
   /* ─── Layouts ─── */
   .grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 14px;
-    .full { grid-column: 1 / -1; }
+
+    .full {
+      grid-column: 1 / -1;
+    }
   }
 
   .grid-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    .col-span-3 { grid-column: 1 / -1; }
+
+    .col-span-3 {
+      grid-column: 1 / -1;
+    }
   }
 
   .group {
     margin-top: 12px;
 
-    label { margin-bottom: 6px; }
+    label {
+      margin-bottom: 6px;
+    }
   }
 
   /* ─── Pill Checkbox ─── */
@@ -169,7 +188,10 @@ $brand: #ef4444;
       font-weight: 700;
     }
 
-    &:hover:not(.on) { background: var(--muted-surface); border: var(--border); }
+    &:hover:not(.on) {
+      background: var(--muted-surface);
+      border: var(--border);
+    }
   }
 
   /* ─── Line Form (Biyosidal Satırı) ─── */
@@ -180,7 +202,10 @@ $brand: #ef4444;
     align-items: end;
     margin-bottom: 12px;
 
-    input, select { margin: 0; }
+    input,
+    select {
+      margin: 0;
+    }
   }
 
   /* ─── Line Table ─── */
@@ -192,6 +217,7 @@ $brand: #ef4444;
 
     thead tr {
       background: var(--muted-surface);
+
       th {
         padding: 8px 10px;
         text-align: left;
@@ -205,8 +231,14 @@ $brand: #ef4444;
     tbody tr {
       border-bottom: 1px solid #f1f5f9;
       transition: background 0.1s;
-      &:hover { background: var(--muted-surface); }
-      &:last-child { border-bottom: none; }
+
+      &:hover {
+        background: var(--muted-surface);
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
 
       td {
         padding: 8px 10px;
@@ -263,10 +295,18 @@ $brand: #ef4444;
         white-space: nowrap;
       }
 
-      strong { color: #1e293b; }
-      span   { color: $muted; font-size: 12.5px; }
+      strong {
+        color: #1e293b;
+      }
 
-      .btn-icon { margin-left: auto; }
+      span {
+        color: $muted;
+        font-size: 12.5px;
+      }
+
+      .btn-icon {
+        margin-left: auto;
+      }
     }
   }
 
@@ -282,8 +322,13 @@ $brand: #ef4444;
     font-size: 13.5px;
     text-align: center;
 
-    span { font-size: 36px; }
-    p    { margin: 0; }
+    span {
+      font-size: 36px;
+    }
+
+    p {
+      margin: 0;
+    }
   }
 
   /* ─── Buttons ─── */
@@ -303,22 +348,38 @@ $brand: #ef4444;
     white-space: nowrap;
     transition: all 0.15s;
 
-    &:hover:not(:disabled) { background: var(--muted-surface); }
-    &:disabled { opacity: 0.5; cursor: not-allowed; }
+    &:hover:not(:disabled) {
+      background: var(--muted-surface);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
     &.primary {
       background: $brand;
       border-color: $brand;
       color: #fff;
-      &:hover:not(:disabled) { background: darken($brand, 5%); }
+
+      &:hover:not(:disabled) {
+        background: darken($brand, 5%);
+      }
     }
+
     &.warn {
       background: #d97706;
       border-color: #d97706;
       color: #fff;
-      &:hover:not(:disabled) { background: #b45309; }
+
+      &:hover:not(:disabled) {
+        background: #b45309;
+      }
     }
-    &.ghost  { background: transparent; }
+
+    &.ghost {
+      background: transparent;
+    }
 
     &.xl {
       height: 48px;
@@ -345,8 +406,83 @@ $brand: #ef4444;
     &.btn-danger {
       color: #ef4444;
       border-color: #fecaca;
-      &:hover { background: #fef2f2; border-color: #ef4444; }
+
+      &:hover {
+        background: #fef2f2;
+        border-color: #ef4444;
+      }
     }
+  }
+
+  /* ─── Visit Info Card (Planlı Ziyaret) ─── */
+  .visit-info-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+    border: 1px solid #bfdbfe;
+  }
+
+  .visit-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .visit-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 10px;
+    border: 1px solid #e0e7ff;
+  }
+
+  .visit-info-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .visit-info-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: $muted;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 2px;
+  }
+
+  .visit-info-value {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1e3a5f;
+    line-height: 1.4;
+  }
+
+  .auto-badge-header {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-left: auto;
+  }
+
+  .auto-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    background: #dbeafe;
+    color: #2563eb;
+    border-radius: 20px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-left: 6px;
+    vertical-align: middle;
   }
 
   /* ─── Final Actions ─── */
@@ -370,7 +506,9 @@ $brand: #ef4444;
   }
 
   /* ─── Multi Dropdown ─── */
-  .multi-dd { position: relative; }
+  .multi-dd {
+    position: relative;
+  }
 
   .multi-dd .dropdown-toggle {
     width: 100%;
@@ -385,7 +523,10 @@ $brand: #ef4444;
     gap: 8px;
     cursor: pointer;
     transition: border-color 0.15s;
-    &:hover { border-color: #94a3b8; }
+
+    &:hover {
+      border-color: #94a3b8;
+    }
   }
 
   .multi-dd.open .dropdown-toggle {
@@ -402,7 +543,10 @@ $brand: #ef4444;
     min-height: 22px;
   }
 
-  .multi-dd .placeholder { color: $muted; font-size: 13.5px; }
+  .multi-dd .placeholder {
+    color: $muted;
+    font-size: 13.5px;
+  }
 
   .multi-dd .chip {
     display: inline-flex;
@@ -421,13 +565,17 @@ $brand: #ef4444;
     transition: transform 0.18s;
     color: $muted;
   }
-  .multi-dd.open .caret { transform: rotate(180deg); }
+
+  .multi-dd.open .caret {
+    transform: rotate(180deg);
+  }
 
   .multi-dd .dropdown-menu {
     position: absolute;
     z-index: 30;
     top: calc(100% + 5px);
-    left: 0; right: 0;
+    left: 0;
+    right: 0;
     background: var(--surface);
     border: 1px solid $line;
     border-radius: 12px;
@@ -437,8 +585,15 @@ $brand: #ef4444;
   }
 
   @keyframes ddIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .multi-dd .dropdown-list {
@@ -455,33 +610,68 @@ $brand: #ef4444;
     cursor: pointer;
     font-size: 13.5px;
     transition: background 0.1s;
-    input { pointer-events: none; }
-    &:hover { background: var(--muted-surface); }
+
+    input {
+      pointer-events: none;
+    }
+
+    &:hover {
+      background: var(--muted-surface);
+    }
   }
 
-  .multi-dd .empty { padding: 10px 12px; color: $muted; font-size: 13px; }
+  .multi-dd .empty {
+    padding: 10px 12px;
+    color: $muted;
+    font-size: 13px;
+  }
 
   /* ─── Responsive ─── */
   @media (max-width: 900px) {
     padding: 12px;
 
-    .grid-2 { grid-template-columns: 1fr; }
-    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .grid-2 {
+      grid-template-columns: 1fr;
+    }
+
+    .grid-3 {
+      grid-template-columns: 1fr 1fr;
+    }
 
     .line-form {
       grid-template-columns: 1fr 1fr;
-      .btn { grid-column: 1 / -1; }
+
+      .btn {
+        grid-column: 1 / -1;
+      }
     }
 
-    .ncr-form, .ncr-form-row {
+    .ncr-form,
+    .ncr-form-row {
       grid-template-columns: 1fr 1fr;
-      .btn { grid-column: 1 / -1; }
+
+      .btn {
+        grid-column: 1 / -1;
+      }
     }
   }
 
   @media (max-width: 560px) {
-    .grid-3 { grid-template-columns: 1fr; }
-    .line-form { grid-template-columns: 1fr; }
-    .ncr-form, .ncr-form-row { grid-template-columns: 1fr; }
+    .grid-3 {
+      grid-template-columns: 1fr;
+    }
+
+    .line-form {
+      grid-template-columns: 1fr;
+    }
+
+    .ncr-form,
+    .ncr-form-row {
+      grid-template-columns: 1fr;
+    }
+
+    .visit-info-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }

@@ -20,6 +20,15 @@ const METHOD_TR = {
   SISLEME: "Sisleme", YEMLEME: "Yemleme", YENILEME: "Yenileme",
 };
 
+const VISIT_TYPE_TR = {
+  TEK_SEFERLIK: "Tek Seferlik Ziyaret",
+  PERIYODIK: "Periyodik Ziyaret",
+  ACIL_CAGRI: "Acil Çağrı",
+  ISTASYON_KURULUM: "İstasyon Kurulum",
+  ILK_ZIYARET: "İlk Ziyaret",
+  DIGER: "Diğer",
+};
+
 const timeOptions = (() => {
   const out = [];
   for (let t = 8 * 60; t <= 20 * 60; t += 15) {
@@ -40,6 +49,7 @@ export default function VisitEk1() {
   const [submitting, setSubmitting] = useState(false);
   const [existingEvent, setExistingEvent] = useState(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [autoFilled, setAutoFilled] = useState({});
 
   /* Visit Info Form */
   const [formVisit, setFormVisit] = useState({
@@ -90,16 +100,23 @@ export default function VisitEk1() {
           // OTOMATIK DOLDURMA (Eğer visit verisi eksikse)
           setFormVisit(prev => {
             const updates = {};
+            const filledFields = {};
             if (!prev.startTime && ev.start) {
               const sd = new Date(ev.start);
               updates.startTime = `${String(sd.getHours()).padStart(2, "0")}:${String(sd.getMinutes()).padStart(2, "0")}`;
+              filledFields.startTime = true;
             }
             if (!prev.endTime && ev.end) {
               const ed = new Date(ev.end);
               updates.endTime = `${String(ed.getHours()).padStart(2, "0")}:${String(ed.getMinutes()).padStart(2, "0")}`;
+              filledFields.endTime = true;
             }
             if (prev.employees.length === 0 && ev.employee) {
               updates.employees = [ev.employee];
+              filledFields.employees = true;
+            }
+            if (Object.keys(filledFields).length > 0) {
+              setAutoFilled(filledFields);
             }
             if (Object.keys(updates).length > 0) return { ...prev, ...updates };
             return prev;
@@ -112,6 +129,17 @@ export default function VisitEk1() {
   };
 
   useEffect(() => { loadAll(); }, [visitId]);
+
+  /* Store bilgileri (bundle'dan) */
+  const storeName = bundle?.store?.name || "";
+  const storeAddress = bundle?.store?.address || "";
+  const storeManager = bundle?.store?.manager || "";
+  const visitDate = bundle?.visit?.date
+    ? new Date(bundle.visit.date).toLocaleDateString("tr-TR", {
+      day: "2-digit", month: "2-digit", year: "numeric"
+    })
+    : "";
+  const visitTypeStr = bundle?.visit?.visitType ? (VISIT_TYPE_TR[bundle.visit.visitType] || bundle.visit.visitType) : "";
 
   /* Ürün Ekle */
   const addLine = async (e) => {
@@ -207,6 +235,63 @@ export default function VisitEk1() {
           </div>
         </div>
 
+        {/* Planlı Ziyaret Bilgi Kartı */}
+        {bundle && (storeName || storeAddress || storeManager || visitDate) && (
+          <section className="card visit-info-card">
+            <div className="card-title">
+              <span className="card-num" style={{ background: '#3b82f6' }}>ℹ</span> Planlı Ziyaret Bilgileri
+              <span className="auto-badge-header">otomatik dolduruldu</span>
+            </div>
+            <div className="visit-info-grid">
+              {storeName && (
+                <div className="visit-info-item">
+                  <span className="visit-info-icon">🏪</span>
+                  <div>
+                    <div className="visit-info-label">Mağaza Adı</div>
+                    <div className="visit-info-value">{storeName}</div>
+                  </div>
+                </div>
+              )}
+              {storeAddress && (
+                <div className="visit-info-item">
+                  <span className="visit-info-icon">📍</span>
+                  <div>
+                    <div className="visit-info-label">Mağaza Adresi</div>
+                    <div className="visit-info-value">{storeAddress}</div>
+                  </div>
+                </div>
+              )}
+              {storeManager && (
+                <div className="visit-info-item">
+                  <span className="visit-info-icon">👤</span>
+                  <div>
+                    <div className="visit-info-label">Mağaza Sorumlusu</div>
+                    <div className="visit-info-value">{storeManager}</div>
+                  </div>
+                </div>
+              )}
+              {visitDate && (
+                <div className="visit-info-item">
+                  <span className="visit-info-icon">📅</span>
+                  <div>
+                    <div className="visit-info-label">Ziyaret Tarihi</div>
+                    <div className="visit-info-value">{visitDate}</div>
+                  </div>
+                </div>
+              )}
+              {visitTypeStr && (
+                <div className="visit-info-item">
+                  <span className="visit-info-icon">🏷️</span>
+                  <div>
+                    <div className="visit-info-label">Ziyaret Türü</div>
+                    <div className="visit-info-value">{visitTypeStr}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Ziyaret Bilgileri (Zaman ve Personel) */}
         <section className="card form">
           <div className="card-title">
@@ -214,7 +299,10 @@ export default function VisitEk1() {
           </div>
           <div className="grid-3">
             <div>
-              <label>Giriş Saati</label>
+              <label>
+                Giriş Saati
+                {autoFilled.startTime && <span className="auto-badge">otomatik</span>}
+              </label>
               <select
                 value={formVisit.startTime}
                 onChange={(e) => setFormVisit({ ...formVisit, startTime: e.target.value })}
@@ -224,7 +312,10 @@ export default function VisitEk1() {
               </select>
             </div>
             <div>
-              <label>Çıkış Saati</label>
+              <label>
+                Çıkış Saati
+                {autoFilled.endTime && <span className="auto-badge">otomatik</span>}
+              </label>
               <select
                 value={formVisit.endTime}
                 onChange={(e) => setFormVisit({ ...formVisit, endTime: e.target.value })}
@@ -234,7 +325,10 @@ export default function VisitEk1() {
               </select>
             </div>
             <div>
-              <label>Uygulayıcı Personel</label>
+              <label>
+                Uygulayıcı Personel
+                {autoFilled.employees && <span className="auto-badge">otomatik</span>}
+              </label>
               <select
                 value={formVisit.employees?.[0]?.id || ""}
                 onChange={(e) => {

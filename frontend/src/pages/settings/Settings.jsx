@@ -158,10 +158,6 @@ export default function Settings() {
                                 </div>
                                 <div className="settings-row">
                                     <label className="settings-field">
-                                        <span>Belge Seri No:</span>
-                                        <input type="text" name="certificateSerial" value={providerProfile.certificateSerial || ""} onChange={handleProviderChange} placeholder="Örn: 12345" />
-                                    </label>
-                                    <label className="settings-field">
                                         <span>Müdürlük İzin Tarih ve Sayısı:</span>
                                         <input type="text" name="permissionNo" value={providerProfile.permissionNo || ""} onChange={handleProviderChange} placeholder="Örn: 01.01.2024 / 98765" />
                                     </label>
