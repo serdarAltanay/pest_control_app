@@ -13,6 +13,11 @@ const fmtDT = (d) => {
   if (!d || isNaN(d)) return "—";
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 };
+const fmtDate = (d) => {
+  if (!(d instanceof Date)) d = d ? new Date(d) : null;
+  if (!d || isNaN(d)) return "—";
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+};
 
 const COLORS = [
   "#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa",
@@ -124,6 +129,8 @@ export default function Ek1List() {
           let providerSignedAt = r.providerSignedAt || r?.report?.providerSignedAt || null;
           let customerSignedAt = r.customerSignedAt || r?.report?.customerSignedAt || null;
           let visitType = r.visitType || r?.visit?.visitType || "DIGER";
+          let startTime = r.startTime || r?.visit?.startTime || "";
+          let endTime = r.endTime || r?.visit?.endTime || "";
           let employeeName = r.employeeName || "";
           let storeName = r.storeName ?? r?.visit?.store?.name ?? (r.storeId ? `Mağaza #${r.storeId}` : "-");
           let customerNameRaw = r.customerName ?? r?.visit?.store?.customer?.title ?? "-";
@@ -141,6 +148,8 @@ export default function Ek1List() {
               if (vis?.date) start = vis.date;
               if (vis?.createdAt) createdAt = vis.createdAt;
               if (vis?.visitType) visitType = vis.visitType;
+              if (vis?.startTime) startTime = vis.startTime;
+              if (vis?.endTime) endTime = vis.endTime;
               if (!employeeName) employeeName = normalizeEmployees(vis?.employees);
 
               providerSignedAt = providerSignedAt || rep.providerSignedAt || null;
@@ -172,6 +181,8 @@ export default function Ek1List() {
             customerSignedAt: customerSignedAt ? new Date(customerSignedAt) : null,
             employeeName: employeeName || "-",
             employeeKey: employeeName || r.storeId || r.visitId || 0,
+            startTime: startTime || "",
+            endTime: endTime || "",
           };
         })
       );
@@ -378,7 +389,7 @@ export default function Ek1List() {
             key={`${r.visitId}-${r.updatedAt?.getTime?.() || ""}`}
           >
             <div className="c dt">
-              <div className="dt-main">{fmtDT(r.visitDate)}</div>
+              <div className="dt-main">{fmtDate(r.visitDate)}{r.startTime ? ` ${r.startTime}` : ""}{r.endTime ? `–${r.endTime}` : ""}</div>
               <div className="dt-sub">Güncelleme: {fmtDT(r.updatedAt)}</div>
             </div>
             <div className="c vtype">{visitTypeLabel(r.visitType)}</div>
