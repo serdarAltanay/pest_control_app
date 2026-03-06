@@ -25,6 +25,7 @@ export function ProfileProvider({ children }) {
   const attemptRefresh = async () => {
     try {
       const storedRT = localStorage.getItem("refreshToken") || "";
+      if (!storedRT) return false;
       const r = await apiNoRefresh({
         method: "post",
         url: "/auth/refresh",

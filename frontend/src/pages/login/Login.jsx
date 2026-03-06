@@ -62,20 +62,23 @@ export default function Login() {
     }
 
     if (!skipRefresh) {
-      (async () => {
-        try {
-          const { data } = await apiNoRefresh({ method: "POST", url: "/auth/refresh" });
-          if (data?.accessToken) {
-            setAuthToken(data.accessToken);
-            const payload = parseJwt(data.accessToken);
-            if (payload?.role) localStorage.setItem("role", payload.role);
-            try { await fetchProfile?.(); } catch { }
-            safeNavigate(pickTarget(payload?.role));
+      const storedRT = localStorage.getItem("refreshToken") || "";
+      if (storedRT) {
+        (async () => {
+          try {
+            const { data } = await apiNoRefresh({ method: "POST", url: "/auth/refresh", data: { refreshToken: storedRT } });
+            if (data?.accessToken) {
+              setAuthToken(data.accessToken);
+              const payload = parseJwt(data.accessToken);
+              if (payload?.role) localStorage.setItem("role", payload.role);
+              try { await fetchProfile?.(); } catch { }
+              safeNavigate(pickTarget(payload?.role));
+            }
+          } catch {
+            // cookie yok/expired → login’de kal
           }
-        } catch {
-          // cookie yok/expired → login’de kal
-        }
-      })();
+        })();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
