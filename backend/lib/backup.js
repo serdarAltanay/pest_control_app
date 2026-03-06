@@ -3,11 +3,16 @@ import fs from "fs";
 import path from "path";
 import archiver from "archiver";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 
-dotenv.config();
+// .env dosyasını backup.js'in bulunduğu dizine göre çöz (Render'da cwd farklı olabilir)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, "..", ".env");
+dotenv.config({ path: envPath });
 
 /**
- * DATABASE_URL'den bağlantı bilgilerini çıkar (fallback).
+ * DATABASE_URL'den bağlantı bilgilerini çıkar.
  * Format: mysql://user:password@host:port/database
  */
 function parseDbUrl(url) {
@@ -26,14 +31,20 @@ function parseDbUrl(url) {
 }
 
 function getDbConfig() {
-    // Önce bireysel env var'ları kullan, yoksa DATABASE_URL'den parse et
+    // DATABASE_URL öncelikli (Prisma kullanıyor ve çalışıyor)
     const fromUrl = process.env.DATABASE_URL ? parseDbUrl(process.env.DATABASE_URL) : null;
+    if (fromUrl?.host && fromUrl?.database) {
+        console.log("[BACKUP] Config: DATABASE_URL kullanılıyor");
+        return fromUrl;
+    }
+    // Fallback: bireysel env var'lar
+    console.log("[BACKUP] Config: bireysel DB_* env var'ları kullanılıyor");
     return {
-        host: process.env.DB_HOST || fromUrl?.host || "localhost",
-        port: Number(process.env.DB_PORT) || fromUrl?.port || 3306,
-        user: process.env.DB_USER || fromUrl?.user || "root",
-        password: process.env.DB_PASSWORD || fromUrl?.password || "",
-        database: process.env.DB_NAME || fromUrl?.database,
+        host: process.env.DB_HOST || "localhost",
+        port: Number(process.env.DB_PORT) || 3306,
+        user: process.env.DB_USER || "root",
+        password: process.env.DB_PASSWORD || "",
+        database: process.env.DB_NAME,
     };
 }
 
