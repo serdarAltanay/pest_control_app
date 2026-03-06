@@ -40,7 +40,7 @@ export async function sendMail({ to, subject, html, text }) {
   if (resend) {
     const toArray = Array.isArray(to) ? to : [to];
     const result = await resend.emails.send({
-      from: MAIL_FROM || "TuraÇevre <onboarding@resend.dev>",
+      from: MAIL_FROM || "TuraÇevre <onboarding@res.dev>",
       to: toArray,
       subject,
       html,

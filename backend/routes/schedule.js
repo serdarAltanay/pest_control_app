@@ -343,8 +343,8 @@ router.post(
 
 /* =========================================
    PUT /api/schedule/events/:id
-   - employee: SADECE status günceller
-   - admin: tüm alanları güncelleyebilir
+   - admin & employee tüm alanları güncelleyebilir
+   - çakışma kontrolü her iki rol için de geçerli
 ========================================= */
 router.put(
   "/events/:id",
@@ -356,18 +356,6 @@ router.put(
 
       const current = await prisma.scheduleEvent.findUnique({ where: { id } });
       if (!current) return res.status(404).json({ error: "Bulunamadı" });
-
-      const role = (req.user?.role || "").toLowerCase();
-
-      if (role === "employee") {
-        if (!("status" in req.body)) {
-          return res.status(403).json({ error: "Çalışan sadece durum (status) güncelleyebilir." });
-        }
-        const st = asStatus(req.body.status);
-        if (!st) return res.status(400).json({ error: "Geçersiz status" });
-        const updated = await prisma.scheduleEvent.update({ where: { id }, data: { status: st } });
-        return res.json({ message: "Durum güncellendi", event: updated });
-      }
 
       const data = {};
       if ("title" in req.body) data.title = String(req.body.title || "").trim() || "Ziyaret";
@@ -418,6 +406,40 @@ router.put(
       res.json({ message: "Güncellendi", event: updated });
     } catch (e) {
       console.error("PUT /schedule/events/:id", e);
+      res.status(500).json({ error: "Sunucu hatası" });
+    }
+  }
+);
+
+/* =========================================
+   DELETE /api/schedule/events/:id
+   - admin: herhangi bir etkinliği silebilir
+   - employee: yalnızca kendine atanmış etkinlikleri silebilir
+========================================= */
+router.delete(
+  "/events/:id",
+  auth, roleCheck(["admin", "employee"]),
+  async (req, res) => {
+    try {
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Geçersiz id" });
+
+      const ev = await prisma.scheduleEvent.findUnique({ where: { id } });
+      if (!ev) return res.status(404).json({ error: "Bulunamadı" });
+
+      const role = (req.user?.role || "").toLowerCase();
+      if (role === "employee") {
+        const selfId = Number(req.user?.id ?? req.user?.userId) || null;
+        if (ev.employeeId !== selfId) {
+          return res.status(403).json({ error: "Yalnızca size atanmış ziyaretleri silebilirsiniz." });
+        }
+      }
+
+      await prisma.scheduleEvent.delete({ where: { id } });
+      res.json({ message: "Ziyaret silindi" });
+    } catch (e) {
+      if (e.code === "P2025") return res.status(404).json({ error: "Bulunamadı" });
+      console.error("DELETE /schedule/events/:id", e);
       res.status(500).json({ error: "Sunucu hatası" });
     }
   }

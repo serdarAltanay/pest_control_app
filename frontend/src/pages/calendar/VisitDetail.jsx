@@ -33,8 +33,11 @@ const minutesOf = (hhmm) => {
   return h * 60 + min;
 };
 const sameDay = (a, b) => a?.toDateString?.() === b?.toDateString?.();
-
-// role constants moved inside component for reactivity
+const toDateInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const timeOptions = Array.from({ length: 96 }, (_, i) => {
+  const m = i * 15;
+  return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+});
 
 /* ───────── API ───────── */
 async function fetchEventById(id) {
@@ -52,8 +55,19 @@ async function listStoreVisits(storeId) {
     return Array.isArray(data) ? data : [];
   }
 }
+async function fetchEmployees() {
+  try {
+    const { data } = await api.get("/employees");
+    return Array.isArray(data) ? data : [];
+  } catch {
+    try {
+      const { data } = await api.get("/admin/employees");
+      return Array.isArray(data) ? data : [];
+    } catch { return []; }
+  }
+}
 
-/* Event’e en makul visitId’yi bağla */
+/* Event'e en makul visitId'yi bağla */
 function pickVisitIdForEvent(event, storeVisits) {
   if (!event?.start || !Array.isArray(storeVisits)) return null;
   const evStart = new Date(event.start);
@@ -100,11 +114,18 @@ export default function VisitDetail() {
 
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const isCustomer = role === "customer";
+  const isPlanner = role === "admin" || role === "employee";
 
   const [event, setEvent] = useState(null);
   const [store, setStore] = useState(null);
   const [visitId, setVisitId] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  /* ── Edit mode state ── */
+  const [editing, setEditing] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [editData, setEditData] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -143,6 +164,89 @@ export default function VisitDetail() {
       }
     })();
   }, [eventId, navigate]);
+
+  /* Load employees when edit mode is activated */
+  useEffect(() => {
+    if (editing && employees.length === 0) {
+      fetchEmployees().then(setEmployees);
+    }
+  }, [editing, employees.length]);
+
+  /* Populate edit form from current event */
+  const startEdit = () => {
+    if (!event) return;
+    setEditData({
+      employeeId: event.employeeId || "",
+      date: toDateInput(event.start),
+      startTime: fmtTime(event.start),
+      endTime: fmtTime(event.end),
+      notes: event.notes || "",
+      title: event.title || "",
+    });
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+    setEditData({});
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!event || !editData.date || !editData.startTime || !editData.endTime) {
+      toast.error("Tarih ve saat alanları boş bırakılamaz.");
+      return;
+    }
+
+    const [sh, sm] = editData.startTime.split(":").map(Number);
+    const [eh, em] = editData.endTime.split(":").map(Number);
+    const [y, m, d] = editData.date.split("-").map(Number);
+
+    const newStart = new Date(y, m - 1, d, sh, sm, 0, 0);
+    const newEnd = new Date(y, m - 1, d, eh, em, 0, 0);
+
+    if (newEnd <= newStart) {
+      toast.error("Bitiş saati başlangıçtan sonra olmalıdır.");
+      return;
+    }
+
+    const body = {};
+    if (Number(editData.employeeId) !== event.employeeId) body.employeeId = Number(editData.employeeId);
+    if (newStart.getTime() !== event.start.getTime()) body.start = newStart.toISOString();
+    if (newEnd.getTime() !== event.end.getTime()) body.end = newEnd.toISOString();
+    if (editData.notes !== (event.notes || "")) body.notes = editData.notes;
+    if (editData.title !== (event.title || "")) body.title = editData.title;
+
+    if (Object.keys(body).length === 0) {
+      toast.info("Değişiklik yapılmadı.");
+      setEditing(false);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.put(`/schedule/events/${event.id}`, body);
+      toast.success("Ziyaret başarıyla güncellendi.");
+      // Reload event
+      const ev = await fetchEventById(event.id);
+      ev.start = new Date(ev.start);
+      ev.end = new Date(ev.end);
+      if (ev.plannedAt) ev.plannedAt = new Date(ev.plannedAt);
+      ev.color = ev.color || hashColorFromId(ev.employeeId);
+      ev.status = ev.status || "PLANNED";
+      setEvent(ev);
+      setStore(ev.store || null);
+      setEditing(false);
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Güncelleme başarısız oldu.";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   /* Görüntülenecek personel adı ve avatarı */
   const employeeDisplay = useMemo(() => {
@@ -215,6 +319,11 @@ export default function VisitDetail() {
           <div className="actions">
             {storeDetailPath && <Link className="btn ghost" to={storeDetailPath}>Mağaza Detayı</Link>}
 
+            {/* Admin/Employee edit button */}
+            {isPlanner && !editing && (
+              <button className="btn ghost" onClick={startEdit}>✏️ Düzenle</button>
+            )}
+
             {/* Admin/Employee */}
             {!isCustomer && canViewEk1 && ek1PreviewPath && (
               <Link to={ek1PreviewPath} className="btn">EK-1 Görüntüle</Link>
@@ -229,6 +338,85 @@ export default function VisitDetail() {
             )}
           </div>
         </div>
+
+        {/* ── EDIT FORM ── */}
+        {editing && (
+          <div className="card vd-edit-form">
+            <div className="sec-title">Ziyareti Düzenle</div>
+
+            <div className="edit-grid">
+              <div className="edit-field">
+                <label>Ziyaret Başlığı</label>
+                <input
+                  type="text"
+                  value={editData.title || ""}
+                  onChange={e => handleEditChange("title", e.target.value)}
+                />
+              </div>
+
+              <div className="edit-field">
+                <label>Uygulayıcı Personel</label>
+                <select
+                  value={editData.employeeId || ""}
+                  onChange={e => handleEditChange("employeeId", e.target.value)}
+                >
+                  <option value="">Seçin…</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.fullName || emp.name || emp.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="edit-field">
+                <label>Tarih</label>
+                <input
+                  type="date"
+                  value={editData.date || ""}
+                  onChange={e => handleEditChange("date", e.target.value)}
+                />
+              </div>
+
+              <div className="edit-field">
+                <label>Başlangıç</label>
+                <select
+                  value={editData.startTime || ""}
+                  onChange={e => handleEditChange("startTime", e.target.value)}
+                >
+                  {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+
+              <div className="edit-field">
+                <label>Bitiş</label>
+                <select
+                  value={editData.endTime || ""}
+                  onChange={e => handleEditChange("endTime", e.target.value)}
+                >
+                  {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+
+              <div className="edit-field full">
+                <label>Notlar</label>
+                <textarea
+                  rows={3}
+                  value={editData.notes || ""}
+                  onChange={e => handleEditChange("notes", e.target.value)}
+                  placeholder="(Opsiyonel) Not ekleyin…"
+                />
+              </div>
+            </div>
+
+            <div className="edit-actions">
+              <button className="btn ghost" onClick={cancelEdit} disabled={saving}>Vazgeç</button>
+              <button className="btn" onClick={handleSave} disabled={saving}>
+                {saving ? "Kaydediliyor…" : "Değişiklikleri Kaydet"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Bilgiler */}
         <div className="vd-grid">
@@ -284,9 +472,9 @@ export default function VisitDetail() {
                           name="visit-status"
                           value={s}
                           checked={event.status === s}
-                          disabled={isCustomer} // Ekstra önlem
+                          disabled={isCustomer}
                           onChange={async () => {
-                            if (isCustomer) return; // Ekstra önlem
+                            if (isCustomer) return;
                             const ok = await updateStatus(event.id, s);
                             if (ok) {
                               setEvent(prev => ({ ...prev, status: s }));

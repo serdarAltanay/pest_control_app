@@ -148,6 +148,10 @@ async function createEvent(payload) {
   const { data } = await api.post("/schedule/events", body);
   return data;
 }
+async function deleteEvent(id) {
+  const { data } = await api.delete(`/schedule/events/${id}`);
+  return data;
+}
 
 /* ───────── Gün penceresi 07:00 → 02:00 ───────── */
 function dayWindow(d) {
@@ -159,7 +163,7 @@ function dayWindow(d) {
 export default function VisitCalendar() {
   const navigate = useNavigate();
 
-  /* Profil → rol ve kendi id’si (employee ise) */
+  /* Profil → rol ve kendi id'si (employee ise) */
   const [me, setMe] = useState(null);
   useEffect(() => {
     (async () => {
@@ -190,6 +194,10 @@ export default function VisitCalendar() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDate, setModalDate] = useState(null);
   const [modalDefaults, setModalDefaults] = useState(null);
+
+  // Delete confirmation modal state
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, title: "" });
+  const [deleting, setDeleting] = useState(false);
 
   // Create form state
   const [employees, setEmployees] = useState([]);
@@ -373,6 +381,28 @@ export default function VisitCalendar() {
     setModalDate(startOfDay(day));
     setModalDefaults(defaults || null);
     setModalOpen(true);
+  };
+
+  /* Silme onay modalını aç */
+  const openDeleteConfirm = (evId, evTitle) => {
+    setDeleteConfirm({ open: true, id: evId, title: evTitle || "Ziyaret" });
+  };
+  const closeDeleteConfirm = () => {
+    setDeleteConfirm({ open: false, id: null, title: "" });
+  };
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.id) return;
+    setDeleting(true);
+    try {
+      await deleteEvent(deleteConfirm.id);
+      toast.success("Ziyaret silindi.");
+      closeDeleteConfirm();
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Silinemedi.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   /* Ay görünümünde bir güne tıklayınca Gün görünümüne geç */
@@ -572,6 +602,16 @@ export default function VisitCalendar() {
                             }}
                             title={`${ev.title} • ${ev.employeeName || ""} • ${ev.storeName || ""}`}
                           >
+                            {isPlanner && (
+                              <button
+                                className="ev-delete-btn"
+                                title="Sil"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDeleteConfirm(ev.id, ev.title);
+                                }}
+                              >×</button>
+                            )}
                             <span className={`badge ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
                             <div className="ev-title">{ev.title}</div>
                             <div className="ev-meta">
@@ -635,6 +675,16 @@ export default function VisitCalendar() {
                               }}
                               title={`${ev.title} • ${ev.employeeName || ""} • ${ev.storeName || ""}`}
                             >
+                              {isPlanner && (
+                                <button
+                                  className="pill-delete-btn"
+                                  title="Sil"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDeleteConfirm(ev.id, ev.title);
+                                  }}
+                                >×</button>
+                              )}
                               <span className={`badge xs ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
                               <span className="t">{ev.title}</span>
                               <span className="m">
@@ -810,6 +860,34 @@ export default function VisitCalendar() {
                 <button className="btn ghost" onClick={() => setModalOpen(false)}>Vazgeç</button>
                 <button className="btn" onClick={onCreate} disabled={saving}>
                   {saving ? "Kaydediliyor…" : "Planla"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DELETE CONFIRM MODAL */}
+        {deleteConfirm.open && (
+          <div
+            className="vc-modal-backdrop"
+            onClick={(e) => {
+              if (e.target.classList.contains("vc-modal-backdrop")) closeDeleteConfirm();
+            }}
+          >
+            <div className="vc-modal vc-delete-modal">
+              <div className="vc-modal-head" style={{ background: "#dc2626" }}>
+                <div>Ziyaret Sil</div>
+                <button className="close" onClick={closeDeleteConfirm}>×</button>
+              </div>
+              <div className="vc-delete-body">
+                <p>Bu ziyareti silmek istediğinize emin misiniz?</p>
+                <p className="delete-title">"{deleteConfirm.title}"</p>
+                <p className="delete-warn">Bu işlem geri alınamaz.</p>
+              </div>
+              <div className="vc-modal-foot">
+                <button className="btn ghost" onClick={closeDeleteConfirm} disabled={deleting}>Vazgeç</button>
+                <button className="btn btn-danger" onClick={handleConfirmDelete} disabled={deleting}>
+                  {deleting ? "Siliniyor…" : "Evet, Sil"}
                 </button>
               </div>
             </div>

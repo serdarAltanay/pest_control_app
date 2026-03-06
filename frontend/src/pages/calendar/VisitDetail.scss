@@ -280,11 +280,102 @@
   }
 }
 
-/* Small chip (kullanım dışı kaldı ama dursun) */
 .chip {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
   font-size: 12px;
   border-radius: 999px;
+}
+
+/* ── Edit form ── */
+.vd-edit-form {
+  border: 2px solid #7c3aed33;
+  background: #faf5ff;
+
+  .sec-title {
+    color: #7c3aed;
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .edit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    &.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    input,
+    select,
+    textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s;
+
+      &:focus {
+        border-color: #7c3aed;
+      }
+    }
+
+    textarea {
+      resize: vertical;
+    }
+  }
+
+  .edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+
+    .btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background .2s ease;
+      background: #7c3aed;
+      color: #fff;
+
+      &:hover {
+        background: #6d28d9;
+      }
+
+      &:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+      }
+
+      &.ghost {
+        background: #f1f5f9;
+        color: #475569;
+
+        &:hover {
+          background: #e2e8f0;
+        }
+      }
+    }
+  }
 }
