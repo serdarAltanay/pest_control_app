@@ -7,20 +7,57 @@ import dotenv from "dotenv";
 dotenv.config();
 
 /**
+ * DATABASE_URL'den bağlantı bilgilerini çıkar (fallback).
+ * Format: mysql://user:password@host:port/database
+ */
+function parseDbUrl(url) {
+    try {
+        const u = new URL(url);
+        return {
+            host: u.hostname,
+            port: Number(u.port) || 3306,
+            user: decodeURIComponent(u.username),
+            password: decodeURIComponent(u.password),
+            database: u.pathname.replace(/^\//, ""),
+        };
+    } catch {
+        return null;
+    }
+}
+
+function getDbConfig() {
+    // Önce bireysel env var'ları kullan, yoksa DATABASE_URL'den parse et
+    const fromUrl = process.env.DATABASE_URL ? parseDbUrl(process.env.DATABASE_URL) : null;
+    return {
+        host: process.env.DB_HOST || fromUrl?.host || "localhost",
+        port: Number(process.env.DB_PORT) || fromUrl?.port || 3306,
+        user: process.env.DB_USER || fromUrl?.user || "root",
+        password: process.env.DB_PASSWORD || fromUrl?.password || "",
+        database: process.env.DB_NAME || fromUrl?.database,
+    };
+}
+
+/**
  * Saf Node.js ile MySQL dump oluşturur (mysqldump binary'e ihtiyaç DUYMAZ).
  * Render gibi binary erişimi olmayan ortamlarda sorunsuz çalışır.
  */
 async function generateSqlDump() {
+    const cfg = getDbConfig();
+    if (!cfg.database) throw new Error("Veritabanı adı bulunamadı (DB_NAME veya DATABASE_URL ayarlayın).");
+
+    console.log(`[BACKUP] DB bağlantısı: ${cfg.host}:${cfg.port}/${cfg.database} (user: ${cfg.user})`);
+
     const connection = await mysql.createConnection({
-        host: process.env.DB_HOST || "localhost",
-        port: Number(process.env.DB_PORT) || 3306,
-        user: process.env.DB_USER || "root",
-        password: process.env.DB_PASSWORD || "",
-        database: process.env.DB_NAME,
+        host: cfg.host,
+        port: cfg.port,
+        user: cfg.user,
+        password: cfg.password,
+        database: cfg.database,
+        connectTimeout: 30000,
     });
 
     const lines = [];
-    const dbName = process.env.DB_NAME;
+    const dbName = cfg.database;
 
     lines.push(`-- TuraÇevre SQL Dump`);
     lines.push(`-- Tarih: ${new Date().toISOString()}`);
