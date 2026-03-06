@@ -30,6 +30,65 @@ router.get("/admins", auth, roleCheck(["admin"]), async (_req, res) => {
   }
 });
 
+/** Yedekleme sistemini test et (DB bağlantısı) */
+router.get("/backup/test", auth, roleCheck(["admin"]), async (_req, res) => {
+  try {
+    const mysql = await import("mysql2/promise");
+    const dotenv = await import("dotenv");
+    dotenv.config();
+
+    // DATABASE_URL parse
+    function parseDbUrl(url) {
+      try {
+        const u = new URL(url);
+        return {
+          host: u.hostname,
+          port: Number(u.port) || 3306,
+          user: decodeURIComponent(u.username),
+          password: decodeURIComponent(u.password),
+          database: u.pathname.replace(/^\//, ""),
+        };
+      } catch { return null; }
+    }
+
+    const fromUrl = process.env.DATABASE_URL ? parseDbUrl(process.env.DATABASE_URL) : null;
+    const cfg = {
+      host: process.env.DB_HOST || fromUrl?.host || "localhost",
+      port: Number(process.env.DB_PORT) || fromUrl?.port || 3306,
+      user: process.env.DB_USER || fromUrl?.user || "root",
+      password: process.env.DB_PASSWORD ? "***SET***" : (fromUrl?.password ? "***FROM_URL***" : "***EMPTY***"),
+      database: process.env.DB_NAME || fromUrl?.database,
+    };
+
+    // Dene bağlan
+    const conn = await mysql.default.createConnection({
+      host: cfg.host,
+      port: cfg.port,
+      user: process.env.DB_USER || fromUrl?.user || "root",
+      password: process.env.DB_PASSWORD || fromUrl?.password || "",
+      database: cfg.database,
+      connectTimeout: 15000,
+    });
+
+    const [tables] = await conn.query("SHOW TABLES");
+    await conn.end();
+
+    res.json({
+      ok: true,
+      config: cfg,
+      tableCount: tables.length,
+      message: `MySQL bağlantısı başarılı. ${tables.length} tablo bulundu.`,
+    });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: e?.message || String(e),
+      code: e?.code || null,
+      errno: e?.errno || null,
+    });
+  }
+});
+
 /** Sistem Yedeği İndir */
 router.get("/backup/download", auth, roleCheck(["admin"]), async (_req, res) => {
   try {
