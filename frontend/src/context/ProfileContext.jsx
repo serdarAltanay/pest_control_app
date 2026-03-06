@@ -24,13 +24,17 @@ export function ProfileProvider({ children }) {
 
   const attemptRefresh = async () => {
     try {
+      const storedRT = localStorage.getItem("refreshToken") || "";
       const r = await apiNoRefresh({
         method: "post",
         url: "/auth/refresh",
+        data: { refreshToken: storedRT },
       });
       const t = r?.data?.accessToken;
+      const newRT = r?.data?.refreshToken;
       if (t) {
         localStorage.setItem("accessToken", t);
+        if (newRT) localStorage.setItem("refreshToken", newRT);
         return true;
       }
     } catch { }
