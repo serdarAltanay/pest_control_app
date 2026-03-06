@@ -73,7 +73,18 @@ export default function Settings() {
             toast.success("Yedekleme dosyası başarıyla indirildi.");
         } catch (err) {
             console.error("Backup download error:", err);
-            toast.error("Yedekleme dosyası indirilirken bir hata oluştu.");
+            let msg = "Yedekleme dosyası indirilirken bir hata oluştu.";
+            try {
+                // blob responseType durumunda hata yanıtı da blob olarak gelir
+                if (err?.response?.data instanceof Blob) {
+                    const text = await err.response.data.text();
+                    const json = JSON.parse(text);
+                    if (json?.message) msg = json.message;
+                } else if (err?.response?.data?.message) {
+                    msg = err.response.data.message;
+                }
+            } catch { }
+            toast.error(msg);
         } finally {
             setDownloading(false);
         }

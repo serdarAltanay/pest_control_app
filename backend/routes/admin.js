@@ -36,9 +36,9 @@ router.get("/backup/download", auth, roleCheck(["admin"]), async (_req, res) => 
     await createBackup({ res });
   } catch (e) {
     console.error("GET /admin/backup/download", e);
-    // Eğer başlıklar gönderilmemişse json dönebiliriz
     if (!res.headersSent) {
-      res.status(500).json({ message: "Yedekleme oluşturulamadı" });
+      const detail = e?.message || String(e);
+      res.status(500).json({ message: `Yedekleme oluşturulamadı: ${detail}` });
     }
   }
 });
