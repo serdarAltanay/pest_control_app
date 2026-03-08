@@ -6,7 +6,8 @@ import { ProfileContext } from "../../context/ProfileContext";
 import "./BiocidalCertificates.scss";
 
 // Render statik URL veya API baseURL
-const API_URL = import.meta.env.VITE_API_URL || "https://pest-control-app.onrender.com";
+const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+const API_URL = isLocal ? "http://localhost:5000" : "https://pest-control-app.onrender.com";
 
 export default function BiocidalCertificates() {
     const { profile } = useContext(ProfileContext);
