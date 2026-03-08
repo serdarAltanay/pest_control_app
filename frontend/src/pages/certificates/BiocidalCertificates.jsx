@@ -127,53 +127,57 @@ export default function BiocidalCertificates() {
 
     return (
         <Layout title="Biyosidal Sertifikaları">
-            <div className="certificates-page-container">
-                <header className="page-header">
-                    <div className="header-left">
-                        <h1>Biyosidal Sertifikaları</h1>
-                        <p>Sistemde kayıtlı biyosidal ürünlere ait ruhsat ve sertifikalar</p>
-                    </div>
+            <div className="company-certs">
+                <div className="head">
+                    <h2>Biyosidal Sertifikaları</h2>
                     {canManageCerts && (
-                        <div className="header-actions">
-                            <button className="btn-add" onClick={() => setShowModal(true)}>
-                                <FiPlus /> Sertifika Ekle
-                            </button>
-                        </div>
+                        <button className="btn primary" onClick={() => setShowModal(true)}>
+                            <FiPlus /> Yeni Sertifika
+                        </button>
                     )}
-                </header>
+                </div>
 
-                {loading ? (
-                    <div className="loading-state">Yükleniyor...</div>
-                ) : certificates.length === 0 ? (
-                    <div className="empty-state">
-                        <p>Henüz hiçbir biyosidal sertifikası eklenmemiş.</p>
-                        {canManageCerts && <small>"Sertifika Ekle" butonunu kullanarak yeni belge yükleyebilirsiniz.</small>}
-                    </div>
-                ) : (
-                    <div className="certificates-grid">
-                        {certificates.map((cert) => (
-                            <div key={cert.id} className="certificate-card">
-                                <div className="cert-info">
-                                    <span className="biocide-name">
+                <div className="certs-grid">
+                    {loading ? (
+                        <div className="empty">Yükleniyor...</div>
+                    ) : certificates.length === 0 ? (
+                        <div className="empty">Henüz hiçbir biyosidal sertifikası eklenmemiş.</div>
+                    ) : (
+                        certificates.map((cert) => (
+                            <div key={cert.id} className="cert-card">
+                                <div className="c-info">
+                                    <span style={{
+                                        display: "inline-block",
+                                        background: "rgba(33, 150, 243, 0.1)",
+                                        color: "var(--primary)",
+                                        padding: "2px 6px",
+                                        borderRadius: "4px",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        marginBottom: "6px"
+                                    }}>
                                         {cert.biocide?.name || "Bilinmeyen Biyosidal"}
                                     </span>
                                     <h3>{cert.title}</h3>
-                                    {cert.notes && <p className="cert-notes">{cert.notes}</p>}
-                                    <span className="cert-date">Yüklenme: {formatDate(cert.uploadedAt)}</span>
+                                    {cert.notes && <p className="notes">{cert.notes}</p>}
+                                    <div className="meta">
+                                        Yüklenme: {formatDate(cert.uploadedAt)}
+                                    </div>
                                 </div>
-                                <div className="cert-actions">
+                                <div className="c-actions">
                                     <a
                                         href={getFullUrl(cert.file)}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="btn-view"
+                                        className="btn ghost"
                                         download
+                                        style={{ textDecoration: "none", textAlign: "center" }}
                                     >
-                                        <FiDownload /> İndir
+                                        <FiDownload /> İndir / Aç
                                     </a>
                                     {canManageCerts && (
                                         <button
-                                            className="btn-delete"
+                                            className="btn danger"
                                             onClick={() => handleDelete(cert.id)}
                                         >
                                             <FiTrash2 /> Sil
@@ -181,16 +185,19 @@ export default function BiocidalCertificates() {
                                     )}
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
+                        ))
+                    )}
+                </div>
 
-                {/* Modal - Ekleme Formu */}
+                {/* Ekleme Modalı */}
                 {showModal && canManageCerts && (
-                    <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                    <div className="modal-backdrop" onClick={() => setShowModal(false)}>
                         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                            <h2>Biyosidal Sertifikası Ekle</h2>
-                            <form onSubmit={handleUpload}>
+                            <div className="modal-header">
+                                <h3>Sertifika Yükle</h3>
+                                <button type="button" className="close-btn" onClick={() => setShowModal(false)}>&times;</button>
+                            </div>
+                            <form className="modal-body" onSubmit={handleUpload}>
                                 <div className="form-group">
                                     <label>İlgili Biyosidal *</label>
                                     <select
@@ -206,7 +213,7 @@ export default function BiocidalCertificates() {
                                 </div>
 
                                 <div className="form-group">
-                                    <label>Sertifika Adı / Başlığı *</label>
+                                    <label>Belge Başlığı *</label>
                                     <input
                                         type="text"
                                         value={title}
@@ -234,20 +241,19 @@ export default function BiocidalCertificates() {
                                         accept=".pdf,image/jpeg,image/png,image/jpg"
                                         required
                                     />
-                                    <span className="file-hint">Maksimum dosya boyutu: 10MB</span>
                                 </div>
 
-                                <div className="modal-actions">
+                                <div className="form-actions" style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
                                     <button
                                         type="button"
-                                        className="btn-cancel"
+                                        className="btn ghost"
                                         onClick={() => setShowModal(false)}
                                         disabled={uploading}
                                     >
                                         İptal
                                     </button>
-                                    <button type="submit" className="btn-submit" disabled={uploading}>
-                                        {uploading ? "Yükleniyor..." : "Kaydet ve Yükle"}
+                                    <button type="submit" className="btn primary" disabled={uploading}>
+                                        {uploading ? "Yükleniyor..." : "Yükle"}
                                     </button>
                                 </div>
                             </form>
