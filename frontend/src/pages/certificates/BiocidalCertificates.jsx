@@ -3,6 +3,7 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import { FiDownload, FiTrash2, FiPlus } from "react-icons/fi";
 import { ProfileContext } from "../../context/ProfileContext";
+import Layout from "../../components/Layout";
 import "./BiocidalCertificates.scss";
 
 // Render statik URL veya API baseURL
@@ -125,133 +126,135 @@ export default function BiocidalCertificates() {
     };
 
     return (
-        <div className="certificates-page-container">
-            <header className="page-header">
-                <div className="header-left">
-                    <h1>Biyosidal Sertifikaları</h1>
-                    <p>Sistemde kayıtlı biyosidal ürünlere ait ruhsat ve sertifikalar</p>
-                </div>
-                {canManageCerts && (
-                    <div className="header-actions">
-                        <button className="btn-add" onClick={() => setShowModal(true)}>
-                            <FiPlus /> Sertifika Ekle
-                        </button>
+        <Layout title="Biyosidal Sertifikaları">
+            <div className="certificates-page-container">
+                <header className="page-header">
+                    <div className="header-left">
+                        <h1>Biyosidal Sertifikaları</h1>
+                        <p>Sistemde kayıtlı biyosidal ürünlere ait ruhsat ve sertifikalar</p>
+                    </div>
+                    {canManageCerts && (
+                        <div className="header-actions">
+                            <button className="btn-add" onClick={() => setShowModal(true)}>
+                                <FiPlus /> Sertifika Ekle
+                            </button>
+                        </div>
+                    )}
+                </header>
+
+                {loading ? (
+                    <div className="loading-state">Yükleniyor...</div>
+                ) : certificates.length === 0 ? (
+                    <div className="empty-state">
+                        <p>Henüz hiçbir biyosidal sertifikası eklenmemiş.</p>
+                        {canManageCerts && <small>"Sertifika Ekle" butonunu kullanarak yeni belge yükleyebilirsiniz.</small>}
+                    </div>
+                ) : (
+                    <div className="certificates-grid">
+                        {certificates.map((cert) => (
+                            <div key={cert.id} className="certificate-card">
+                                <div className="cert-info">
+                                    <span className="biocide-name">
+                                        {cert.biocide?.name || "Bilinmeyen Biyosidal"}
+                                    </span>
+                                    <h3>{cert.title}</h3>
+                                    {cert.notes && <p className="cert-notes">{cert.notes}</p>}
+                                    <span className="cert-date">Yüklenme: {formatDate(cert.uploadedAt)}</span>
+                                </div>
+                                <div className="cert-actions">
+                                    <a
+                                        href={getFullUrl(cert.file)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn-view"
+                                        download
+                                    >
+                                        <FiDownload /> İndir
+                                    </a>
+                                    {canManageCerts && (
+                                        <button
+                                            className="btn-delete"
+                                            onClick={() => handleDelete(cert.id)}
+                                        >
+                                            <FiTrash2 /> Sil
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
-            </header>
 
-            {loading ? (
-                <div className="loading-state">Yükleniyor...</div>
-            ) : certificates.length === 0 ? (
-                <div className="empty-state">
-                    <p>Henüz hiçbir biyosidal sertifikası eklenmemiş.</p>
-                    {canManageCerts && <small>"Sertifika Ekle" butonunu kullanarak yeni belge yükleyebilirsiniz.</small>}
-                </div>
-            ) : (
-                <div className="certificates-grid">
-                    {certificates.map((cert) => (
-                        <div key={cert.id} className="certificate-card">
-                            <div className="cert-info">
-                                <span className="biocide-name">
-                                    {cert.biocide?.name || "Bilinmeyen Biyosidal"}
-                                </span>
-                                <h3>{cert.title}</h3>
-                                {cert.notes && <p className="cert-notes">{cert.notes}</p>}
-                                <span className="cert-date">Yüklenme: {formatDate(cert.uploadedAt)}</span>
-                            </div>
-                            <div className="cert-actions">
-                                <a
-                                    href={getFullUrl(cert.file)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="btn-view"
-                                    download
-                                >
-                                    <FiDownload /> İndir
-                                </a>
-                                {canManageCerts && (
-                                    <button
-                                        className="btn-delete"
-                                        onClick={() => handleDelete(cert.id)}
+                {/* Modal - Ekleme Formu */}
+                {showModal && canManageCerts && (
+                    <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <h2>Biyosidal Sertifikası Ekle</h2>
+                            <form onSubmit={handleUpload}>
+                                <div className="form-group">
+                                    <label>İlgili Biyosidal *</label>
+                                    <select
+                                        value={biocideId}
+                                        onChange={(e) => setBiocideId(e.target.value)}
+                                        required
                                     >
-                                        <FiTrash2 /> Sil
+                                        <option value="" disabled>Seçiniz</option>
+                                        {biocides.map((b) => (
+                                            <option key={b.id} value={b.id}>{b.name} ({b.activeIngredient})</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Sertifika Adı / Başlığı *</label>
+                                    <input
+                                        type="text"
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        placeholder="Örn: Ruhsatname belgesi"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Açıklama / Notlar (Opsiyonel)</label>
+                                    <textarea
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder="İsteğe bağlı ek bilgiler..."
+                                        rows="2"
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Dosya (PDF, JPG, PNG) *</label>
+                                    <input
+                                        type="file"
+                                        onChange={handleFileChange}
+                                        accept=".pdf,image/jpeg,image/png,image/jpg"
+                                        required
+                                    />
+                                    <span className="file-hint">Maksimum dosya boyutu: 10MB</span>
+                                </div>
+
+                                <div className="modal-actions">
+                                    <button
+                                        type="button"
+                                        className="btn-cancel"
+                                        onClick={() => setShowModal(false)}
+                                        disabled={uploading}
+                                    >
+                                        İptal
                                     </button>
-                                )}
-                            </div>
+                                    <button type="submit" className="btn-submit" disabled={uploading}>
+                                        {uploading ? "Yükleniyor..." : "Kaydet ve Yükle"}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Modal - Ekleme Formu */}
-            {showModal && canManageCerts && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>Biyosidal Sertifikası Ekle</h2>
-                        <form onSubmit={handleUpload}>
-                            <div className="form-group">
-                                <label>İlgili Biyosidal *</label>
-                                <select
-                                    value={biocideId}
-                                    onChange={(e) => setBiocideId(e.target.value)}
-                                    required
-                                >
-                                    <option value="" disabled>Seçiniz</option>
-                                    {biocides.map((b) => (
-                                        <option key={b.id} value={b.id}>{b.name} ({b.activeIngredient})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label>Sertifika Adı / Başlığı *</label>
-                                <input
-                                    type="text"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="Örn: Ruhsatname belgesi"
-                                    required
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Açıklama / Notlar (Opsiyonel)</label>
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="İsteğe bağlı ek bilgiler..."
-                                    rows="2"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Dosya (PDF, JPG, PNG) *</label>
-                                <input
-                                    type="file"
-                                    onChange={handleFileChange}
-                                    accept=".pdf,image/jpeg,image/png,image/jpg"
-                                    required
-                                />
-                                <span className="file-hint">Maksimum dosya boyutu: 10MB</span>
-                            </div>
-
-                            <div className="modal-actions">
-                                <button
-                                    type="button"
-                                    className="btn-cancel"
-                                    onClick={() => setShowModal(false)}
-                                    disabled={uploading}
-                                >
-                                    İptal
-                                </button>
-                                <button type="submit" className="btn-submit" disabled={uploading}>
-                                    {uploading ? "Yükleniyor..." : "Kaydet ve Yükle"}
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
-            )}
-        </div>
+                )}
+            </div>
+        </Layout>
     );
 }
