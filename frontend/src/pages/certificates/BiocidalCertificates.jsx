@@ -113,8 +113,27 @@ export default function BiocidalCertificates() {
 
     const getFullUrl = (filePath) => {
         if (!filePath) return "#";
-        // filePath örn: "uploads/certificates/abc.pdf"
         return `${API_URL}/${filePath}`;
+    };
+
+    const handleDownload = async (item) => {
+        try {
+            const resp = await api.get(`/biocidal-certificates/${item.id}/download`, { responseType: "blob" });
+            const url = window.URL.createObjectURL(new Blob([resp.data]));
+            const link = document.createElement("a");
+            link.href = url;
+
+            const extMatch = item.file.match(/\.[0-9a-z]+$/i);
+            const ext = extMatch ? extMatch[0] : "";
+            const filename = `${item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}${ext}`;
+
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch {
+            toast.error("Dosya indirilemedi");
+        }
     };
 
     const formatDate = (dateString) => {
@@ -164,17 +183,26 @@ export default function BiocidalCertificates() {
                                         Yüklenme: {formatDate(cert.uploadedAt)}
                                     </div>
                                 </div>
+                                <div className="c-preview">
+                                    {cert.mime?.startsWith("image/") ? (
+                                        <img
+                                            src={`/api/biocidal-certificates/${cert.id}/view`}
+                                            alt={cert.title}
+                                            className="preview-frame"
+                                            style={{ objectFit: "contain" }}
+                                        />
+                                    ) : (
+                                        <iframe
+                                            src={`/api/biocidal-certificates/${cert.id}/view#toolbar=0&navpanes=0`}
+                                            className="preview-frame"
+                                            title={cert.title}
+                                        />
+                                    )}
+                                </div>
                                 <div className="c-actions">
-                                    <a
-                                        href={getFullUrl(cert.file)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn ghost"
-                                        download
-                                        style={{ textDecoration: "none", textAlign: "center" }}
-                                    >
-                                        <FiDownload /> İndir / Aç
-                                    </a>
+                                    <button className="btn ghost" onClick={() => handleDownload(cert)}>
+                                        İndir / Tam Ekran Aç
+                                    </button>
                                     {canManageCerts && (
                                         <button
                                             className="btn danger"
