@@ -40,6 +40,7 @@ import TrendAnalysis from "./pages/analytics/TrendAnalysis.jsx";
 import ReportDetail from "./pages/reports/ReportDetail.jsx";
 
 import CompanyCertificates from "./pages/shared/CompanyCertificates.jsx";
+import BiocidalCertificates from "./pages/certificates/BiocidalCertificates.jsx";
 
 import VisitCalendar from "./pages/calendar/VisitCalendar.jsx";
 import VisitDetail from "./pages/calendar/VisitDetail.jsx";
@@ -436,6 +437,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['customer', 'admin', 'employee']}>
                   <CompanyCertificates />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/biocidal-certificates"
+              element={
+                <PrivateRoute allowedRoles={['customer', 'admin', 'employee']}>
+                  <BiocidalCertificates />
                 </PrivateRoute>
               }
             />

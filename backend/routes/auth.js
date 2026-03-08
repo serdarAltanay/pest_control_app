@@ -61,7 +61,7 @@ router.post("/login", async (req, res) => {
     const accessToken = jwt.sign(
       { id: user.id, role: jwtRole, hasAcceptedTerms: user.hasAcceptedTerms || false },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "2h" }
     );
     // Refresh (7 gün) — payload.role = jwtRole (customer)
     const refreshToken = jwt.sign(
@@ -148,7 +148,7 @@ router.post("/refresh", async (req, res) => {
     const newAccessToken = jwt.sign(
       { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "2h" }
     );
 
     // Refresh Token Rotation (RTR) - her kullanımda RT yenilenir
@@ -226,7 +226,7 @@ router.post("/consent", auth, async (req, res) => {
     const newAccessToken = jwt.sign(
       { id, role, hasAcceptedTerms: true },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "2h" }
     );
 
     const newRefreshToken = jwt.sign(

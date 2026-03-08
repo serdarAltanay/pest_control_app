@@ -130,16 +130,7 @@ router.get("/backup/download", auth, roleCheck(["admin"]), async (_req, res) => 
   }
 });
 
-/** Sunucuya Yedekleme Yap */
-router.post("/backup/server", auth, roleCheck(["admin"]), async (_req, res) => {
-  try {
-    const filename = await createBackup({ saveToDisk: true });
-    res.json({ ok: true, message: `Yedekleme başarıyla tamamlandı: ${filename}` });
-  } catch (e) {
-    console.error("POST /admin/backup/server", e);
-    res.status(500).json({ message: "Sunucu yedeklemesi başarısız oldu" });
-  }
-});
+
 
 /** Firma Ayarlarını Getir (ProviderProfile) */
 router.get("/provider-profile", auth, roleCheck(["admin"]), async (req, res) => {

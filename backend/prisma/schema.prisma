@@ -300,16 +300,34 @@ model ProviderProfile {
 }
 
 model Biocide {
-  id               Int         @id @default(autoincrement())
+  id               Int                  @id @default(autoincrement())
   name             String
   activeIngredient String
   antidote         String
   unit             BiocideUnit
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
   Ek1Line          Ek1Line[]
+  certificates     BiocideCertificate[]
 
   @@unique([name, activeIngredient])
+}
+
+model BiocideCertificate {
+  id         Int      @id @default(autoincrement())
+  biocideId  Int
+  biocide    Biocide  @relation(fields: [biocideId], references: [id], onDelete: Cascade)
+  
+  title      String
+  file       String
+  mime       String?
+  notes      String?
+  
+  uploadedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([biocideId])
+  @@index([uploadedAt])
 }
 
 model Admin {

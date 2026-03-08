@@ -8,7 +8,7 @@ import "./Settings.scss";
 export default function Settings() {
     const { profile } = useContext(ProfileContext);
     const [downloading, setDownloading] = useState(false);
-    const [backingUp, setBackingUp] = useState(false);
+
     const navigate = useNavigate();
 
     const isAdmin = profile?.role?.toLowerCase() === "admin";
@@ -90,19 +90,7 @@ export default function Settings() {
         }
     };
 
-    const handleServerBackup = async () => {
-        if (backingUp) return;
-        setBackingUp(true);
-        try {
-            const { data } = await api.post("/admin/backup/server");
-            toast.success(data.message || "Sunucu yedeği başarıyla oluşturuldu.");
-        } catch (err) {
-            console.error("Server backup error:", err);
-            toast.error("Sunucu yedeklemesi sırasında bir hata oluştu.");
-        } finally {
-            setBackingUp(false);
-        }
-    };
+
 
     return (
         <div className="settings-page">
@@ -184,8 +172,7 @@ export default function Settings() {
                             <div className="backup-controls">
                                 <h3>Veri Yedekleme</h3>
                                 <p>
-                                    Tüm veritabanı şemalarını ve <code>uploads</code> klasöründeki dosyaları
-                                    yedekleyebilirsiniz.
+                                    Veritabanı şemasını ve verilerini içeren SQL yedeğini bilgisayarınıza indirebilirsiniz.
                                 </p>
                                 <div className="button-group">
                                     <button
@@ -193,19 +180,9 @@ export default function Settings() {
                                         onClick={handleDownloadBackup}
                                         disabled={downloading}
                                     >
-                                        {downloading ? "Hazırlanıyor..." : "Yedeği Yerel PC'ye İndir"}
-                                    </button>
-                                    <button
-                                        className="btn-server"
-                                        onClick={handleServerBackup}
-                                        disabled={backingUp}
-                                    >
-                                        {backingUp ? "Yedekleniyor..." : "Sunucuda Yedek Oluştur"}
+                                        {downloading ? "Yedek Hazırlanıyor..." : "Sistem Yedeğini İndir"}
                                     </button>
                                 </div>
-                                <p className="note">
-                                    * Sunucuda oluşturulan yedekler VPS üzerindeki <code>backups/</code> klasöründe saklanır.
-                                </p>
                             </div>
                         </section>
                     </>

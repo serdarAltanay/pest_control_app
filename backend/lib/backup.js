@@ -126,20 +126,14 @@ async function generateSqlDump() {
  * Creates a backup of the database and the uploads folder.
  * @param {Object} options
  * @param {import('express').Response} [options.res] - Express response object for streaming
- * @param {boolean} [options.saveToDisk] - Whether to save the backup to the backups folder
- * @returns {Promise<string|void>} - Returns the filename if saved to disk
+ * @returns {Promise<void>}
  */
-export async function createBackup({ res, saveToDisk = false } = {}) {
+export async function createBackup({ res } = {}) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const sqlFilename = `db_dump_${timestamp}.sql`;
     const zipFilename = `backup_${timestamp}.zip`;
     const sqlPath = path.join(process.cwd(), sqlFilename);
-    const backupsDir = path.join(process.cwd(), "backups");
     const uploadsDir = path.join(process.cwd(), "uploads");
-
-    if (saveToDisk && !fs.existsSync(backupsDir)) {
-        fs.mkdirSync(backupsDir, { recursive: true });
-    }
 
     try {
         // 1. SQL dump oluştur (saf Node.js, mysqldump gerekmez)
@@ -156,11 +150,9 @@ export async function createBackup({ res, saveToDisk = false } = {}) {
             if (res) {
                 res.attachment(zipFilename);
                 outputStream = res;
-            } else if (saveToDisk) {
-                outputStream = fs.createWriteStream(path.join(backupsDir, zipFilename));
             } else {
                 if (fs.existsSync(sqlPath)) fs.unlinkSync(sqlPath);
-                return reject(new Error("No destination provided (res or saveToDisk)"));
+                return reject(new Error("Express response object (res) is required for streaming bypass"));
             }
 
             archive.pipe(outputStream);
@@ -176,13 +168,13 @@ export async function createBackup({ res, saveToDisk = false } = {}) {
             outputStream.on("close", () => {
                 if (fs.existsSync(sqlPath)) fs.unlinkSync(sqlPath);
                 console.log("[BACKUP] ZIP arşivi tamamlandı:", zipFilename);
-                resolve(saveToDisk ? zipFilename : undefined);
+                resolve();
             });
 
             // "finish" event for Express response streams (writable streams that don't emit "close")
             outputStream.on("finish", () => {
                 if (fs.existsSync(sqlPath)) fs.unlinkSync(sqlPath);
-                resolve(saveToDisk ? zipFilename : undefined);
+                resolve();
             });
 
             outputStream.on("error", (err) => {
@@ -203,25 +195,4 @@ export async function createBackup({ res, saveToDisk = false } = {}) {
     }
 }
 
-/**
- * Removes backup files older than 7 days from the backups directory.
- */
-export async function cleanupOldBackups() {
-    const backupsDir = path.join(process.cwd(), "backups");
-    if (!fs.existsSync(backupsDir)) return;
 
-    const files = fs.readdirSync(backupsDir);
-    const now = Date.now();
-    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-
-    files.forEach(file => {
-        const filePath = path.join(backupsDir, file);
-        const stats = fs.statSync(filePath);
-        const fileAge = now - stats.mtimeMs;
-
-        if (fileAge > sevenDaysInMs && file.endsWith(".zip")) {
-            console.log(`[BACKUP] Eski yedek siliniyor: ${file}`);
-            fs.unlinkSync(filePath);
-        }
-    });
-}

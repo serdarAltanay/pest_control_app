@@ -20,6 +20,7 @@ import uploadRoutes from "./routes/upload.js";
 import nonconformitiesRoutes from "./routes/nonconformities.js";
 import reportsRoutes from "./routes/reports.js";
 import certificatesRouter from "./routes/certificates.js";
+import biocidalCertificatesRouter from "./routes/biocidal-certificates.js";
 
 import employeeRouter from "./routes/employee.js";
 import heartbeatRoutes from "./routes/heartbeat.js";
@@ -137,6 +138,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/nonconformities", nonconformitiesRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/certificates", certificatesRouter);
+app.use("/api/biocidal-certificates", biocidalCertificatesRouter);
 
 // Online/presence
 app.use("/api/heartbeat", heartbeatRoutes);

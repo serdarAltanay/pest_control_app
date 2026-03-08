@@ -181,6 +181,13 @@ api.interceptors.response.use(
         isRefreshing = false;
         flushWaiters(e, null);
 
+        // Ağ hatası (internet kopması) ise token'ları silme — sadece reject et
+        // Böylece internet gelince kullanıcı tekrar deneyebilir
+        const isNetworkError = !e?.response;
+        if (isNetworkError) {
+          return Promise.reject(e);
+        }
+
         try { await apiBare.post("/auth/logout", {}, { headers: { Authorization: "" } }); } catch { }
         clearAuth();
         if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
