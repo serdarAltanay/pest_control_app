@@ -1,7 +1,5 @@
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
-import { createBackup, cleanupOldBackups } from "./backup.js";
-
 const prisma = new PrismaClient();
 
 /**
@@ -77,26 +75,11 @@ export async function sendDailyPlanNotifications() {
 export function initCronJobs() {
     console.log("Initializing Cron Jobs...");
 
-    // Nightly Backup at 03:00 AM
-    cron.schedule("0 3 * * *", async () => {
-        console.log("Running nightly automated backup...");
-        try {
-            await createBackup({ saveToDisk: true });
-            console.log("Nightly backup completed successfully.");
-
-            console.log("Running backup cleanup...");
-            await cleanupOldBackups();
-            console.log("Backup cleanup completed.");
-        } catch (error) {
-            console.error("Nightly backup/cleanup failed:", error);
-        }
-    });
-
     // Daily Plan Notifications at 07:00 AM (Turkey time)
     cron.schedule("0 7 * * *", async () => {
         console.log("[CRON] Running daily employee plan notifications...");
         await sendDailyPlanNotifications();
     }, { timezone: "Europe/Istanbul" });
 
-    console.log("Cron jobs scheduled: Nightly Backup (03:00), Daily Plan Notifications (07:00 TR)");
+    console.log("Cron jobs scheduled: Daily Plan Notifications (07:00 TR)");
 }
