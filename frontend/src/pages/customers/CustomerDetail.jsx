@@ -102,33 +102,7 @@ export default function CustomerDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Presence
-  const presence = useMemo(() => {
-    const last = customer?.lastSeenAt ? new Date(customer.lastSeenAt).getTime() : 0;
-    if (!last) return { cls: "status-offline", label: "Offline" };
-    const diff = Date.now() - last;
-    if (diff <= ONLINE_MS) return { cls: "status-online", label: "Online" };
-    if (diff <= IDLE_MS) return { cls: "status-idle", label: "Idle" };
-    return { cls: "status-offline", label: "Offline" };
-  }, [customer?.lastSeenAt]);
-
-  const relTime = (dt) => {
-    if (!dt) return "bilgi yok";
-    const diff = Math.max(0, Date.now() - new Date(dt).getTime());
-    const s = Math.floor(diff / 1000);
-    if (s < 30) return "az önce";
-    if (s < 60) return `${s} sn önce`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m} dk önce`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h} sa önce`;
-    const g = Math.floor(h / 24);
-    if (g < 30) return `${g} gün önce`;
-    const mo = Math.floor(g / 30);
-    if (mo < 12) return `${mo} ay önce`;
-    const y = Math.floor(mo / 12);
-    return `${y} yıl önce`;
-  };
+  // (Presence and relTime removed as they are no longer used for customers)
 
   const fmtDate = (val) => {
     if (!val) return "—";
