@@ -5,18 +5,7 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./CustomerEdit.scss";
 
-const PERIOD_TR = {
-  BELIRTILMEDI: "Belirtilmedi",
-  HAFTALIK: "1 Haftalık",
-  IKIHAFTALIK: "2 Haftalık",
-  AYLIK: "1 Aylık",
-  IKIAYLIK: "2 Aylık",
-  UCAYLIK: "3 Aylık",
-};
 
-const VISIT_PERIODS = ["BELIRTILMEDI","HAFTALIK","IKIHAFTALIK","AYLIK","IKIAYLIK","UCAYLIK"];
-const PEST_TYPES    = ["BELIRTILMEDI","KEMIRGEN","HACCADI","UCAN"];
-const PLACE_TYPES   = ["BELIRTILMEDI","OFIS","DEPO","MAGAZA","FABRIKA"];
 
 export default function CustomerEdit() {
   const { id } = useParams();
@@ -38,10 +27,7 @@ export default function CustomerEdit() {
     taxNumber: "",
     address: "",
     city: "",
-    pestType: "BELIRTILMEDI",
-    areaM2: "",
-    placeType: "BELIRTILMEDI",
-    visitPeriod: "BELIRTILMEDI",
+    city: "",
     employeeId: "",
   });
 
@@ -61,10 +47,7 @@ export default function CustomerEdit() {
         taxNumber: data.taxNumber || "",
         address: data.address || "",
         city: data.city || "",
-        pestType: data.pestType || "BELIRTILMEDI",
-        areaM2: data.areaM2 ?? "",
-        placeType: data.placeType || "BELIRTILMEDI",
-        visitPeriod: data.visitPeriod || "BELIRTILMEDI",
+        city: data.city || "",
         employeeId: data.employee?.id || "",
       });
     } catch (err) {
@@ -101,7 +84,6 @@ export default function CustomerEdit() {
       setSaving(true);
       const payload = {
         ...form,
-        areaM2: form.areaM2 === "" ? null : Number(form.areaM2),
         employeeId: form.employeeId ? Number(form.employeeId) : null,
       };
       await api.put(`/customers/${id}`, payload);
@@ -180,7 +162,7 @@ export default function CustomerEdit() {
               </div>
 
               <div className="col-span-2">
-                <label>Adres</label>
+                <label>Merkez Adres</label>
                 <textarea name="address" rows={3} value={form.address} onChange={onChange} />
               </div>
 
@@ -197,32 +179,6 @@ export default function CustomerEdit() {
                       {e.fullName} ({e.email})
                     </option>
                   ))}
-                </select>
-              </div>
-
-              <div>
-                <label>Ziyaret Periyodu</label>
-                <select name="visitPeriod" value={form.visitPeriod} onChange={onChange}>
-                  {VISIT_PERIODS.map((p) => (
-                    <option key={p} value={p}>{PERIOD_TR[p] || p}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label>Uygulama Alanı (m²)</label>
-                <input name="areaM2" type="number" min="0" step="1" value={form.areaM2} onChange={onChange} />
-              </div>
-
-              <div>
-                <label>Hedef Zararlı</label>
-                <select name="pestType" value={form.pestType} onChange={onChange}>
-                  {PEST_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
-              <div>
-                <label>Uygulama Yeri</label>
-                <select name="placeType" value={form.placeType} onChange={onChange}>
-                  {PLACE_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
             </div>

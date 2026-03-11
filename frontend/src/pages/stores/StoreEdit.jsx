@@ -6,6 +6,19 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./StoreForm.scss";
 
+const PERIOD_TR = {
+  BELIRTILMEDI: "Belirtilmedi",
+  HAFTALIK: "1 Haftalık",
+  IKIHAFTALIK: "2 Haftalık",
+  AYLIK: "1 Aylık",
+  IKIAYLIK: "2 Aylık",
+  UCAYLIK: "3 Aylık",
+};
+
+const VISIT_PERIODS = ["BELIRTILMEDI", "HAFTALIK", "IKIHAFTALIK", "AYLIK", "IKIAYLIK", "UCAYLIK"];
+const PEST_TYPES = ["BELIRTILMEDI", "KEMIRGEN", "HACCADI", "UCAN"];
+const PLACE_TYPES = ["BELIRTILMEDI", "OFIS", "DEPO", "MAGAZA", "FABRIKA"];
+
 export default function StoreEdit() {
   const { storeId } = useParams();
   const navigate = useNavigate();
@@ -22,6 +35,10 @@ export default function StoreEdit() {
     phone: "",
     manager: "",
     isActive: true,
+    visitPeriod: "BELIRTILMEDI",
+    pestType: "BELIRTILMEDI",
+    placeType: "BELIRTILMEDI",
+    areaM2: "",
   });
 
   const validate = (v) => {
@@ -38,7 +55,11 @@ export default function StoreEdit() {
     if (err) { toast.error(err); return; }
     try {
       setSaving(true);
-      const { data } = await api.put(`/stores/${storeId}`, { ...form });
+      const payload = {
+        ...form,
+        areaM2: form.areaM2 === "" ? null : Number(form.areaM2),
+      };
+      const { data } = await api.put(`/stores/${storeId}`, payload);
       toast.success("Mağaza güncellendi");
       navigate(`/admin/customers/${data.store.customerId}`);
     } catch (err) {
@@ -64,6 +85,10 @@ export default function StoreEdit() {
           phone: data.phone || "",
           manager: data.manager || "",
           isActive: !!data.isActive,
+          visitPeriod: data.visitPeriod || "BELIRTILMEDI",
+          pestType: data.pestType || "BELIRTILMEDI",
+          placeType: data.placeType || "BELIRTILMEDI",
+          areaM2: data.areaM2 ?? "",
         });
       } catch (err) {
         if (!cancelled) toast.error(err.response?.data?.message || "Mağaza bilgisi alınamadı");
@@ -140,6 +165,33 @@ export default function StoreEdit() {
               <label>Yetkili</label>
               <input name="manager" value={form.manager} onChange={onChange} />
             </div>
+
+            <div>
+              <label>Ziyaret Periyodu</label>
+              <select name="visitPeriod" value={form.visitPeriod} onChange={onChange}>
+                {VISIT_PERIODS.map((p) => (
+                  <option key={p} value={p}>{PERIOD_TR[p] || p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>Uygulama Alanı (m²)</label>
+              <input name="areaM2" type="number" min="0" step="1" value={form.areaM2} onChange={onChange} />
+            </div>
+
+            <div>
+              <label>Hedef Zararlı</label>
+              <select name="pestType" value={form.pestType} onChange={onChange}>
+                {PEST_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Uygulama Yeri</label>
+              <select name="placeType" value={form.placeType} onChange={onChange}>
+                {PLACE_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+
             <div className="inline">
               <label className="chk">
                 Mağaza Aktif Mi?

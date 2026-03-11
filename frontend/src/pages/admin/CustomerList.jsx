@@ -6,15 +6,6 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./CustomerList.scss";
 
-const PERIOD_TR = {
-  BELIRTILMEDI: "Belirtilmedi",
-  HAFTALIK: "1 Haftalık",
-  IKIHAFTALIK: "2 Haftalık",
-  AYLIK: "1 Aylık",
-  IKIAYLIK: "2 Aylık",
-  UCAYLIK: "3 Aylık",
-};
-
 // FREE müşteriyi yakalamak için yardımcı (title/code/segment vb.)
 const isFreeCustomer = (c) => {
   const code  = (c?.code  || "").toUpperCase();
@@ -90,8 +81,6 @@ export default function CustomerList() {
     setPage(1);
   }, [query, pageSize]);
 
-  const fmtPeriod = (p) => PERIOD_TR[p] || "Belirtilmedi";
-
   // Actions
   const handleDetail = (id) => navigate(`/admin/customers/${id}`);
   const handleEdit = (id) => navigate(`/admin/customers/${id}/edit`);
@@ -149,7 +138,6 @@ export default function CustomerList() {
                 <th>Müşteri</th>
                 <th>Şehir</th>
                 <th>Email</th>
-                <th>Ziyaret Periyodu</th>
                 <th>Sorumlu</th>
                 <th>İşlem</th>
               </tr>
@@ -185,7 +173,6 @@ export default function CustomerList() {
 
                     <td>{c.city || "—"}</td>
                     <td className="email-cell">{c.email || "—"}</td>
-                    <td>{fmtPeriod(c.visitPeriod)}</td>
                     <td className="responsible">
                       {c.employee?.fullName ? c.employee.fullName : "—"}
                     </td>

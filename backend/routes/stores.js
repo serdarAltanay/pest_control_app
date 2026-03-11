@@ -404,6 +404,7 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       isActive,
       pestType,
       placeType,
+      visitPeriod,
       areaM2,
       latitude,
       longitude,
@@ -430,6 +431,9 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         : "BELIRTILMEDI",
       placeType: ["OFIS", "DEPO", "MAGAZA", "FABRIKA", "BELIRTILMEDI"].includes(placeType)
         ? placeType
+        : "BELIRTILMEDI",
+      visitPeriod: ["HAFTALIK", "IKIHAFTALIK", "AYLIK", "IKIAYLIK", "UCAYLIK", "BELIRTILMEDI"].includes(visitPeriod)
+        ? visitPeriod
         : "BELIRTILMEDI",
       areaM2: areaM2 != null ? Number(areaM2) : null,
       latitude: latitude != null ? Number(latitude) : null,
@@ -534,6 +538,12 @@ router.put("/:storeId", auth, roleCheck(["admin", "employee"]), async (req, res)
       data.placeType = asEnum(
         body.placeType,
         ["OFIS", "DEPO", "MAGAZA", "FABRIKA", "BELIRTILMEDI"],
+        "BELIRTILMEDI"
+      );
+    if ("visitPeriod" in body)
+      data.visitPeriod = asEnum(
+        body.visitPeriod,
+        ["HAFTALIK", "IKIHAFTALIK", "AYLIK", "IKIAYLIK", "UCAYLIK", "BELIRTILMEDI"],
         "BELIRTILMEDI"
       );
     if ("areaM2" in body) data.areaM2 = body.areaM2 != null ? Number(body.areaM2) : null;

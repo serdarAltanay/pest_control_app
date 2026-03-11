@@ -118,15 +118,6 @@ function StorePicker({ onToggle, selectedIds = [] }) {
   );
 }
 
-/* -------------------- CUSTOMER PICKER -------------------- */
-const PERIOD_TR = {
-  BELIRTILMEDI: "Belirtilmedi",
-  HAFTALIK: "1 Haftalık",
-  IKIHAFTALIK: "2 Haftalık",
-  AYLIK: "1 Aylık",
-  IKIAYLIK: "2 Aylık",
-  UCAYLIK: "3 Aylık",
-};
 function CustomerPicker({ onToggle, selectedIds = [] }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -172,8 +163,6 @@ function CustomerPicker({ onToggle, selectedIds = [] }) {
   const startIdx = (currentPage - 1) * pageSize;
   const pageItems = filtered.slice(startIdx, startIdx + pageSize);
 
-  const fmtPeriod = (p) => PERIOD_TR[p] || "Belirtilmedi";
-
   return (
     <div className="picker-card">
       <div className="picker-toolbar">
@@ -198,7 +187,7 @@ function CustomerPicker({ onToggle, selectedIds = [] }) {
         <table className="picker-table">
           <thead>
             <tr>
-              <th>Müşteri Kod</th><th>Müşteri</th><th>Şehir</th><th>Email</th><th>Periyot</th><th>Sorumlu</th><th>Seç</th>
+              <th>Müşteri Kod</th><th>Müşteri</th><th>Şehir</th><th>Email</th><th>Sorumlu</th><th>Seç</th>
             </tr>
           </thead>
           <tbody>
@@ -213,7 +202,6 @@ function CustomerPicker({ onToggle, selectedIds = [] }) {
                   <td>{c.title || "—"}</td>
                   <td>{c.city || "—"}</td>
                   <td className="email-cell">{c.email || "—"}</td>
-                  <td>{fmtPeriod(c.visitPeriod)}</td>
                   <td>{c.employee?.fullName || "—"}</td>
                   <td className="actions">
                     <button

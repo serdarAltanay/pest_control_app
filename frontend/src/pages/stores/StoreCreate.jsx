@@ -5,7 +5,6 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import "./StoreForm.scss";
 
-// AccessRole enum değerleri
 const ACCESS_ROLES = [
   { value: "CALISAN", label: "Çalışan" },
   { value: "MAGAZA_SORUMLUSU", label: "Mağaza Sorumlusu" },
@@ -14,6 +13,19 @@ const ACCESS_ROLES = [
   { value: "PATRON", label: "Patron" },
   { value: "DIGER", label: "Diğer" },
 ];
+
+const PERIOD_TR = {
+  BELIRTILMEDI: "Belirtilmedi",
+  HAFTALIK: "1 Haftalık",
+  IKIHAFTALIK: "2 Haftalık",
+  AYLIK: "1 Aylık",
+  IKIAYLIK: "2 Aylık",
+  UCAYLIK: "3 Aylık",
+};
+
+const VISIT_PERIODS = ["BELIRTILMEDI", "HAFTALIK", "IKIHAFTALIK", "AYLIK", "IKIAYLIK", "UCAYLIK"];
+const PEST_TYPES = ["BELIRTILMEDI", "KEMIRGEN", "HACCADI", "UCAN"];
+const PLACE_TYPES = ["BELIRTILMEDI", "OFIS", "DEPO", "MAGAZA", "FABRIKA"];
 
 export default function StoreCreate() {
   const { customerId } = useParams();
@@ -31,6 +43,10 @@ export default function StoreCreate() {
     managerFirstName: "",
     managerLastName: "",
     isActive: true,
+    visitPeriod: "BELIRTILMEDI",
+    pestType: "BELIRTILMEDI",
+    placeType: "BELIRTILMEDI",
+    areaM2: "",
   });
 
   // Erişim verme (radyo: Evet/Hayır)
@@ -113,6 +129,10 @@ export default function StoreCreate() {
         phone: form.phone || null,
         manager: managerText,
         isActive: !!form.isActive,
+        visitPeriod: form.visitPeriod,
+        pestType: form.pestType,
+        placeType: form.placeType,
+        areaM2: form.areaM2 ? Number(form.areaM2) : undefined,
 
         grantAccess: !!grantAccess,
         accessOwner: grantAccess ? ownerPayload : undefined,
@@ -182,6 +202,32 @@ export default function StoreCreate() {
             <div>
               <label>Yetkili Soyad</label>
               <input name="managerLastName" value={form.managerLastName} onChange={onChange} />
+            </div>
+
+            <div>
+              <label>Ziyaret Periyodu</label>
+              <select name="visitPeriod" value={form.visitPeriod} onChange={onChange}>
+                {VISIT_PERIODS.map((p) => (
+                  <option key={p} value={p}>{PERIOD_TR[p] || p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>Uygulama Alanı (m²)</label>
+              <input name="areaM2" type="number" min="0" step="1" value={form.areaM2} onChange={onChange} />
+            </div>
+
+            <div>
+              <label>Hedef Zararlı</label>
+              <select name="pestType" value={form.pestType} onChange={onChange}>
+                {PEST_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Uygulama Yeri</label>
+              <select name="placeType" value={form.placeType} onChange={onChange}>
+                {PLACE_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
             </div>
 
             <div className="inline">

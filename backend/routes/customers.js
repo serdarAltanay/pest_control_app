@@ -21,7 +21,6 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         title: true,
         city: true,
         email: true,           // sadece iletişim
-        visitPeriod: true,
         contactFullName: true,
         phone: true,
         gsm: true,
@@ -63,7 +62,6 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         gsm: true,
         address: true,
         city: true,
-        visitPeriod: true,
         createdAt: true,
         updatedAt: true,
         employee: { select: { id: true, fullName: true, email: true } },
@@ -115,7 +113,6 @@ router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) 
       taxNumber,
       address,
       city,
-      visitPeriod,
       employeeId,
     } = req.body;
 
@@ -141,7 +138,6 @@ router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) 
         taxNumber: taxNumber || null,
         address: address || null,
         city: city || null,
-        visitPeriod: visitPeriod || "BELIRTILMEDI",
         employeeId: employeeId || null,
       },
     });
@@ -174,7 +170,6 @@ router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       taxNumber,
       address,
       city,
-      visitPeriod,
       employeeId,
     } = req.body;
 
@@ -197,7 +192,6 @@ router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     if (taxNumber !== undefined) data.taxNumber = taxNumber || null;
     if (address !== undefined) data.address = address || null;
     if (city !== undefined) data.city = city || null;
-    if (visitPeriod !== undefined) data.visitPeriod = visitPeriod || "BELIRTILMEDI";
     if (employeeId !== undefined) data.employeeId = employeeId || null;
 
     const updated = await prisma.customer.update({ where: { id }, data });

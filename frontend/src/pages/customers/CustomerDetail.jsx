@@ -174,13 +174,6 @@ export default function CustomerDetail() {
           <div className="identity">
             <div className="title-wrap">
               <h1 className="title">{customer?.title || "—"}</h1>
-              <span
-                className={`presence ${presence.cls}`}
-                title={`Son görüldü: ${relTime(customer?.lastSeenAt)}`}
-              >
-                <span className="dot" />
-                {presence.label}
-              </span>
             </div>
           </div>
 
@@ -205,9 +198,8 @@ export default function CustomerDetail() {
                   <div><b>Müşteri Kodu</b><span>{customer.code || "—"}</span></div>
                   <div><b>Şehir</b><span>{customer.city || "—"}</span></div>
                   <div><b>Email</b><span className="email">{customer.email || "—"}</span></div>
-                  <div><b>Ziyaret Periyodu</b><span>{fmtPeriod(customer.visitPeriod)}</span></div>
                   <div><b>Sorumlu Personel</b><span>{customer.employee?.fullName || "—"}</span></div>
-                  <div className="full"><b>Adres</b><span>{customer.address || "—"}</span></div>
+                  <div className="full"><b>Merkez Adres</b><span>{customer.address || "—"}</span></div>
                 </div>
               </section>
 
@@ -236,8 +228,6 @@ export default function CustomerDetail() {
               <section className="card">
                 <div className="card-title">Sistem</div>
                 <div className="kv">
-                  <div><b>Son Giriş</b><span>{fmtDate(customer.lastLoginAt)}</span></div>
-                  <div><b>Son Görülme</b><span>{customer.lastSeenAt ? relTime(customer.lastSeenAt) : "—"}</span></div>
                   <div><b>Oluşturulma</b><span>{fmtDate(customer.createdAt)}</span></div>
                   <div><b>Güncelleme</b><span>{fmtDate(customer.updatedAt)}</span></div>
                 </div>

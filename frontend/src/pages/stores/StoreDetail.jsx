@@ -4,6 +4,16 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+
+const PERIOD_TR = {
+  BELIRTILMEDI: "Belirtilmedi",
+  HAFTALIK: "1 Haftalık",
+  IKIHAFTALIK: "2 Haftalık",
+  AYLIK: "1 Aylık",
+  IKIAYLIK: "2 Aylık",
+  UCAYLIK: "3 Aylık",
+};
+
 import "./StoreDetail.scss";
 
 // recharts yoksa sayfa yine çalışsın diye dinamik require
@@ -280,6 +290,10 @@ export default function StoreDetail() {
               <div><b>Telefon</b><span>{store?.phone || "—"}</span></div>
               <div><b>Yetkili</b><span>{store?.manager || "—"}</span></div>
               <div className="full"><b>Adres</b><span>{store?.address || "—"}</span></div>
+              <div><b>Ziyaret Periyodu</b><span>{PERIOD_TR[store?.visitPeriod] || store?.visitPeriod || "—"}</span></div>
+              <div><b>Uygulama Alanı (m²)</b><span>{store?.areaM2 || "—"}</span></div>
+              <div><b>Hedef Zararlı</b><span>{store?.pestType || "—"}</span></div>
+              <div><b>Uygulama Yeri</b><span>{store?.placeType || "—"}</span></div>
               <div>
                 <b>Durum</b>
                 <span>
