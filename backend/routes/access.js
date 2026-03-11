@@ -9,6 +9,7 @@ import {
   sendAccessOwnerGranted,
   sendAccessOwnerPasswordReset,
 } from "../lib/mailer.js";
+import { isEmailTaken } from "../lib/user-utils.js";
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -85,6 +86,9 @@ async function ensureOwnerHandler(req, res) {
     let emailed = false;
 
     if (!owner) {
+      const taken = await isEmailTaken(prisma, trimmedEmail);
+      if (taken) return res.status(409).json({ message: "E-posta kullanımda (başka bir kullanıcı türünde olabilir)." });
+
       const code = random6();
       const password = await bcrypt.hash(code, 10);
       owner = await prisma.accessOwner.create({
@@ -377,6 +381,9 @@ router.post(
         owner = await prisma.accessOwner.findUnique({ where: { email: trimmedEmail } });
 
         if (!owner) {
+          const taken = await isEmailTaken(prisma, trimmedEmail);
+          if (taken) return res.status(409).json({ message: "E-posta kullanımda (başka bir kullanıcı türünde olabilir)." });
+
           rawPassword = random6();
           const pwhash = await bcrypt.hash(rawPassword, 10);
           owner = await prisma.accessOwner.create({

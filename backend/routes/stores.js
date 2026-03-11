@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
+import { isEmailTaken } from "../lib/user-utils.js";
 import bcrypt from "bcrypt";
 import { randomInt } from "crypto";
 import { sendAccessOwnerWelcome, sendAccessOwnerGranted } from "../lib/mailer.js";
@@ -49,6 +50,9 @@ async function ensureAccessOwner({ email, role, firstName, lastName, phone }) {
   let created = false;
 
   if (!owner) {
+    const taken = await isEmailTaken(prisma, trimmedEmail);
+    if (taken) throw new Error("E-posta başka bir kullanıcı türünde (Admin/Personel) zaten kullanımda.");
+
     const code = random6();
     const password = await bcrypt.hash(code, 10);
     const safeRole = ALLOWED_ACCESS_ROLES.includes(role) ? role : "MAGAZA_SORUMLUSU";
@@ -501,6 +505,9 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       let rawPassword = null;
 
       if (!owner) {
+        const taken = await isEmailTaken(prisma, trimmedEmail);
+        if (taken) return res.status(409).json({ message: "E-posta kullanımda (başka bir kullanıcı türünde olabilir)." });
+
         rawPassword = random6();
         const pwhash = await bcrypt.hash(rawPassword, 10);
         owner = await prisma.accessOwner.create({

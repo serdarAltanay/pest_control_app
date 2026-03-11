@@ -194,11 +194,11 @@ export default function Ek1Preview() {
   const freeNcrs = (Array.isArray(fm.ncrs) ? fm.ncrs : []).filter((n) => n?.title || n?.notes);
   const ncrText = isFree
     ? freeNcrs.length === 0
-      ? "—"
+      ? "Uygunsuzluk saptanmamıştır"
       : freeNcrs
         .map((n, i) => `${i + 1}) ${(n.title || "").trim()}${n.notes ? " – " + n.notes : ""}`)
         .join(" | ")
-    : "—";
+    : "Uygunsuzluk saptanmamıştır";
 
   const selfName = getCurrentUserDisplayName();
   const managerName = store?.manager || null;

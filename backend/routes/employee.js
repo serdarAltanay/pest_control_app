@@ -3,6 +3,7 @@ import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { auth, roleCheck } from "../middleware/auth.js";
+import { isEmailTaken } from "../lib/user-utils.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -81,8 +82,8 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
     if (!fullName || !jobTitle || !gsm || !email || !password) {
       return res.status(400).json({ message: "Zorunlu alanlar eksik." });
     }
-    const exists = await prisma.employee.findUnique({ where: { email } });
-    if (exists) return res.status(409).json({ message: "E-posta kullanımda." });
+    const taken = await isEmailTaken(prisma, email);
+    if (taken) return res.status(409).json({ message: "E-posta kullanımda (başka bir kullanıcı türünde olabilir)." });
 
     const hashed = await bcrypt.hash(String(password), 10);
     const created = await prisma.employee.create({

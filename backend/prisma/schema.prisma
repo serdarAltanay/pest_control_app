@@ -374,7 +374,7 @@ model Customer {
   code            String  @unique
   title           String
   accountingTitle String?
-  email           String? @unique
+  email           String?
   contactFullName String?
   phone           String?
   gsm             String?

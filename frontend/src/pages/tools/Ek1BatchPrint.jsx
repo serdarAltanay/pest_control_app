@@ -142,9 +142,9 @@ export default function Ek1BatchPrint() {
                         const freeNcrs = (Array.isArray(fm.ncrs) ? fm.ncrs : []).filter((n) => n?.title || n?.notes);
                         const ncrText = isFree
                             ? freeNcrs.length === 0
-                                ? "—"
+                                ? "Uygunsuzluk saptanmamıştır"
                                 : freeNcrs.map((n, i) => `${i + 1}) ${(n.title || "").trim()}`).join(" | ")
-                            : "—";
+                            : "Uygunsuzluk saptanmamıştır";
 
                         const displayStoreName = isFree ? fm.storeName || "—" : store?.name || "—";
                         const displayAddress = isFree ? fm.address || "—" : store?.address || "—";
