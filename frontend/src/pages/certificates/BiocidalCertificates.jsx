@@ -3,12 +3,11 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import { FiDownload, FiTrash2, FiPlus } from "react-icons/fi";
 import { ProfileContext } from "../../context/ProfileContext";
+import { toAbsoluteUrl } from "../../utils/getAssetUrl";
 import Layout from "../../components/Layout";
 import "./BiocidalCertificates.scss";
 
-// Render statik URL veya API baseURL
-const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-const API_URL = isLocal ? "http://localhost:5000" : "https://pest-control-app.onrender.com";
+// BiocidalCertificates.jsx
 
 export default function BiocidalCertificates() {
     const { profile } = useContext(ProfileContext);
@@ -27,25 +26,11 @@ export default function BiocidalCertificates() {
     // Müşteriler (accessOwner/customer) ekleme/silme yapamaz, sadece görebilir
     const canManageCerts = ["admin", "employee"].includes(profile?.role?.toLowerCase());
 
-    const [blobUrls, setBlobUrls] = useState({});
+
 
     useEffect(() => {
         fetchData();
-        return () => {
-            // Cleanup blob URLs on unmount
-            Object.values(blobUrls).forEach(url => window.URL.revokeObjectURL(url));
-        };
     }, []);
-
-    const fetchBlob = async (certId) => {
-        try {
-            const resp = await api.get(`/biocidal-certificates/${certId}/view`, { responseType: "blob" });
-            const url = window.URL.createObjectURL(new Blob([resp.data], { type: resp.headers['content-type'] }));
-            setBlobUrls(prev => ({ ...prev, [certId]: url }));
-        } catch (err) {
-            console.error(`Blob fetch error for ${certId}:`, err);
-        }
-    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -56,14 +41,10 @@ export default function BiocidalCertificates() {
                 canManageCerts ? api.get("/biocides") : Promise.resolve({ data: [] })
             ]);
 
-            const certs = certsRes.data;
-            setCertificates(certs);
+            setCertificates(certsRes.data);
             if (canManageCerts) {
                 setBiocides(biocidesRes.data);
             }
-
-            // Fetch blobs for all certificates
-            certs.forEach(c => fetchBlob(c.id));
 
         } catch (error) {
             console.error("SDS Formları yüklenirken hata:", error);
@@ -123,25 +104,13 @@ export default function BiocidalCertificates() {
             await api.delete(`/biocidal-certificates/${id}`);
             toast.success("SDS Formu silindi.");
             setCertificates((prev) => prev.filter((c) => c.id !== id));
-            // Cleanup blob
-            if (blobUrls[id]) {
-                window.URL.revokeObjectURL(blobUrls[id]);
-                setBlobUrls(prev => {
-                    const next = { ...prev };
-                    delete next[id];
-                    return next;
-                });
-            }
         } catch (error) {
             console.error("Delete error:", error);
             toast.error("Silme işlemi başarısız oldu.");
         }
     };
 
-    const getFullUrl = (filePath) => {
-        if (!filePath) return "#";
-        return `${API_URL}/${filePath}`;
-    };
+    // URL helper removed in favor of toAbsoluteUrl
 
     const handleDownload = async (item) => {
         try {
@@ -211,23 +180,23 @@ export default function BiocidalCertificates() {
                                     </div>
                                 </div>
                                 <div className="c-preview">
-                                    {blobUrls[cert.id] ? (
+                                    {cert.file ? (
                                         cert.mime?.startsWith("image/") ? (
                                             <img
-                                                src={blobUrls[cert.id]}
+                                                src={toAbsoluteUrl(cert.file, { forceApi: true })}
                                                 alt={cert.title}
                                                 className="preview-frame"
                                                 style={{ objectFit: "contain" }}
                                             />
                                         ) : (
                                             <iframe
-                                                src={`${blobUrls[cert.id]}#toolbar=0&navpanes=0`}
+                                                src={`${toAbsoluteUrl(cert.file, { forceApi: true })}#toolbar=0&navpanes=0`}
                                                 className="preview-frame"
                                                 title={cert.title}
                                             />
                                         )
                                     ) : (
-                                        <div className="preview-loading">Önizleme yükleniyor...</div>
+                                        <div className="empty">Dosya yok.</div>
                                     )}
                                 </div>
                                 <div className="c-actions">

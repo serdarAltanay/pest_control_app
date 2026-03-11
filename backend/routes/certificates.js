@@ -94,11 +94,19 @@ router.get("/:id/download", auth, async (req, res) => {
         const item = await prisma.companyCertificate.findUnique({ where: { id } });
         if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
 
-        const abs = absFromRel(item.file);
-        console.log(`[DEBUG] Company download: resolving ${item.file} to ${abs}`);
+        let abs = absFromRel(item.file);
+        console.log(`[DEBUG] Company download: item.file=${item.file} -> abs=${abs}`);
+        
         if (!fs.existsSync(abs)) {
-            console.error(`[ERROR] File not found at: ${abs}`);
-            return res.status(404).json({ error: "Dosya yok: " + item.file });
+            // Yedek plan: Eğer resolve edilen yol yoksa, doğrudan relative deniyoruz
+            const altPath = path.join(process.cwd(), item.file);
+            console.log(`[DEBUG] Company download alt check: ${altPath}`);
+            if (fs.existsSync(altPath)) {
+                abs = altPath;
+            } else {
+                console.error(`[ERROR] File not found at: ${abs} AND ${altPath}`);
+                return res.status(404).json({ error: "Sunucuda dosya bulunamadı: " + item.file });
+            }
         }
 
         res.download(abs, path.basename(abs));
@@ -115,11 +123,17 @@ router.get("/:id/view", auth, async (req, res) => {
         const item = await prisma.companyCertificate.findUnique({ where: { id } });
         if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
 
-        const abs = absFromRel(item.file);
-        console.log(`[DEBUG] Company view: resolving ${item.file} to ${abs}`);
+        let abs = absFromRel(item.file);
+        console.log(`[DEBUG] Company view: item.file=${item.file} -> abs=${abs}`);
         if (!fs.existsSync(abs)) {
-            console.error(`[ERROR] File not found at: ${abs}`);
-            return res.status(404).json({ error: "Dosya yok: " + item.file });
+            const altPath = path.join(process.cwd(), item.file);
+            console.log(`[DEBUG] Company view alt check: ${altPath}`);
+            if (fs.existsSync(altPath)) {
+                abs = altPath;
+            } else {
+                console.error(`[ERROR] File not found at: ${abs} AND ${altPath}`);
+                return res.status(404).json({ error: "Sunucuda dosya bulunamadı: " + item.file });
+            }
         }
 
         if (item.mime) {

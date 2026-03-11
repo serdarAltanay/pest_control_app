@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import { toAbsoluteUrl } from "../../utils/getAssetUrl";
 import "./CompanyCertificates.scss";
 
 export default function CompanyCertificates() {
@@ -13,37 +14,18 @@ export default function CompanyCertificates() {
 
     const [form, setForm] = useState({ title: "", file: null, notes: "" });
 
-    const [blobUrls, setBlobUrls] = useState({});
-
     useEffect(() => {
         const roleStr = localStorage.getItem("role");
         if (roleStr) {
             setRole(roleStr.toLowerCase());
         }
         load();
-        return () => {
-            // Cleanup blob URLs on unmount
-            Object.values(blobUrls).forEach(url => window.URL.revokeObjectURL(url));
-        };
     }, []);
-
-    const fetchBlob = async (certId) => {
-        try {
-            const resp = await api.get(`/certificates/${certId}/view`, { responseType: "blob" });
-            const url = window.URL.createObjectURL(new Blob([resp.data], { type: resp.headers['content-type'] }));
-            setBlobUrls(prev => ({ ...prev, [certId]: url }));
-        } catch (err) {
-            console.error(`Blob fetch error for ${certId}:`, err);
-        }
-    };
 
     const load = async () => {
         try {
             const { data } = await api.get("/certificates");
-            const certs = Array.isArray(data) ? data : [];
-            setItems(certs);
-            // Fetch blobs for all items
-            certs.forEach(c => fetchBlob(c.id));
+            setItems(Array.isArray(data) ? data : []);
         } catch {
             toast.error("Sertifikalar yüklenemedi");
         }
@@ -84,15 +66,6 @@ export default function CompanyCertificates() {
         try {
             await api.delete(`/certificates/${id}`);
             toast.success("Sertifika silindi");
-            // Cleanup blob
-            if (blobUrls[id]) {
-                window.URL.revokeObjectURL(blobUrls[id]);
-                setBlobUrls(prev => {
-                    const next = { ...prev };
-                    delete next[id];
-                    return next;
-                });
-            }
             load();
         } catch {
             toast.error("Silinemedi");
@@ -146,23 +119,23 @@ export default function CompanyCertificates() {
                                 )}
                             </div>
                             <div className="c-preview">
-                                {blobUrls[it.id] ? (
+                                {it.file ? (
                                     it.mime?.startsWith("image/") ? (
                                         <img
-                                            src={blobUrls[it.id]}
+                                            src={toAbsoluteUrl(it.file, { forceApi: true })}
                                             alt={it.title}
                                             className="preview-frame"
                                             style={{ objectFit: "contain" }}
                                         />
                                     ) : (
                                         <iframe
-                                            src={`${blobUrls[it.id]}#toolbar=0&navpanes=0`}
+                                            src={`${toAbsoluteUrl(it.file, { forceApi: true })}#toolbar=0&navpanes=0`}
                                             className="preview-frame"
                                             title={it.title}
                                         />
                                     )
                                 ) : (
-                                    <div className="preview-loading">Önizleme yükleniyor...</div>
+                                    <div className="empty">Dosya yok.</div>
                                 )}
                             </div>
                             <div className="c-actions">

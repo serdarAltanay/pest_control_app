@@ -423,7 +423,7 @@ export default function Ek1Preview() {
                 <tr><th>Belge Seri No</th><td>{fmtSerial(report?.serialNo) || provider?.certificateSerial || "—"}</td></tr>
                 <tr><th>Uygulamayı Yapan Firma Adı</th><td>{provider?.companyName || "—"}</td></tr>
                 <tr><th>Açık Adresi</th><td>{provider?.address || "—"}</td></tr>
-                <tr><th>Mesul Müdür</th><td>{provider?.responsibleTitle || provider?.responsibleName || "—"}</td></tr>
+                <tr><th>Mesul Müdür</th><td>{[provider?.responsibleTitle, provider?.responsibleName].filter(Boolean).join(" ")}</td></tr>
                 <tr><th>Uygulayıcı/lar Adı Soyadı</th><td>{employeesStr}</td></tr>
                 <tr><th>Telefon / Faks Numarası</th><td>{provider?.phoneFax || "—"}</td></tr>
                 <tr><th>Müdürlük İzin Tarih ve Sayısı</th><td>{provider?.permissionNo || "—"}</td></tr>

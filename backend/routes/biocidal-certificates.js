@@ -159,11 +159,17 @@ router.get("/:id/download", auth, async (req, res) => {
         const cert = await prisma.biocideCertificate.findUnique({ where: { id } });
         if (!cert) return res.status(404).json({ message: "Sertifika bulunamadı." });
 
-        const fullPath = path.resolve(process.cwd(), cert.file);
-        console.log(`[DEBUG] Biocidal download: resolving ${cert.file} to ${fullPath}`);
+        let fullPath = path.resolve(process.cwd(), cert.file);
+        console.log(`[DEBUG] Biocidal download: item.file=${cert.file} -> abs=${fullPath}`);
         if (!fs.existsSync(fullPath)) {
-            console.error(`[ERROR] File not found at: ${fullPath}`);
-            return res.status(404).json({ message: "Dosya sunucuda bulunamadı: " + cert.file });
+            const altPath = path.join(process.cwd(), cert.file);
+            console.log(`[DEBUG] Biocidal download alt check: ${altPath}`);
+            if (fs.existsSync(altPath)) {
+                fullPath = altPath;
+            } else {
+                console.error(`[ERROR] File not found at: ${fullPath} AND ${altPath}`);
+                return res.status(404).json({ message: "Sunucuda dosya bulunamadı: " + cert.file });
+            }
         }
 
         res.download(fullPath, path.basename(fullPath));
@@ -184,11 +190,17 @@ router.get("/:id/view", auth, async (req, res) => {
         const cert = await prisma.biocideCertificate.findUnique({ where: { id } });
         if (!cert) return res.status(404).json({ message: "Sertifika bulunamadı." });
 
-        const fullPath = path.resolve(process.cwd(), cert.file);
-        console.log(`[DEBUG] Biocidal view: resolving ${cert.file} to ${fullPath}`);
+        let fullPath = path.resolve(process.cwd(), cert.file);
+        console.log(`[DEBUG] Biocidal view: item.file=${cert.file} -> abs=${fullPath}`);
         if (!fs.existsSync(fullPath)) {
-            console.error(`[ERROR] File not found at: ${fullPath}`);
-            return res.status(404).json({ message: "Dosya sunucuda bulunamadı: " + cert.file });
+            const altPath = path.join(process.cwd(), cert.file);
+            console.log(`[DEBUG] Biocidal view alt check: ${altPath}`);
+            if (fs.existsSync(altPath)) {
+                fullPath = altPath;
+            } else {
+                console.error(`[ERROR] File not found at: ${fullPath} AND ${altPath}`);
+                return res.status(404).json({ message: "Sunucuda dosya bulunamadı: " + cert.file });
+            }
         }
 
         if (cert.mime) {
