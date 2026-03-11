@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import "./StoreDetail.scss";
 
 const PERIOD_TR = {
   BELIRTILMEDI: "Belirtilmedi",
@@ -13,8 +14,6 @@ const PERIOD_TR = {
   IKIAYLIK: "2 Aylık",
   UCAYLIK: "3 Aylık",
 };
-
-import "./StoreDetail.scss";
 
 // recharts yoksa sayfa yine çalışsın diye dinamik require
 let Recharts;
