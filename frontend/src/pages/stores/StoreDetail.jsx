@@ -228,7 +228,7 @@ export default function StoreDetail() {
 
   const hasAddress = !!(store?.address?.trim());
   const mapHref = hasAddress
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address.trim())}`
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(store.address.trim())}`
     : undefined;
   const directionsHref = hasAddress
     ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(store.address.trim())}`

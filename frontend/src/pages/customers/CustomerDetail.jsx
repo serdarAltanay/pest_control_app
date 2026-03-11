@@ -342,7 +342,7 @@ export default function CustomerDetail() {
                               {s.address?.trim() && (
                                 <a
                                   className="btn ghost"
-                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address.trim())}`}
+                                  href={`https://maps.google.com/maps?q=${encodeURIComponent(s.address.trim())}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   title="Haritada Aç"
