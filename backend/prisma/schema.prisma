@@ -562,8 +562,8 @@ model ScheduleEvent {
   plannedByName String?
   plannedAt     DateTime  @default(now())
 
-  employee Employee @relation(fields: [employeeId], references: [id])
-  store    Store    @relation(fields: [storeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   status VisitStatus @default(PLANNED)
 
