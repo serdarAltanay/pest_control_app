@@ -380,11 +380,9 @@ model Customer {
   address         String?
   city            String?
 
-  // ⬇️ BUNLAR KALDIRILDI: pestType, placeType
-  showBalance Boolean     @default(false)
+
   visitPeriod VisitPeriod @default(BELIRTILMEDI)
 
-  profileImage String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

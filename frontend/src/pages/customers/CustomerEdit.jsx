@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import { getAvatarUrl } from "../../utils/getAssetUrl";
 import "./CustomerEdit.scss";
 
 const PERIOD_TR = {
@@ -42,10 +41,8 @@ export default function CustomerEdit() {
     pestType: "BELIRTILMEDI",
     areaM2: "",
     placeType: "BELIRTILMEDI",
-    showBalance: false,
     visitPeriod: "BELIRTILMEDI",
     employeeId: "",
-    profileImage: null, // sadece görüntülemek için
   });
 
   const fetchDetail = async () => {
@@ -67,10 +64,8 @@ export default function CustomerEdit() {
         pestType: data.pestType || "BELIRTILMEDI",
         areaM2: data.areaM2 ?? "",
         placeType: data.placeType || "BELIRTILMEDI",
-        showBalance: !!data.showBalance,
         visitPeriod: data.visitPeriod || "BELIRTILMEDI",
         employeeId: data.employee?.id || "",
-        profileImage: data.profileImage || null,
       });
     } catch (err) {
       toast.error(err.response?.data?.message || "Müşteri bilgisi alınamadı");
@@ -109,7 +104,6 @@ export default function CustomerEdit() {
         areaM2: form.areaM2 === "" ? null : Number(form.areaM2),
         employeeId: form.employeeId ? Number(form.employeeId) : null,
       };
-      delete payload.profileImage; // upload bu formda yok
       await api.put(`/customers/${id}`, payload);
       toast.success("Müşteri güncellendi");
       navigate(`/admin/customers/${id}`);
@@ -131,20 +125,6 @@ export default function CustomerEdit() {
     }
   };
 
-  // Admin’in müşteri avatarını kaldırması
-  const removeAvatar = async () => {
-    if (!window.confirm("Profil fotoğrafını kaldırmak istiyor musunuz?")) return;
-    try {
-      await api.post("/upload/avatar/remove", { role: "customer", userId: Number(id) });
-      setForm((p) => ({ ...p, profileImage: null }));
-      toast.success("Profil fotoğrafı kaldırıldı");
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Profil fotoğrafı kaldırılamadı");
-    }
-  };
-
-  const img = getAvatarUrl(form.profileImage);
-
   return (
     <Layout>
       <div className="customer-edit-page">
@@ -156,7 +136,6 @@ export default function CustomerEdit() {
         </div>
 
         <div className="edit-grid">
-          {/* Sol: Form */}
           <form className="card form-card" onSubmit={onSave}>
             <div className="grid-2">
               <div>
@@ -246,18 +225,6 @@ export default function CustomerEdit() {
                   {PLACE_TYPES.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
-
-              <div className="col-span-2 inline">
-                <label className="chk">
-                  <input
-                    type="checkbox"
-                    name="showBalance"
-                    checked={form.showBalance}
-                    onChange={onChange}
-                  />
-                  Bakiye Gösterimi
-                </label>
-              </div>
             </div>
 
             <div className="form-actions">
@@ -274,18 +241,6 @@ export default function CustomerEdit() {
               </button>
             </div>
           </form>
-
-          {/* Sağ: Avatar kutusu */}
-          <aside className="card avatar-card">
-            <div className="avatar-wrap">
-              <img src={img} alt="Profil" />
-            </div>
-            <div className="avatar-actions">
-              <button className="btn danger light" onClick={removeAvatar}>
-                Profil Fotoğrafını Kaldır
-              </button>
-            </div>
-          </aside>
         </div>
       </div>
     </Layout>

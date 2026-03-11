@@ -229,7 +229,6 @@ export default function CustomerDetail() {
                   <div><b>Mağaza Sayısı</b><span>{storeCount}</span></div>
                   <div><b>Toplam Uygulama Alanı (m²)</b><span>{totalArea || "—"}</span></div>
                   <div><b>Uygulama Yeri Tür(leri)</b><span>{placeTypes.length ? placeTypes.join(", ") : "—"}</span></div>
-                  <div><b>Bakiye Gösterimi</b><span>{customer.showBalance ? "Evet" : "Hayır"}</span></div>
                   <div><b>Hedef Zararlı Tür(leri)</b><span>{pestTypes.length ? pestTypes.join(", ") : "—"}</span></div>
                 </div>
               </section>
