@@ -250,6 +250,7 @@ export default function CustomerDetail() {
                           <th>Ad</th>
                           <th>Kod</th>
                           <th>Şehir</th>
+                          <th>Alan (m²)</th>
                           <th>Telefon</th>
                           <th>Yetkili</th>
                           <th>Durum</th>
@@ -277,6 +278,7 @@ export default function CustomerDetail() {
                             </td>
                             <td>{s.code || "—"}</td>
                             <td>{s.city || "—"}</td>
+                            <td>{s.areaM2 || "—"}</td>
                             <td>{s.phone || "—"}</td>
                             <td>{s.manager || "—"}</td>
                             <td>
