@@ -453,7 +453,7 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     const finalCode = `${prefix}-${String(nextSuffix).padStart(4, "0")}`;
 
     // Kısaltma oluşturma (vowels strip)
-    const finalShortName = (shortName || stripVowels(name)).substring(0, 12);
+    const finalShortName = (shortName && String(shortName).trim() ? String(shortName).trim() : stripVowels(name)).substring(0, 12);
 
     const data = {
       customerId: Number(customerId),
@@ -562,7 +562,16 @@ router.put("/:storeId", auth, roleCheck(["admin", "employee"]), async (req, res)
     const data = {};
     if ("name" in body) data.name = String(body.name);
     if ("code" in body) data.code = body.code ?? null;
-    if ("shortName" in body) data.shortName = body.shortName ?? null;
+    if ("shortName" in body) {
+      const inputSN = body.shortName && String(body.shortName).trim();
+      if (inputSN) {
+        data.shortName = inputSN.substring(0, 12);
+      } else {
+        // Eğer boş gönderildiyse veya null ise isimden türet (veya mevcut ismi kullan)
+        const targetName = data.name || (await prisma.store.findUnique({ where: { id }, select: { name: true } }))?.name || "";
+        data.shortName = stripVowels(targetName).substring(0, 12);
+      }
+    }
     if ("city" in body) data.city = body.city ?? null;
     if ("address" in body) data.address = body.address ?? null;
     if ("phone" in body) data.phone = body.phone ?? null;

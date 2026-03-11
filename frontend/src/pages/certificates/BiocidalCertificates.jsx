@@ -27,9 +27,25 @@ export default function BiocidalCertificates() {
     // Müşteriler (accessOwner/customer) ekleme/silme yapamaz, sadece görebilir
     const canManageCerts = ["admin", "employee"].includes(profile?.role?.toLowerCase());
 
+    const [blobUrls, setBlobUrls] = useState({});
+
     useEffect(() => {
         fetchData();
+        return () => {
+            // Cleanup blob URLs on unmount
+            Object.values(blobUrls).forEach(url => window.URL.revokeObjectURL(url));
+        };
     }, []);
+
+    const fetchBlob = async (certId) => {
+        try {
+            const resp = await api.get(`/biocidal-certificates/${certId}/view`, { responseType: "blob" });
+            const url = window.URL.createObjectURL(new Blob([resp.data], { type: resp.headers['content-type'] }));
+            setBlobUrls(prev => ({ ...prev, [certId]: url }));
+        } catch (err) {
+            console.error(`Blob fetch error for ${certId}:`, err);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -37,19 +53,21 @@ export default function BiocidalCertificates() {
             // Paralel veri çekimi
             const [certsRes, biocidesRes] = await Promise.all([
                 api.get("/biocidal-certificates"),
-                // Müşterilerin biyosidalları çekmesine gerek yok eğer sadece listeyi göreceklerse,
-                // ama eğer API kısıtlamadıysa ve dropdown için lazımsa çekebiliriz.
-                // Biz sadece canManageCerts olanlar için Biyosidal listesini çekelim modal içi:
                 canManageCerts ? api.get("/biocides") : Promise.resolve({ data: [] })
             ]);
 
-            setCertificates(certsRes.data);
+            const certs = certsRes.data;
+            setCertificates(certs);
             if (canManageCerts) {
                 setBiocides(biocidesRes.data);
             }
+
+            // Fetch blobs for all certificates
+            certs.forEach(c => fetchBlob(c.id));
+
         } catch (error) {
-            console.error("Sertifikalar yüklenirken hata:", error);
-            toast.error("Biyosidal sertifikaları yüklenirken bir hata oluştu.");
+            console.error("SDS Formları yüklenirken hata:", error);
+            toast.error("SDS ilaç güvenlik formları yüklenirken bir hata oluştu.");
         } finally {
             setLoading(false);
         }
@@ -79,7 +97,7 @@ export default function BiocidalCertificates() {
             await api.post("/biocidal-certificates", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
-            toast.success("Sertifika başarıyla eklendi.");
+            toast.success("SDS Formu başarıyla eklendi.");
             setShowModal(false);
 
             // Formu temizle
@@ -103,8 +121,17 @@ export default function BiocidalCertificates() {
 
         try {
             await api.delete(`/biocidal-certificates/${id}`);
-            toast.success("Sertifika silindi.");
+            toast.success("SDS Formu silindi.");
             setCertificates((prev) => prev.filter((c) => c.id !== id));
+            // Cleanup blob
+            if (blobUrls[id]) {
+                window.URL.revokeObjectURL(blobUrls[id]);
+                setBlobUrls(prev => {
+                    const next = { ...prev };
+                    delete next[id];
+                    return next;
+                });
+            }
         } catch (error) {
             console.error("Delete error:", error);
             toast.error("Silme işlemi başarısız oldu.");
@@ -145,13 +172,13 @@ export default function BiocidalCertificates() {
     };
 
     return (
-        <Layout title="Biyosidal Sertifikaları">
+        <Layout title="SDS İlaç Güvenlik Formları">
             <div className="company-certs">
                 <div className="head">
-                    <h2>Biyosidal Sertifikaları</h2>
+                    <h2>SDS İlaç Güvenlik Formları</h2>
                     {canManageCerts && (
                         <button className="btn primary" onClick={() => setShowModal(true)}>
-                            <FiPlus /> Yeni Sertifika
+                            <FiPlus /> Yeni Form Ekle
                         </button>
                     )}
                 </div>
@@ -160,7 +187,7 @@ export default function BiocidalCertificates() {
                     {loading ? (
                         <div className="empty">Yükleniyor...</div>
                     ) : certificates.length === 0 ? (
-                        <div className="empty">Henüz hiçbir biyosidal sertifikası eklenmemiş.</div>
+                        <div className="empty">Henüz hiçbir SDS formu eklenmemiş.</div>
                     ) : (
                         certificates.map((cert) => (
                             <div key={cert.id} className="cert-card">
@@ -184,19 +211,23 @@ export default function BiocidalCertificates() {
                                     </div>
                                 </div>
                                 <div className="c-preview">
-                                    {cert.mime?.startsWith("image/") ? (
-                                        <img
-                                            src={`/api/biocidal-certificates/${cert.id}/view`}
-                                            alt={cert.title}
-                                            className="preview-frame"
-                                            style={{ objectFit: "contain" }}
-                                        />
+                                    {blobUrls[cert.id] ? (
+                                        cert.mime?.startsWith("image/") ? (
+                                            <img
+                                                src={blobUrls[cert.id]}
+                                                alt={cert.title}
+                                                className="preview-frame"
+                                                style={{ objectFit: "contain" }}
+                                            />
+                                        ) : (
+                                            <iframe
+                                                src={`${blobUrls[cert.id]}#toolbar=0&navpanes=0`}
+                                                className="preview-frame"
+                                                title={cert.title}
+                                            />
+                                        )
                                     ) : (
-                                        <iframe
-                                            src={`/api/biocidal-certificates/${cert.id}/view#toolbar=0&navpanes=0`}
-                                            className="preview-frame"
-                                            title={cert.title}
-                                        />
+                                        <div className="preview-loading">Önizleme yükleniyor...</div>
                                     )}
                                 </div>
                                 <div className="c-actions">
@@ -222,7 +253,7 @@ export default function BiocidalCertificates() {
                     <div className="modal-backdrop" onClick={() => setShowModal(false)}>
                         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h3>Sertifika Yükle</h3>
+                                <h3>SDS Formu Yükle</h3>
                                 <button type="button" className="close-btn" onClick={() => setShowModal(false)}>&times;</button>
                             </div>
                             <form className="modal-body" onSubmit={handleUpload}>

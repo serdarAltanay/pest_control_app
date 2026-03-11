@@ -13,14 +13,7 @@ export default function CompanyCertificates() {
 
     const [form, setForm] = useState({ title: "", file: null, notes: "" });
 
-    const load = async () => {
-        try {
-            const { data } = await api.get("/certificates");
-            setItems(Array.isArray(data) ? data : []);
-        } catch {
-            toast.error("Sertifikalar yüklenemedi");
-        }
-    };
+    const [blobUrls, setBlobUrls] = useState({});
 
     useEffect(() => {
         const roleStr = localStorage.getItem("role");
@@ -28,7 +21,33 @@ export default function CompanyCertificates() {
             setRole(roleStr.toLowerCase());
         }
         load();
+        return () => {
+            // Cleanup blob URLs on unmount
+            Object.values(blobUrls).forEach(url => window.URL.revokeObjectURL(url));
+        };
     }, []);
+
+    const fetchBlob = async (certId) => {
+        try {
+            const resp = await api.get(`/certificates/${certId}/view`, { responseType: "blob" });
+            const url = window.URL.createObjectURL(new Blob([resp.data], { type: resp.headers['content-type'] }));
+            setBlobUrls(prev => ({ ...prev, [certId]: url }));
+        } catch (err) {
+            console.error(`Blob fetch error for ${certId}:`, err);
+        }
+    };
+
+    const load = async () => {
+        try {
+            const { data } = await api.get("/certificates");
+            const certs = Array.isArray(data) ? data : [];
+            setItems(certs);
+            // Fetch blobs for all items
+            certs.forEach(c => fetchBlob(c.id));
+        } catch {
+            toast.error("Sertifikalar yüklenemedi");
+        }
+    };
 
     const isCustomer = role === "customer";
     const isAdmin = role === "admin";
@@ -65,6 +84,15 @@ export default function CompanyCertificates() {
         try {
             await api.delete(`/certificates/${id}`);
             toast.success("Sertifika silindi");
+            // Cleanup blob
+            if (blobUrls[id]) {
+                window.URL.revokeObjectURL(blobUrls[id]);
+                setBlobUrls(prev => {
+                    const next = { ...prev };
+                    delete next[id];
+                    return next;
+                });
+            }
             load();
         } catch {
             toast.error("Silinemedi");
@@ -118,19 +146,23 @@ export default function CompanyCertificates() {
                                 )}
                             </div>
                             <div className="c-preview">
-                                {it.mime?.startsWith("image/") ? (
-                                    <img
-                                        src={`/api/certificates/${it.id}/view`}
-                                        alt={it.title}
-                                        className="preview-frame"
-                                        style={{ objectFit: "contain" }}
-                                    />
+                                {blobUrls[it.id] ? (
+                                    it.mime?.startsWith("image/") ? (
+                                        <img
+                                            src={blobUrls[it.id]}
+                                            alt={it.title}
+                                            className="preview-frame"
+                                            style={{ objectFit: "contain" }}
+                                        />
+                                    ) : (
+                                        <iframe
+                                            src={`${blobUrls[it.id]}#toolbar=0&navpanes=0`}
+                                            className="preview-frame"
+                                            title={it.title}
+                                        />
+                                    )
                                 ) : (
-                                    <iframe
-                                        src={`/api/certificates/${it.id}/view#toolbar=0&navpanes=0`}
-                                        className="preview-frame"
-                                        title={it.title}
-                                    />
+                                    <div className="preview-loading">Önizleme yükleniyor...</div>
                                 )}
                             </div>
                             <div className="c-actions">

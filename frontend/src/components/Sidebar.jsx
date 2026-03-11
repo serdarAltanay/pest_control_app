@@ -116,7 +116,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
           {/* TÜM ROL VE KULLANICILAR İÇİN ORTAK (Sertifikalar) */}
           <li className="section-title">Sertifikalar</li>
           <li className={`sidebar-item ${location.pathname === "/certificates" ? "active" : ""}`} onClick={() => navigate("/certificates")}>Şirket Sertifikaları</li>
-          <li className={`sidebar-item ${location.pathname === "/biocidal-certificates" ? "active" : ""}`} onClick={() => navigate("/biocidal-certificates")}>Biyosidal Sertifikaları</li>
+          <li className={`sidebar-item ${location.pathname === "/biocidal-certificates" ? "active" : ""}`} onClick={() => navigate("/biocidal-certificates")}>SDS İlaç Güvenlik Formları</li>
 
           {/* ARAÇLAR — EN ALTA ALINDI */}
           {isAdmin && (
