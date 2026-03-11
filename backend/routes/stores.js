@@ -15,6 +15,8 @@ const norm = (s) => (typeof s === "string" ? s.trim() : s);
 const asEnum = (val, allowed, fallback) =>
   allowed.includes(String(val)) ? String(val) : fallback;
 
+const stripVowels = (s) => (s || "").replace(/[aeıioöuüAEIİOÖUÜ\s]/g, "").toUpperCase();
+
 const basicCheck = (body) => {
   if (!norm(body.name)) return "Mağaza adı zorunludur.";
   if (body.phone) {
@@ -154,6 +156,7 @@ router.get("/mine", auth, async (req, res) => {
         id: true,
         name: true,
         code: true,
+        shortName: true,
         isActive: true,
         city: true,
         _count: {
@@ -190,6 +193,7 @@ router.get("/", auth, async (req, res, next) => {
         id: true,
         name: true,
         code: true,
+        shortName: true,
         city: true,
         isActive: true,
         _count: {
@@ -223,6 +227,7 @@ router.get(
             id: true,
             name: true,
             code: true,
+            shortName: true,
             city: true,
             phone: true,
             manager: true,
@@ -241,6 +246,7 @@ router.get(
           id: true,
           name: true,
           code: true,
+          shortName: true,
           city: true,
           phone: true,
           manager: true,
@@ -274,6 +280,7 @@ router.get(
           id: true,
           name: true,
           code: true,
+          shortName: true,
           city: true,
           address: true,
           phone: true,
@@ -396,7 +403,6 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     const {
       customerId,
       name,
-      code,
       city,
       address,
       phone,
@@ -410,17 +416,50 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       longitude,
       grantAccess,
       accessOwner,
+      shortName,
     } = req.body;
 
-    const vErr = basicCheck({ name, phone, code });
+    const vErr = basicCheck({ name, phone }); // code check removed since we generate it
     if (vErr) return res.status(400).json({ message: vErr });
     if (!Number(customerId))
       return res.status(400).json({ message: "Geçersiz müşteri" });
 
+    // Parent customer'ı bul (kodunu almak için)
+    const customer = await prisma.customer.findUnique({
+      where: { id: Number(customerId) },
+      select: { code: true }
+    });
+    if (!customer) return res.status(404).json({ message: "Müşteri bulunamadı" });
+
+    // Mağaza kodu oluşturma [MüşteriKodu]-[0001]
+    const existingStores = await prisma.store.findMany({
+      where: { customerId: Number(customerId), code: { not: "FREE" } },
+      select: { code: true }
+    });
+
+    const prefix = (customer.code || "00000").padStart(5, "0");
+    let nextSuffix = 1;
+    if (existingStores.length > 0) {
+      const suffixes = existingStores
+        .map(s => {
+          const parts = (s.code || "").split("-");
+          return parts.length > 1 ? parseInt(parts[1], 10) : 0;
+        })
+        .filter(n => !isNaN(n));
+      if (suffixes.length > 0) {
+        nextSuffix = Math.max(...suffixes) + 1;
+      }
+    }
+    const finalCode = `${prefix}-${String(nextSuffix).padStart(4, "0")}`;
+
+    // Kısaltma oluşturma (vowels strip)
+    const finalShortName = (shortName || stripVowels(name)).substring(0, 12);
+
     const data = {
       customerId: Number(customerId),
       name: String(name),
-      code: code ?? null,
+      code: finalCode,
+      shortName: finalShortName,
       city: city ?? null,
       address: address ?? null,
       phone: phone ?? null,
@@ -523,6 +562,7 @@ router.put("/:storeId", auth, roleCheck(["admin", "employee"]), async (req, res)
     const data = {};
     if ("name" in body) data.name = String(body.name);
     if ("code" in body) data.code = body.code ?? null;
+    if ("shortName" in body) data.shortName = body.shortName ?? null;
     if ("city" in body) data.city = body.city ?? null;
     if ("address" in body) data.address = body.address ?? null;
     if ("phone" in body) data.phone = body.phone ?? null;

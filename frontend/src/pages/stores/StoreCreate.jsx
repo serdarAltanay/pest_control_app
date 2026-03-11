@@ -39,7 +39,7 @@ export default function StoreCreate() {
   // Mağaza formu
   const [form, setForm] = useState({
     name: "",
-    code: "",
+    shortName: "",
     city: "",
     address: "",
     phone: "",
@@ -136,6 +136,7 @@ export default function StoreCreate() {
         pestType: form.pestType,
         placeType: form.placeType,
         areaM2: form.areaM2 ? Number(form.areaM2) : undefined,
+        shortName: form.shortName || null,
 
         grantAccess: !!grantAccess,
         accessOwner: grantAccess ? ownerPayload : undefined,
@@ -179,8 +180,12 @@ export default function StoreCreate() {
               <input name="name" value={form.name} onChange={onChange} required />
             </div>
             <div>
-              <label>Kod</label>
-              <input name="code" value={form.code} onChange={onChange} placeholder="Örn: MRKZ" />
+              <label>Kısaltma (Kısa Kod)</label>
+              <input name="shortName" value={form.shortName} onChange={onChange} placeholder="Örn: MRKZ (Boşsa isimden türetilir)" />
+            </div>
+            <div>
+              <label>Sistem Kodu (Otomatik)</label>
+              <input name="code" value="Otomatik Oluşacaktır" disabled style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }} />
             </div>
 
             <div>

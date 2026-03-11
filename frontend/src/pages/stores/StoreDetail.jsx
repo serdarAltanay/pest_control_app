@@ -287,7 +287,8 @@ export default function StoreDetail() {
             </div>
 
             <div className="kv">
-              <div><b>Kod</b><span>{store?.code || "—"}</span></div>
+              <div><b>Sistem Kodu</b><span>{store?.code || "—"}</span></div>
+              <div><b>Kısaltma (Kısa Kod)</b><span>{store?.shortName || "—"}</span></div>
               <div><b>Şehir</b><span>{store?.city || "—"}</span></div>
               <div><b>Telefon</b><span>{store?.phone || "—"}</span></div>
               <div><b>Yetkili</b><span>{store?.manager || "—"}</span></div>

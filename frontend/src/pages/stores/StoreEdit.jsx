@@ -33,6 +33,7 @@ export default function StoreEdit() {
   const [form, setForm] = useState({
     name: "",
     code: "",
+    shortName: "",
     city: "",
     address: "",
     phone: "",
@@ -61,6 +62,7 @@ export default function StoreEdit() {
       const payload = {
         ...form,
         areaM2: form.areaM2 === "" ? null : Number(form.areaM2),
+        shortName: form.shortName || null,
       };
       const { data } = await api.put(`/stores/${storeId}`, payload);
       toast.success("Mağaza güncellendi");
@@ -92,6 +94,7 @@ export default function StoreEdit() {
           pestType: data.pestType || "BELIRTILMEDI",
           placeType: data.placeType || "BELIRTILMEDI",
           areaM2: data.areaM2 ?? "",
+          shortName: data.shortName || "",
         });
       } catch (err) {
         if (!cancelled) toast.error(err.response?.data?.message || "Mağaza bilgisi alınamadı");
@@ -149,8 +152,12 @@ export default function StoreEdit() {
               <input name="name" value={form.name} onChange={onChange} required />
             </div>
             <div>
-              <label>Kod</label>
-              <input name="code" value={form.code} onChange={onChange} />
+              <label>Sistem Kodu (Değiştirilemez)</label>
+              <input name="code" value={form.code} disabled style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }} />
+            </div>
+            <div>
+              <label>Kısaltma (Kısa Kod)</label>
+              <input name="shortName" value={form.shortName} onChange={onChange} placeholder="Örn: MRKZ" />
             </div>
             <div>
               <label>Şehir</label>

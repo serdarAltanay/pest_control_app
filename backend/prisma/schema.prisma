@@ -400,9 +400,10 @@ model Store {
   customerId Int
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  name     String
-  code     String?
-  city     String?
+  name      String
+  code      String?
+  shortName String?
+  city      String?
   address  String?
   phone    String?
   manager  String?

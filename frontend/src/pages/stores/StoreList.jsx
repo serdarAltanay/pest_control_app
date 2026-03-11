@@ -126,6 +126,7 @@ export default function StoreList() {
             <thead>
               <tr>
                 <th>Kod</th>
+                <th>Kısaltma</th>
                 <th>Mağaza</th>
                 <th>Şehir</th>
                 <th>Telefon</th>
@@ -153,6 +154,7 @@ export default function StoreList() {
                       style={{ cursor: "default" }}
                     >
                       <td>{s.code || "—"}</td>
+                      <td>{s.shortName || "—"}</td>
 
                       <td>
                         <a
