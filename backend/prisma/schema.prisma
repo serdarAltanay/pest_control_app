@@ -597,8 +597,6 @@ model RefreshToken {
   role      String
   createdAt DateTime @default(now())
   expiresAt DateTime
-
-  @@unique([userId, role], name: "userId_role_unique")
 }
 
 model CompanyCertificate {

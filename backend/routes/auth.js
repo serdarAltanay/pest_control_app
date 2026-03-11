@@ -1,4 +1,4 @@
-﻿// backend/routes/auth.js
+// backend/routes/auth.js
 import { Router } from "express";
 import { auth } from "../middleware/auth.js";
 import bcrypt from "bcrypt";
@@ -70,14 +70,14 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // DB'ye kaydet (unique userId+role)
-    await prisma.refreshToken.upsert({
-      where: { userId_role_unique: { userId: user.id, role: dbRole } },
-      update: {
-        token: refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-      create: {
+    // Eski/süresi dolmuş sessionları temizle
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id, role: dbRole, expiresAt: { lt: new Date() } }
+    });
+
+    // DB'ye kaydet
+    await prisma.refreshToken.create({
+      data: {
         token: refreshToken,
         userId: user.id,
         role: dbRole,
@@ -151,23 +151,19 @@ router.post("/refresh", async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    // Refresh Token Rotation (RTR) - her kullanımda RT yenilenir
-    const newRefreshToken = jwt.sign(
-      { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    // Refresh Token Rotation (RTR) iptal edildi (Multi-tab sorunlarını önlemek için)
+    // Mevcut tokenin süresini uzatıyoruz.
+    const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     await prisma.refreshToken.update({
       where: { id: stored.id },
       data: {
-        token: newRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: newExpiry,
       },
     });
 
-    res.cookie("refreshToken", newRefreshToken, cookieOpts);
-    return res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    res.cookie("refreshToken", stored.token, cookieOpts);
+    return res.json({ accessToken: newAccessToken, refreshToken: stored.token });
   } catch (err) {
     console.error("[REFRESH] Sunucu hatası:", err);
     if (!res.headersSent) {
@@ -229,16 +225,13 @@ router.post("/consent", auth, async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    const newRefreshToken = jwt.sign(
-      { id, role, hasAcceptedTerms: true },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    await prisma.refreshToken.updateMany({
-      where: { userId: id, role: dbRole },
-      data: { token: newRefreshToken, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
-    });
+    const currentRt = req.cookies.refreshToken;
+    if (currentRt) {
+      await prisma.refreshToken.updateMany({
+        where: { token: currentRt },
+        data: { token: newRefreshToken, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+      });
+    }
 
     res.cookie("refreshToken", newRefreshToken, cookieOpts);
 
