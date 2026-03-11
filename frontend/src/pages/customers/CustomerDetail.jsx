@@ -9,9 +9,12 @@ const PERIOD_TR = {
   BELIRTILMEDI: "Belirtilmedi",
   HAFTALIK: "1 Haftalık",
   IKIHAFTALIK: "2 Haftalık",
+  UCHAFTALIK: "3 Haftalık",
   AYLIK: "1 Aylık",
   IKIAYLIK: "2 Aylık",
   UCAYLIK: "3 Aylık",
+  ALTYAYLIK: "6 Aylık",
+  YILLIK: "1 Yıllık",
 };
 
 const ONLINE_MS = 2 * 60 * 1000;

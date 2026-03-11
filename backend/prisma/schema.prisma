@@ -11,9 +11,12 @@ datasource db {
 enum VisitPeriod {
   HAFTALIK
   IKIHAFTALIK
+  UCHAFTALIK
   AYLIK
   IKIAYLIK
   UCAYLIK
+  ALTYAYLIK
+  YILLIK
   BELIRTILMEDI
 }
 
