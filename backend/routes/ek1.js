@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
+import { getNextSerialNo, ensureReport } from "../lib/ek1-utils.js";
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -16,15 +17,7 @@ const normalizeMethod = (m) => {
   return up === "PULVERIZE" ? "PULVERİZE" : up;
 };
 
-/* ───────── Seri Numarası Üretici ───────── */
-async function getNextSerialNo() {
-  const last = await prisma.ek1Report.findFirst({
-    where: { serialNo: { not: null } },
-    orderBy: { serialNo: "desc" },
-    select: { serialNo: true },
-  });
-  return (last?.serialNo ?? 0) + 1;
-}
+/* ───────── (getNextSerialNo moved to utils) ───────── */
 
 /* ───────── ACCESS SCOPE (müşteri hangi mağazalara erişir?) ─────────
    Not: FE’de “customer” rolü, gerçekte AccessOwner kullanıcısını temsil eder. */
@@ -142,14 +135,7 @@ async function ensureProviderProfile() {
   return p;
 }
 
-async function ensureReport(visitId) {
-  let report = await prisma.ek1Report.findUnique({ where: { visitId } });
-  if (!report) {
-    const serialNo = await getNextSerialNo();
-    report = await prisma.ek1Report.create({ data: { visitId, status: "DRAFT", serialNo } });
-  }
-  return report;
-}
+/* ───────── (ensureReport moved to utils) ───────── */
 
 function computeStatusAfter(report) {
   const hasProvider = !!report.providerSignedAt;
@@ -490,10 +476,11 @@ async function hPdf(req, res) {
     if (!visitId) return res.status(400).json({ message: "Geçersiz visitId" });
 
     const pdfUrl = `/files/ek1/${visitId}.pdf`;
+    const serialNo = await getNextSerialNo();
     const report = await prisma.ek1Report.upsert({
       where: { visitId },
       update: { pdfUrl },
-      create: { visitId, pdfUrl, status: "DRAFT" },
+      create: { visitId, pdfUrl, status: "DRAFT", serialNo },
     });
     res.json({ message: "PDF hazırlandı", report });
   } catch (e) {

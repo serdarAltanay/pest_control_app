@@ -3,6 +3,7 @@ import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
 import { sendMail } from "../lib/mailer.js";
+import { getNextSerialNo } from "../lib/ek1-utils.js";
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -350,6 +351,8 @@ router.post(
 
       await ensureEmployeeStoreAccess(req, sid);
 
+      const serialNo = await getNextSerialNo();
+
       const visit = await prisma.visit.create({
         data: {
           storeId: sid,
@@ -360,7 +363,7 @@ router.post(
           targetPests: targetPests ?? null,
           notes: notes ?? null,
           employees: employees ?? null,
-          ek1: { create: {} }, // status default: DRAFT
+          ek1: { create: { serialNo } }, // status default: DRAFT
         },
         include: { ek1: true },
       });
