@@ -160,7 +160,11 @@ router.get("/:id/download", auth, async (req, res) => {
         if (!cert) return res.status(404).json({ message: "Sertifika bulunamadı." });
 
         const fullPath = path.resolve(process.cwd(), cert.file);
-        if (!fs.existsSync(fullPath)) return res.status(404).json({ message: "Dosya sunucuda bulunamadı." });
+        console.log(`[DEBUG] Biocidal download: resolving ${cert.file} to ${fullPath}`);
+        if (!fs.existsSync(fullPath)) {
+            console.error(`[ERROR] File not found at: ${fullPath}`);
+            return res.status(404).json({ message: "Dosya sunucuda bulunamadı: " + cert.file });
+        }
 
         res.download(fullPath, path.basename(fullPath));
     } catch (e) {
@@ -181,7 +185,11 @@ router.get("/:id/view", auth, async (req, res) => {
         if (!cert) return res.status(404).json({ message: "Sertifika bulunamadı." });
 
         const fullPath = path.resolve(process.cwd(), cert.file);
-        if (!fs.existsSync(fullPath)) return res.status(404).json({ message: "Dosya sunucuda bulunamadı." });
+        console.log(`[DEBUG] Biocidal view: resolving ${cert.file} to ${fullPath}`);
+        if (!fs.existsSync(fullPath)) {
+            console.error(`[ERROR] File not found at: ${fullPath}`);
+            return res.status(404).json({ message: "Dosya sunucuda bulunamadı: " + cert.file });
+        }
 
         if (cert.mime) {
             res.setHeader("Content-Type", cert.mime);

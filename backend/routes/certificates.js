@@ -95,7 +95,11 @@ router.get("/:id/download", auth, async (req, res) => {
         if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
 
         const abs = absFromRel(item.file);
-        if (!fs.existsSync(abs)) return res.status(404).json({ error: "Dosya yok" });
+        console.log(`[DEBUG] Company download: resolving ${item.file} to ${abs}`);
+        if (!fs.existsSync(abs)) {
+            console.error(`[ERROR] File not found at: ${abs}`);
+            return res.status(404).json({ error: "Dosya yok: " + item.file });
+        }
 
         res.download(abs, path.basename(abs));
     } catch (e) {
@@ -112,7 +116,11 @@ router.get("/:id/view", auth, async (req, res) => {
         if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
 
         const abs = absFromRel(item.file);
-        if (!fs.existsSync(abs)) return res.status(404).json({ error: "Dosya yok" });
+        console.log(`[DEBUG] Company view: resolving ${item.file} to ${abs}`);
+        if (!fs.existsSync(abs)) {
+            console.error(`[ERROR] File not found at: ${abs}`);
+            return res.status(404).json({ error: "Dosya yok: " + item.file });
+        }
 
         if (item.mime) {
             res.setHeader("Content-Type", item.mime);
