@@ -57,8 +57,14 @@
         color: var(--text);
         &:focus { outline: none; border-color: $color-primary; box-shadow: var(--shadow); }
       }
+      input[type="checkbox"] {
+        width: auto;
+        height: auto;
+        margin: 0 8px 0 0;
+        padding: 0;
+      }
       textarea { height: auto; padding: 10px 12px; resize: vertical; }
-      .chk { font-weight: 700; color: rgba($color-dark,.85); input { margin-right: 8px; } }
+      .chk { font-weight: 700; color: rgba($color-dark,.85); display: flex; align-items: center; cursor: pointer; }
     }
 
     .form-actions {
