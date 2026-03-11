@@ -99,6 +99,7 @@ function App() {
             />
 
             <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />
 
             {/* Customer Dashboard */}
