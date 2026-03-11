@@ -116,18 +116,29 @@ router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) 
       employeeId,
     } = req.body;
 
-    if (!code || !title) {
-      return res.status(400).json({ message: "Müşteri Kodu ve Ünvan zorunludur." });
+    let finalCode = code;
+    if (!finalCode) {
+      const customers = await prisma.customer.findMany({
+        where: { code: { not: "FREE" } },
+        select: { code: true },
+      });
+      const numericCodes = customers
+        .map((cust) => parseInt(cust.code, 10))
+        .filter((num) => !isNaN(num));
+
+      const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 99;
+      const nextCode = maxCode + 1;
+      finalCode = String(nextCode).padStart(5, "0");
     }
 
-    const exists = await prisma.customer.findUnique({ where: { code } });
+    const exists = await prisma.customer.findUnique({ where: { code: finalCode } });
     if (exists) {
-      return res.status(409).json({ message: "Bu müşteri kodu zaten kayıtlı." });
+      return res.status(409).json({ message: `Müşteri kodu (${finalCode}) zaten kayıtlı.` });
     }
 
     const c = await prisma.customer.create({
       data: {
-        code: String(code),
+        code: String(finalCode),
         title: String(title),
         accountingTitle: accountingTitle || null,
         email: email || null, // yalnız iletişim

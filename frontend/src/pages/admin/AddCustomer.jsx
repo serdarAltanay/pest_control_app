@@ -93,8 +93,8 @@ export default function AddCustomer() {
             </div>
 
             <div>
-              <label>Müşteri Kodu *</label>
-              <input value={code} onChange={(e) => setCode(e.target.value)} required />
+              <label>Müşteri Kodu</label>
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Boş bırakılırsa otomatik (00xxx) oluşur" />
             </div>
           </div>
 
