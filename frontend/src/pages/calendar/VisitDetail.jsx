@@ -271,16 +271,14 @@ export default function VisitDetail() {
 
   const mapSrc = useMemo(() => {
     if (!store) return null;
-    const { latitude, longitude, address, city, name } = store;
-    if (latitude != null && longitude != null) return `https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`;
+    const { address, city, name } = store;
     const q = encodeURIComponent(address || city || name || "");
-    return q ? `https://maps.google.com/maps?q=${q}&z=14&output=embed` : null;
+    return q ? `https://maps.google.com/maps?q=${q}&z=15&output=embed` : null;
   }, [store]);
 
   const directionsUrl = useMemo(() => {
     if (!store) return null;
-    const { latitude, longitude, address, city, name } = store;
-    if (latitude != null && longitude != null) return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    const { address, city, name } = store;
     const q = encodeURIComponent(address || `${name || ""} ${city || ""}`.trim());
     return q ? `https://www.google.com/maps/dir/?api=1&destination=${q}` : null;
   }, [store]);

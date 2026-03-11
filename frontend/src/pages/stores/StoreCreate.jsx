@@ -3,18 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import Layout from "../../components/Layout.jsx";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import MapPickerCreate from "../../components/MapPickerCreate.jsx";
-import "../../styles/Map.scss";
 import "./StoreForm.scss";
-
-const CITY_CENTER = {
-  "İSTANBUL": { lat: 41.015137, lng: 28.97953 },
-  "ANKARA": { lat: 39.92077, lng: 32.85411 },
-  "İZMİR": { lat: 38.423733, lng: 27.142826 },
-  "KOCAELİ": { lat: 40.85327, lng: 29.88152 },
-  "AYDIN": { lat: 37.8444, lng: 27.8458 },
-};
-const TR_FALLBACK = { lat: 39.925533, lng: 32.866287 };
 
 // AccessRole enum değerleri
 const ACCESS_ROLES = [
@@ -31,7 +20,6 @@ export default function StoreCreate() {
   const navigate = useNavigate();
 
   const [saving, setSaving] = useState(false);
-  const [initialCenter, setInitialCenter] = useState(TR_FALLBACK);
 
   // Mağaza formu
   const [form, setForm] = useState({
@@ -70,27 +58,10 @@ export default function StoreCreate() {
     });
   }, [grantAccess]); // sadece "Evet" yapıldığında çalışsın
 
-  // Harita koordinatı controlled: [lat, lng] | null
-  const [pos, setPos] = useState(null);
-
-  // Müşterinin şehrine göre başlangıç merkezi
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await api.get(`/customers/${customerId}`);
-        if (cancelled) return;
-        const key = (data.city || "").toUpperCase();
-        setInitialCenter(CITY_CENTER[key] || TR_FALLBACK);
-      } catch {
-        if (!cancelled) {
-          toast.error("Müşteri bilgisi alınamadı");
-          setInitialCenter(TR_FALLBACK);
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [customerId]);
+  // Google Maps adres önizleme URL'si
+  const addressPreviewSrc = form.address?.trim()
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(form.address.trim())}&z=15&output=embed`
+    : null;
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -142,8 +113,6 @@ export default function StoreCreate() {
         phone: form.phone || null,
         manager: managerText,
         isActive: !!form.isActive,
-        latitude: Array.isArray(pos) ? pos[0] : null,
-        longitude: Array.isArray(pos) ? pos[1] : null,
 
         grantAccess: !!grantAccess,
         accessOwner: grantAccess ? ownerPayload : undefined,
@@ -156,7 +125,7 @@ export default function StoreCreate() {
     } finally {
       setSaving(false);
     }
-  }, [form, pos, customerId, navigate, grantAccess, owner]);
+  }, [form, customerId, navigate, grantAccess, owner]);
 
   // Ctrl/Cmd+S kaydet
   useEffect(() => {
@@ -202,7 +171,7 @@ export default function StoreCreate() {
 
             <div className="col-span-2">
               <label>Adres</label>
-              <input name="address" value={form.address} onChange={onChange} />
+              <textarea rows={2} name="address" value={form.address} onChange={onChange} placeholder="Örn: Kızılay Mah. Atatürk Bulvarı No:10 Çankaya/Ankara" />
             </div>
 
             {/* Yetkili bilgisi ayrı alanlar */}
@@ -319,22 +288,43 @@ export default function StoreCreate() {
             )}
           </div>
 
-          <div className="card sub">
-            <div className="sub-title">Konum</div>
-            <p className="muted">Haritaya tıklayarak konumu seçin.</p>
-
-            <MapPickerCreate
-              initialCenter={initialCenter}
-              value={pos}
-              onChange={setPos}
-              height={340}
-            />
-
-            <div className="coords">
-              <div><b>Lat:</b> <span>{Array.isArray(pos) ? pos[0].toFixed(6) : "—"}</span></div>
-              <div><b>Lng:</b> <span>{Array.isArray(pos) ? pos[1].toFixed(6) : "—"}</span></div>
+          {/* Adres Önizleme — Google Maps */}
+          {addressPreviewSrc && (
+            <div className="card sub">
+              <div className="sub-title">Konum Önizleme</div>
+              <p className="muted">Girilen adrese göre Google Maps önizlemesi aşağıda gösterilmektedir.</p>
+              <div className="gmaps-preview">
+                <iframe
+                  title="address-preview"
+                  src={addressPreviewSrc}
+                  width="100%"
+                  height={300}
+                  style={{ border: 0, borderRadius: 10 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+              <div className="gmaps-links">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(form.address.trim())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn ghost"
+                >
+                  🗺️ Google Maps'te Aç
+                </a>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(form.address.trim())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn ghost"
+                >
+                  🧭 Yol Tarifi Al
+                </a>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="actions">
             <button className="btn primary" disabled={saving}>

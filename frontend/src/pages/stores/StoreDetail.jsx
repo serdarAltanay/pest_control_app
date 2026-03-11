@@ -226,9 +226,12 @@ export default function StoreDetail() {
     }
   };
 
-  const hasCoords = store?.latitude != null && store?.longitude != null;
-  const mapHref = hasCoords
-    ? `https://www.google.com/maps?q=${store.latitude},${store.longitude}`
+  const hasAddress = !!(store?.address?.trim());
+  const mapHref = hasAddress
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address.trim())}`
+    : undefined;
+  const directionsHref = hasAddress
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(store.address.trim())}`
     : undefined;
 
   return (
@@ -258,10 +261,13 @@ export default function StoreDetail() {
             <div className="card-title">
               <span>Mağaza Bilgileri</span>
               <div className="right-actions">
-                {hasCoords ? (
-                  <a className="btn ghost" href={mapHref} target="_blank" rel="noreferrer">Haritada Göster</a>
+                {hasAddress ? (
+                  <>
+                    <a className="btn ghost" href={mapHref} target="_blank" rel="noreferrer">🗺️ Haritada Göster</a>
+                    <a className="btn ghost" href={directionsHref} target="_blank" rel="noreferrer">🧭 Yol Tarifi</a>
+                  </>
                 ) : (
-                  <button className="btn ghost" disabled title="Koordinat yok">Haritada Göster</button>
+                  <button className="btn ghost" disabled title="Adres girilmemiş">Haritada Göster</button>
                 )}
                 <Link className="btn warn" to={`/admin/stores/${storeId}/edit`}>Düzenle</Link>
                 <button className="btn danger" onClick={handleDeleteStore}>Sil</button>
@@ -280,12 +286,6 @@ export default function StoreDetail() {
                   <span className={`badge ${store?.isActive ? "ok" : "no"}`}>
                     {store?.isActive ? "Aktif" : "Pasif"}
                   </span>
-                </span>
-              </div>
-              <div>
-                <b>Koordinatlar</b>
-                <span>
-                  {hasCoords ? `${Number(store.latitude).toFixed(5)}, ${Number(store.longitude).toFixed(5)}` : "—"}
                 </span>
               </div>
               <div><b>Oluşturulma</b><span>{fmtDate(store?.createdAt)}</span></div>

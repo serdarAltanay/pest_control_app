@@ -4,8 +4,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import Layout from "../../components/Layout.jsx";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import MapPickerEdit from "../../components/MapPickerEdit.jsx";
-import "../../styles/Map.scss";
+import "./StoreForm.scss";
 
 export default function StoreEdit() {
   const { storeId } = useParams();
@@ -23,8 +22,6 @@ export default function StoreEdit() {
     phone: "",
     manager: "",
     isActive: true,
-    latitude: null,
-    longitude: null,
   });
 
   const validate = (v) => {
@@ -67,8 +64,6 @@ export default function StoreEdit() {
           phone: data.phone || "",
           manager: data.manager || "",
           isActive: !!data.isActive,
-          latitude: data.latitude ?? null,
-          longitude: data.longitude ?? null,
         });
       } catch (err) {
         if (!cancelled) toast.error(err.response?.data?.message || "Mağaza bilgisi alınamadı");
@@ -96,11 +91,10 @@ export default function StoreEdit() {
     setForm((p) => ({ ...p, [name]: type === "checkbox" ? checked : value }));
   };
 
-  const onMapChange = (coords) => {
-    if (!coords) return setForm((p) => ({ ...p, latitude: null, longitude: null }));
-    const [lat, lng] = coords;
-    setForm((p) => ({ ...p, latitude: lat, longitude: lng }));
-  };
+  // Google Maps adres önizleme URL'si
+  const addressPreviewSrc = form.address?.trim()
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(form.address.trim())}&z=15&output=embed`
+    : null;
 
   if (loading) {
     return (
@@ -154,31 +148,43 @@ export default function StoreEdit() {
             </div>
           </div>
 
-          <div className="card sub">
-            <div className="sub-title">Konum</div>
-            <MapPickerEdit
-              initialCenter={{
-                lat: store.latitude ?? 39.92077,
-                lng: store.longitude ?? 32.85411,
-              }}
-              oldValue={
-                store.latitude != null && store.longitude != null
-                  ? [store.latitude, store.longitude]
-                  : null
-              }
-              value={
-                form.latitude != null && form.longitude != null
-                  ? [form.latitude, form.longitude]
-                  : null
-              }
-              onChange={onMapChange}
-              height={340}
-            />
-            <div className="coords">
-              <div><b>Lat:</b> <span>{form.latitude ?? "—"}</span></div>
-              <div><b>Lng:</b> <span>{form.longitude ?? "—"}</span></div>
+          {/* Adres Önizleme — Google Maps */}
+          {addressPreviewSrc && (
+            <div className="card sub">
+              <div className="sub-title">Konum Önizleme</div>
+              <p className="muted">Girilen adrese göre Google Maps önizlemesi aşağıda gösterilmektedir.</p>
+              <div className="gmaps-preview">
+                <iframe
+                  title="address-preview"
+                  src={addressPreviewSrc}
+                  width="100%"
+                  height={300}
+                  style={{ border: 0, borderRadius: 10 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+              <div className="gmaps-links">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(form.address.trim())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn ghost"
+                >
+                  🗺️ Google Maps'te Aç
+                </a>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(form.address.trim())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn ghost"
+                >
+                  🧭 Yol Tarifi Al
+                </a>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="actions">
             <button className="btn primary" disabled={saving || !isValid}>

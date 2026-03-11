@@ -306,10 +306,10 @@ export default function CustomerDetail() {
                           >
                             <td className="strong name-cell">
                               {s.name}
-                              {!s.latitude || !s.longitude ? (
-                                <span className="badge warn" title="Koordinat yok">Koordinat Yok</span>
+                              {!s.address?.trim() ? (
+                                <span className="badge warn" title="Adres girilmemiş">Adres Yok</span>
                               ) : (
-                                <span className="badge ok" title={`${s.latitude}, ${s.longitude}`}>Konum Var</span>
+                                <span className="badge ok" title={s.address}>Adres Var</span>
                               )}
                             </td>
                             <td>{s.code || "—"}</td>
@@ -340,10 +340,10 @@ export default function CustomerDetail() {
                               >
                                 Sil
                               </button>
-                              {s.latitude != null && s.longitude != null && (
+                              {s.address?.trim() && (
                                 <a
                                   className="btn ghost"
-                                  href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`}
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address.trim())}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   title="Haritada Aç"
