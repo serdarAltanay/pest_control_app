@@ -167,7 +167,7 @@ export default function StoreEdit() {
               </div>
               <div className="gmaps-links">
                 <a
-                  href={`https://maps.google.com/maps?q=${encodeURIComponent(form.address.trim())}`}
+                  href={`https://www.google.com/maps/place/${encodeURIComponent(form.address.trim())}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn ghost"
