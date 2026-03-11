@@ -142,8 +142,8 @@ export default function StoreEdit() {
             </div>
             <div className="inline">
               <label className="chk">
+                Mağaza Aktif Mi?
                 <input type="checkbox" name="isActive" checked={form.isActive} onChange={onChange} />
-                Aktif
               </label>
             </div>
           </div>

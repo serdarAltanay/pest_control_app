@@ -186,13 +186,13 @@ export default function StoreCreate() {
 
             <div className="inline">
               <label className="chk">
+                Mağaza Aktif Mi?
                 <input
                   type="checkbox"
                   name="isActive"
                   checked={form.isActive}
                   onChange={onChange}
                 />
-                Aktif
               </label>
             </div>
           </div>
