@@ -163,18 +163,39 @@
     }
   }
 
-  .main-content-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 32px;
+  .dashboard-content-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    margin-top: 32px;
 
-    .ek1-wrap, .content-right {
-      background: #ffffff;
-      border-radius: 16px;
-      border: 1px solid #e2e8f0;
-      padding: 24px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    .dashboard-row {
+      &.split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+      
+      .content-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+    }
+    
+    .row-column {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      
+      // DashCal inside row-column should take full width but keep its own card style
+      .dash-cal.card {
+        height: 100%;
+        margin: 0;
+      }
     }
   }
 
@@ -202,10 +223,6 @@
     }
   }
 
-  .calendar-section {
-    margin-top: 32px;
-  }
-
   /* Responsive Adjustments */
   @media (max-width: 1400px) {
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
@@ -213,7 +230,7 @@
 
   @media (max-width: 1200px) {
     .customer-section .ps-grid { grid-template-columns: 1fr 1fr; }
-    .main-content-grid { grid-template-columns: 1fr; }
+    .dashboard-content-rows .dashboard-row.split { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 768px) {

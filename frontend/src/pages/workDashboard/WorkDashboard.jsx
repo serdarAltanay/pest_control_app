@@ -179,35 +179,54 @@ export default function WorkDashboard() {
           </section>
         )}
 
-        {/* EK-1 ve tamamlanan ziyaretler */}
-        <div className="main-content-grid">
-          <div className="content-left">
-             <div className="ek1-wrap">
-              <header className="section-head">
-                <h2>EK-1 Raporları</h2>
-              </header>
+        {/* --- Reporting & Tasks Rows --- */}
+        <div className="dashboard-content-rows">
+          
+          {/* Row 1: EK-1 Full Width */}
+          <section className="dashboard-row full-width">
+            <header className="section-head">
+              <h2>EK-1 Raporları</h2>
+            </header>
+            <div className="content-card">
               <Ek1List limit={5} />
             </div>
-          </div>
-          <div className="content-right">
-            <header className="section-head">
-               <h2>Son Tamamlananlar</h2>
-            </header>
-            <CompletedVisitsTable limit={5} />
-          </div>
-        </div>
+          </section>
 
-        {/* ───────── Ziyaret Özetleri ───────── */}
-        <section className="calendar-section">
-          <header className="section-head">
-            <h2>Ziyaret Özetleri</h2>
-          </header>
-          <div className="dash-grid">
-            <DashCalToday />
-            <DashCalNext3 />
-            <DashCalFailedLast7 />
+          {/* Row 2: Completed + Today side-by-side */}
+          <div className="dashboard-row split">
+            <section className="row-column">
+              <header className="section-head">
+                <h2>Son Tamamlananlar</h2>
+              </header>
+              <div className="content-card">
+                <CompletedVisitsTable limit={5} />
+              </div>
+            </section>
+            <section className="row-column">
+              <header className="section-head">
+                <h2>Bugünün Ziyaretleri</h2>
+              </header>
+              <DashCalToday />
+            </section>
           </div>
-        </section>
+
+          {/* Row 3: Next 3 Days + Failed side-by-side */}
+          <div className="dashboard-row split">
+            <section className="row-column">
+              <header className="section-head">
+                <h2>Önümüzdeki 3 Gün</h2>
+              </header>
+              <DashCalNext3 />
+            </section>
+            <section className="row-column">
+              <header className="section-head">
+                <h2>Geçtiğimiz 7 Gün (Başarısız/Ertelenen)</h2>
+              </header>
+              <DashCalFailedLast7 />
+            </section>
+          </div>
+
+        </div>
       </div>
     </Layout>
   );
