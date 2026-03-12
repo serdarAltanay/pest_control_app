@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import { FiClock, FiUser, FiHome } from "react-icons/fi";
 import "./VisitCalendar.scss";
 
 /* ───────── Yardımcılar ───────── */
@@ -588,12 +589,12 @@ export default function VisitCalendar() {
                         return (
                           <div
                             key={ev.id}
-                            className="event"
+                            className={`event ${statusClass(ev.status)}`}
                             style={{
                               "--lane-index": ev._lane,
+                              "--ev-color": ev.color,
                               top: `${topPx}px`,
                               height: `${heightPx}px`,
-                              background: ev.color,
                               cursor: "pointer",
                             }}
                             onClick={(e) => {
@@ -612,15 +613,27 @@ export default function VisitCalendar() {
                                 }}
                               >×</button>
                             )}
-                            <span className={`badge ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
-                            <div className="ev-title">{ev.title}</div>
-                            <div className="ev-meta">
-                              {pad2(ev.start.getHours())}:{pad2(ev.start.getMinutes())}
-                              {" – "}
-                              {pad2(ev.end.getHours())}:{pad2(ev.end.getMinutes())}
+                            <div className="ev-header">
+                              <span className={`badge ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
+                              <div className="ev-time">
+                                <FiClock />
+                                {pad2(ev.start.getHours())}:{pad2(ev.start.getMinutes())}
+                              </div>
                             </div>
-                            <div className="ev-sub">
-                              {ev.employeeName || ""}{ev.employeeName && ev.storeName ? " · " : ""}{ev.storeName || ""}
+                            
+                            <div className="ev-title">{ev.title}</div>
+                            
+                            <div className="ev-details">
+                              {ev.employeeName && (
+                                <div className="ev-detail-item">
+                                  <FiUser /> <span>{ev.employeeName}</span>
+                                </div>
+                              )}
+                              {ev.storeName && (
+                                <div className="ev-detail-item">
+                                  <FiHome /> <span>{ev.storeName}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );

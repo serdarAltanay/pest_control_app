@@ -97,7 +97,7 @@ const Badge = ({ ok, textOk = "Onaylandı", textNo = "Bekliyor" }) => (
 );
 
 /* ───────── Component ───────── */
-export default function Ek1List() {
+export default function Ek1List({ limit }) {
   const navigate = useNavigate();
 
   const [rows, setRows] = useState([]);
@@ -106,7 +106,7 @@ export default function Ek1List() {
 
   const [sortKey, setSortKey] = useState("updatedAt");
   const [sortDir, setSortDir] = useState("desc");
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(limit || 10);
   const [page, setPage] = useState(1);
 
   /* İmza Modal State'leri */
@@ -326,7 +326,7 @@ export default function Ek1List() {
       {/* Header */}
       <div className="ek1-head">
         <div className="title">Ziyaret Kayıtları (EK-1)</div>
-        {!isCustomer && (
+        {!isCustomer && !limit && (
           <div className="controls">
             <input
               className="search"
@@ -462,30 +462,32 @@ export default function Ek1List() {
       )}
 
       {/* Sayfalama */}
-      <div className="ek1-pagination">
-        <button
-          className="page-btn"
-          disabled={currentPage <= 1}
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-        >
-          ‹ Önceki
-        </button>
-        <span className="page-indicator">
-          {currentPage} / {totalPages}
-        </span>
-        <button
-          className="page-btn"
-          disabled={currentPage >= totalPages}
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-        >
-          Sonraki ›
-        </button>
-        <div className="count-info">
-          {filtered.length === 0
-            ? "0 kayıt"
-            : `${startIdx + 1}–${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length} kayıt`}
+      {!limit && (
+        <div className="ek1-pagination">
+          <button
+            className="page-btn"
+            disabled={currentPage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            ‹ Önceki
+          </button>
+          <span className="page-indicator">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            className="page-btn"
+            disabled={currentPage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Sonraki ›
+          </button>
+          <div className="count-info">
+            {filtered.length === 0
+              ? "0 kayıt"
+              : `${startIdx + 1}–${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length} kayıt`}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Biyometrik İmza Modalı */}
       <SignatureModal

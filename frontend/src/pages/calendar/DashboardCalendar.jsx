@@ -192,7 +192,7 @@ function DashCalFailedLast7() {
 }
 
 /* ───────── 4) Tamamlanan Tüm Ziyaretler – Tablo ───────── */
-function CompletedVisitsTable() {
+function CompletedVisitsTable({ limit }) {
   const navigate = useNavigate();
 
   // geniş aralık: tüm completed’ları çek
@@ -203,7 +203,7 @@ function CompletedVisitsTable() {
 
   // UI
   const [query, setQuery] = useState("");
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(limit || 10);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -265,25 +265,27 @@ function CompletedVisitsTable() {
         <div className="t">Tamamlanan Görevler</div>
       </div>
 
-      <div className="toolbar">
-        <input
-          className="search"
-          placeholder="Ara: başlık, mağaza, personel, tarih…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="right-controls">
-          <div className="page-size">
-            <label>Göster</label>
-            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+      {!limit && (
+        <div className="toolbar">
+          <input
+            className="search"
+            placeholder="Ara: başlık, mağaza, personel, tarih…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <div className="right-controls">
+            <div className="page-size">
+              <label>Göster</label>
+              <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="table-wrap">
         <table className="completed-table">
@@ -318,20 +320,22 @@ function CompletedVisitsTable() {
         </table>
       </div>
 
-      <div className="pagination">
-        <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          Prev
-        </button>
-        <span className="page-indicator">{currentPage}</span>
-        <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-          Next
-        </button>
-        <div className="count-info">
-          {filtered.length === 0
-            ? "0"
-            : `${startIdx + 1}-${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length}`}
+      {!limit && (
+        <div className="pagination">
+          <button className="page-btn" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            Prev
+          </button>
+          <span className="page-indicator">{currentPage}</span>
+          <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+            Next
+          </button>
+          <div className="count-info">
+            {filtered.length === 0
+              ? "0"
+              : `${startIdx + 1}-${Math.min(startIdx + pageSize, filtered.length)} / ${filtered.length}`}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
