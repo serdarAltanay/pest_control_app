@@ -4,6 +4,7 @@ import api, { apiNoRefresh, clearAuth, setAuthToken } from "../../api/axios.js";
 import { toast } from "react-toastify";
 import { parseJwt, isExpired } from "../../utils/auth.js";
 import { ProfileContext } from "../../context/ProfileContext.jsx";
+import InitialLoader from "../../components/InitialLoader.jsx";
 import "./Login.scss";
 
 export default function Login() {
@@ -11,6 +12,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+
 
   const triedOnce = useRef(false);
   const navigate = useNavigate();
@@ -65,6 +69,7 @@ export default function Login() {
       const storedRT = localStorage.getItem("refreshToken") || "";
       if (storedRT) {
         (async () => {
+          setRefreshing(true);
           try {
             const { data } = await apiNoRefresh({ method: "POST", url: "/auth/refresh", data: { refreshToken: storedRT } });
             if (data?.accessToken) {
@@ -76,9 +81,16 @@ export default function Login() {
             }
           } catch {
             // cookie yok/expired → login’de kal
+          } finally {
+            setRefreshing(false);
+            setInitialCheckDone(true);
           }
         })();
+      } else {
+        setInitialCheckDone(true);
       }
+    } else {
+      setInitialCheckDone(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -141,6 +153,10 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  if (refreshing || (localStorage.getItem("refreshToken") && !initialCheckDone)) {
+    return <InitialLoader message="Oturum kontrol ediliyor..." />;
+  }
 
   return (
     <div className="login-page-container" style={{ backgroundImage: "url('/login-bg.png')" }}>

@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { apiNoRefresh } from "../api/axios";
 import { isExpired, parseJwt } from "../utils/auth";
 import TermsModal from "./TermsModal";
+import InitialLoader from "./InitialLoader";
 
 export default function PrivateRoute({ children, allowedRoles = [] }) {
   const [busy, setBusy] = useState(true);
@@ -53,7 +54,7 @@ export default function PrivateRoute({ children, allowedRoles = [] }) {
     return () => { cancelled = true; };
   }, [allowedRoles]);
 
-  if (busy) return null; // istersen buraya spinner
+  if (busy) return <InitialLoader />; 
 
   // Yetki yoksa login'e gönderirken geldiğin yolu state.from ile taşı
   if (!ok) return <Navigate to="/" replace state={{ from: location.pathname }} />;
