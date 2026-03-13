@@ -441,13 +441,14 @@ export default function Ek1Preview() {
                   <th>Ürün Adı</th>
                   <th>Aktif Madde</th>
                   <th>Ürün Antidotu</th>
+                  <th>Ruhsat Tarihi</th>
                   <th>Uygulama Şekli</th>
                   <th style={{ width: "12%" }}>Miktar</th>
                 </tr>
               </thead>
               <tbody>
                 {lines.length === 0 ? (
-                  <tr><td colSpan={6} className="center">—</td></tr>
+                  <tr><td colSpan={7} className="center">—</td></tr>
                 ) : (
                   lines.map((l, i) => (
                     <tr key={l.id ?? i}>
@@ -455,6 +456,7 @@ export default function Ek1Preview() {
                       <td>{l.biosidal?.name || "—"}</td>
                       <td>{l.biosidal?.activeIngredient || "—"}</td>
                       <td>{l.biosidal?.antidote || "—"}</td>
+                      <td>{l.biosidal?.licenseDate || "—"}</td>
                       <td>{METHOD_TR[l.method] || l.method || "—"}</td>
                       <td>{l.amount} {UNIT_TR[l.biosidal?.unit] || l.biosidal?.unit || ""}</td>
                     </tr>

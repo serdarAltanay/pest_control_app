@@ -22,6 +22,7 @@ export default function Biocides() {
     activeIngredient: "",
     antidote: "",
     unit: "ML",
+    licenseDate: "",
   });
 
   const hasAny = useMemo(() => Array.isArray(list) && list.length > 0, [list]);
@@ -59,9 +60,10 @@ export default function Biocides() {
         activeIngredient: form.activeIngredient.trim(),
         antidote: form.antidote.trim(),
         unit: form.unit,
+        licenseDate: form.licenseDate?.trim() || null,
       });
       toast.success("Biyosidal eklendi");
-      setForm({ name: "", activeIngredient: "", antidote: "", unit: "ML" });
+      setForm({ name: "", activeIngredient: "", antidote: "", unit: "ML", licenseDate: "" });
       fetchAll();
     } catch (e2) {
       toast.error(e2?.response?.data?.message || "Kaydedilemedi");
@@ -84,6 +86,7 @@ export default function Biocides() {
         activeIngredient: row.activeIngredient?.trim() || "",
         antidote: row.antidote?.trim() || "",
         unit: row.unit,
+        licenseDate: row.licenseDate?.trim() || null,
       });
       toast.success("Güncellendi");
       fetchAll();
@@ -156,6 +159,15 @@ export default function Biocides() {
                 ))}
               </select>
             </div>
+            <div>
+              <label>Ruhsat Tarihi</label>
+              <input
+                name="licenseDate"
+                value={form.licenseDate}
+                onChange={onNewChange}
+                placeholder="Ruhsat Tarihi Giriniz"
+              />
+            </div>
           </div>
 
           <div className="actions">
@@ -182,6 +194,7 @@ export default function Biocides() {
                     <th>Biyosidal Aktif Madde</th>
                     <th>Biyosidal Antidotu</th>
                     <th>Ölçü Birimi</th>
+                    <th>Ruhsat Tarihi</th>
                     <th style={{ width: 180 }}>İşlem</th>
                   </tr>
                 </thead>
@@ -215,6 +228,13 @@ export default function Biocides() {
                             <option key={u} value={u}>{UNIT_TR[u]}</option>
                           ))}
                         </select>
+                      </td>
+                      <td>
+                        <input
+                          value={r.licenseDate || ""}
+                          onChange={(e) => onRowChange(r.id, "licenseDate", e.target.value)}
+                          placeholder="—"
+                        />
                       </td>
                       <td className="row-actions">
                         <button

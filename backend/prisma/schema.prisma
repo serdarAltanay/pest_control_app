@@ -308,6 +308,7 @@ model Biocide {
   activeIngredient String
   antidote         String
   unit             BiocideUnit
+  licenseDate      String?
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   Ek1Line          Ek1Line[]

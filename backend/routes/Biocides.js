@@ -27,11 +27,12 @@ router.get("/", auth, roleCheck(["admin", "employee", "customer"]), async (_req,
    - Admin + Employee */
 router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
   try {
-    let { name, activeIngredient, antidote, unit } = req.body || {};
+    let { name, activeIngredient, antidote, unit, licenseDate } = req.body || {};
     name = String(name || "").trim();
     activeIngredient = String(activeIngredient || "").trim();
     antidote = String(antidote || "").trim();
     unit = String(unit || "").trim().toUpperCase();
+    licenseDate = licenseDate ? String(licenseDate).trim() : null;
 
     if (!name || !activeIngredient || !antidote || !unit) {
       return res.status(400).json({ message: "name, activeIngredient, antidote, unit zorunludur." });
@@ -39,7 +40,7 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     if (!UNIT_VALUES.includes(unit)) return res.status(400).json({ message: "Geçersiz unit" });
 
     const created = await prisma.biocide.create({
-      data: { name, activeIngredient, antidote, unit }
+      data: { name, activeIngredient, antidote, unit, licenseDate }
     });
     res.json({ message: "Biyosidal eklendi", biocide: created });
   } catch (e) {
@@ -66,6 +67,9 @@ router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       const u = String(req.body.unit || "").trim().toUpperCase();
       if (!UNIT_VALUES.includes(u)) return res.status(400).json({ message: "Geçersiz unit" });
       data.unit = u;
+    }
+    if ("licenseDate" in req.body) {
+      data.licenseDate = req.body.licenseDate ? String(req.body.licenseDate).trim() : null;
     }
 
     const updated = await prisma.biocide.update({ where: { id }, data });
