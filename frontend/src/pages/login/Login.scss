@@ -25,6 +25,12 @@ body {
 
 .login-page-container {
   min-height: 100vh;
+  min-height: 100dvh;
+
+  @media (min-width: 1200px) {
+    /* global index.css body{zoom:0.9} telafisi */
+    min-height: 111.2vh;
+  }
   display: flex;
   align-items: center;
   justify-content: center;
