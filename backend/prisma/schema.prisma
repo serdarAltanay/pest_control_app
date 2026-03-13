@@ -364,6 +364,7 @@ model Employee {
   lastSeenAt     DateTime?
   adminId        Int?
   admin          Admin?               @relation(fields: [adminId], references: [id])
+  level          Int                  @default(1)
   employeeTracks EmployeeTrackPoint[]
   scheduleEvents ScheduleEvent[]
   customers      Customer[]

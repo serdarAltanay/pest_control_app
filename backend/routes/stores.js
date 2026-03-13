@@ -259,6 +259,12 @@ router.get(
         },
       });
 
+      const isLevel2 = req.user.role === "employee" && req.user.level === 2;
+      if (isLevel2) {
+        // Level 2 store listesinde her şeyi görebilir ama detayda mail gizlenecek (zaten burada mail yok)
+        // Ancak prensip olarak filtrelemeyi burada da yapabiliriz eğer email olsaydı.
+      }
+
       res.json(list);
     } catch (e) {
       console.error("GET /stores/search", e);
@@ -365,6 +371,17 @@ router.get("/:id", auth, async (req, res) => {
       },
     });
     if (!store) return res.status(404).json({ message: "Mağaza bulunamadı" });
+
+    const isLevel2 = req.user.role === "employee" && req.user.level === 2;
+    if (isLevel2) {
+      // Sorumlu mailini gizle
+      if (store.customer) {
+        // Customer detail endpointinde email filtreleniyor, burada da store içindeki customer linki filtrelenmeli
+        delete store.customer.email; // Zaten include içinde select: { id, title } var, email gelmiyor.
+      }
+      // Ama genel olarak store detayında email yok şu an.
+    }
+
     res.json(store);
   } catch (e) {
     console.error("GET /stores/:id", e);
@@ -403,6 +420,9 @@ router.get("/:storeId/visits", auth, async (req, res) => {
 
 // CREATE (admin/employee)
 router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  if (req.user.role === "employee" && req.user.level === 2) {
+    return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+  }
   try {
     const {
       customerId,
@@ -561,6 +581,9 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 
 // UPDATE (admin/employee)
 router.put("/:storeId", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  if (req.user.role === "employee" && req.user.level === 2) {
+    return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+  }
   try {
     const id = Number(req.params.storeId);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });

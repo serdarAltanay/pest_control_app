@@ -1,6 +1,7 @@
 // src/pages/customers/CustomerList.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -21,6 +22,8 @@ const isFreeCustomer = (c) => {
 
 export default function CustomerList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -137,7 +140,7 @@ export default function CustomerList() {
                 <th>Müşteri Kod</th>
                 <th>Müşteri</th>
                 <th>Şehir</th>
-                <th>Email</th>
+                {!isLevel2 && <th>Email</th>}
                 <th>Sorumlu</th>
                 <th>İşlem</th>
               </tr>
@@ -172,7 +175,7 @@ export default function CustomerList() {
                     </td>
 
                     <td>{c.city || "—"}</td>
-                    <td className="email-cell">{c.email || "—"}</td>
+                    {!isLevel2 && <td className="email-cell">{c.email || "—"}</td>}
                     <td className="responsible">
                       {c.employee?.fullName ? c.employee.fullName : "—"}
                     </td>
@@ -186,7 +189,7 @@ export default function CustomerList() {
                         Kontrol Merkezi
                       </button>
 
-                      {canEdit && (
+                      {canEdit && !isLevel2 && (
                         <button
                           className="btn btn-edit"
                           onClick={() => handleEdit(c.id)}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -36,6 +37,9 @@ function CustomerAccessList({ customerId }) {
     })();
   }, [customerId]);
 
+  const { user } = useAuth();
+  const isLevel2 = user?.role === "employee" && user?.level === 2;
+
   if (!rows.length) return <div className="empty">Erişim sahibi yok.</div>;
 
   return (
@@ -53,7 +57,7 @@ function CustomerAccessList({ customerId }) {
           <tr key={g.id}>
             <td className="strong">
               {(g.owner?.firstName || "") + " " + (g.owner?.lastName || "")}{" "}
-              <span className="muted">({g.owner?.email})</span>
+              {!isLevel2 && <span className="muted">({g.owner?.email})</span>}
             </td>
             <td>{g.owner?.role || "—"}</td>
             <td>{g.scopeType === "CUSTOMER" ? "Müşteri-Genel" : "Mağaza"}</td>
@@ -72,6 +76,8 @@ function CustomerAccessList({ customerId }) {
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [customer, setCustomer] = useState(null);
   const [stores, setStores] = useState([]);
@@ -156,8 +162,12 @@ export default function CustomerDetail() {
 
           {/* Sağ blok: aksiyonlar */}
           <div className="actions">
-            <button className="btn btn-edit" onClick={goEditCustomer}>Düzenle</button>
-            <button className="btn btn-danger" onClick={deleteCustomer}>Sil</button>
+            {!isLevel2 && (
+              <>
+                <button className="btn btn-edit" onClick={goEditCustomer}>Düzenle</button>
+                <button className="btn btn-danger" onClick={deleteCustomer}>Sil</button>
+              </>
+            )}
           </div>
         </div>
 
@@ -174,7 +184,9 @@ export default function CustomerDetail() {
                 <div className="kv">
                   <div><b>Müşteri Kodu</b><span>{customer.code || "—"}</span></div>
                   <div><b>Şehir</b><span>{customer.city || "—"}</span></div>
-                  <div><b>Email</b><span className="email">{customer.email || "—"}</span></div>
+                  {!isLevel2 && (
+                    <div><b>Email</b><span className="email">{customer.email || "—"}</span></div>
+                  )}
                   <div><b>Sorumlu Personel</b><span>{customer.employee?.fullName || "—"}</span></div>
                   <div className="full"><b>Merkez Adres</b><span>{customer.address || "—"}</span></div>
                 </div>
@@ -292,24 +304,28 @@ export default function CustomerDetail() {
                               </span>
                             </td>
                             <td className="actions" onClick={(e) => e.stopPropagation()}>
-                              <Link className="btn" to={`/admin/stores/${s.id}/edit`}>Düzenle</Link>
-                              <button
-                                className="btn danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!window.confirm("Bu mağazayı silmek istiyor musunuz?")) return;
-                                  const prev = stores;
-                                  setStores((x) => x.filter((xx) => xx.id !== s.id));
-                                  api.delete(`/stores/${s.id}`)
-                                    .then(() => toast.success("Mağaza silindi"))
-                                    .catch((err) => {
-                                      setStores(prev);
-                                      toast.error(err.response?.data?.message || "Silinemedi");
-                                    });
-                                }}
-                              >
-                                Sil
-                              </button>
+                              {!isLevel2 && (
+                                <>
+                                  <Link className="btn" to={`/admin/stores/${s.id}/edit`}>Düzenle</Link>
+                                  <button
+                                    className="btn danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!window.confirm("Bu mağazayı silmek istiyor musunuz?")) return;
+                                      const prev = stores;
+                                      setStores((x) => x.filter((xx) => xx.id !== s.id));
+                                      api.delete(`/stores/${s.id}`)
+                                        .then(() => toast.success("Mağaza silindi"))
+                                        .catch((err) => {
+                                          setStores(prev);
+                                          toast.error(err.response?.data?.message || "Silinemedi");
+                                        });
+                                    }}
+                                  >
+                                    Sil
+                                  </button>
+                                </>
+                              )}
                               {s.address?.trim() && (
                                 <a
                                   className="btn ghost"
@@ -338,7 +354,7 @@ export default function CustomerDetail() {
               <section className="card access">
                 <div className="card-title">
                   Erişim Sahipleri
-                  <Link className="btn" style={{ marginLeft: 8 }} to={`/admin/customers/${id}/access`}>Yönet</Link>
+                  {!isLevel2 && <Link className="btn" style={{ marginLeft: 8 }} to={`/admin/customers/${id}/access`}>Yönet</Link>}
                 </div>
                 <CustomerAccessList customerId={id} />
               </section>

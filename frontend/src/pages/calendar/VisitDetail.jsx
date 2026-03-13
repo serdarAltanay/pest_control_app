@@ -114,7 +114,19 @@ export default function VisitDetail() {
 
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const isCustomer = role === "customer";
-  const isPlanner = role === "admin" || role === "employee";
+  // Level 2 kısıtlaması
+  const [me, setMe] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get("/profile");
+        setMe(data);
+      } catch { }
+    })();
+  }, []);
+
+  const isLevel2 = role === "employee" && me?.level === 2;
+  const isPlanner = (role === "admin" || role === "employee") && !isLevel2;
 
   const [event, setEvent] = useState(null);
   const [store, setStore] = useState(null);
@@ -425,8 +437,8 @@ export default function VisitDetail() {
             <div className="kv"><div className="k">Tarih</div><div className="v">{fmtDate(event.start)}</div></div>
             <div className="kv"><div className="k">Saat</div><div className="v">{fmtTime(event.start)} – {fmtTime(event.end)} ({durationMin} dk)</div></div>
 
-            {/* Planlayan bilgisi müşteri görmesin */}
-            {!isCustomer && (
+            {/* Planlayan bilgisi müşteri ve Level 2 görmesin */}
+            {(!isCustomer && !isLevel2) && (
               <>
                 <div className="kv"><div className="k">Planlayan</div><div className="v">{plannedByDisplay}</div></div>
                 <div className="kv"><div className="k">Planlama Zamanı</div><div className="v">{event.plannedAt ? fmtDateTime(event.plannedAt) : "-"}</div></div>
@@ -457,8 +469,8 @@ export default function VisitDetail() {
               </div>
             </div>
 
-            {/* Admin/Employee durumu değiştirebilir — müşteri asla görmez */}
-            {!isCustomer && (
+            {/* Admin/Employee (Level 1) durumu değiştirebilir — müşteri ve Level 2 asla görmez */}
+            {(!isCustomer && !isLevel2) && (
               <div className="kv">
                 <div className="k">Durumu Değiştir</div>
                 <div className="v">

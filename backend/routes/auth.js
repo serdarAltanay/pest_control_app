@@ -59,13 +59,13 @@ router.post("/login", async (req, res) => {
 
     // Access (15 dk)
     const accessToken = jwt.sign(
-      { id: user.id, role: jwtRole, hasAcceptedTerms: user.hasAcceptedTerms || false },
+      { id: user.id, role: jwtRole, level: user.level || 1, hasAcceptedTerms: user.hasAcceptedTerms || false },
       JWT_SECRET,
       { expiresIn: "2h" }
     );
     // Refresh (7 gün) — payload.role = jwtRole (customer)
     const refreshToken = jwt.sign(
-      { id: user.id, role: jwtRole, hasAcceptedTerms: user.hasAcceptedTerms || false },
+      { id: user.id, role: jwtRole, level: user.level || 1, hasAcceptedTerms: user.hasAcceptedTerms || false },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -100,6 +100,7 @@ router.post("/login", async (req, res) => {
       accessToken,
       refreshToken,      // FE localStorage'a da kaydetsin (3rd-party cookie fallback)
       role: jwtRole,     // "customer" | "admin" | "employee"
+      level: user.level || 1,
       fullName,
       email: user.email,
       hasAcceptedTerms: user.hasAcceptedTerms || false,
@@ -146,7 +147,7 @@ router.post("/refresh", async (req, res) => {
 
     // Yeni Access Token (15 dk)
     const newAccessToken = jwt.sign(
-      { id: decoded.id, role: decoded.role, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
+      { id: decoded.id, role: decoded.role, level: decoded.level || 1, hasAcceptedTerms: decoded.hasAcceptedTerms || false },
       JWT_SECRET,
       { expiresIn: "2h" }
     );
@@ -220,7 +221,7 @@ router.post("/consent", auth, async (req, res) => {
     });
 
     const newAccessToken = jwt.sign(
-      { id, role, hasAcceptedTerms: true },
+      { id, role, level: req.user.level || 1, hasAcceptedTerms: true },
       JWT_SECRET,
       { expiresIn: "2h" }
     );

@@ -1,6 +1,7 @@
 // src/pages/stores/StoreDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import useAuth from "../../hooks/useAuth";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -64,6 +65,9 @@ function StoreAccessList({ storeId }) {
     })();
   }, [storeId]);
 
+  const { user } = useAuth();
+  const isLevel2 = user?.role === "employee" && user?.level === 2;
+
   if (!rows.length) return <div className="empty">Bu mağazaya erişebilen yok.</div>;
 
   return (
@@ -81,7 +85,7 @@ function StoreAccessList({ storeId }) {
             <td className="strong">
               {(r.owner?.firstName || "") + " " + (r.owner?.lastName || "")}
               {" "}
-              <span className="muted">({r.owner?.email})</span>
+              {!isLevel2 && <span className="muted">({r.owner?.email})</span>}
             </td>
             <td>{r.owner?.role || "—"}</td>
             <td>
@@ -99,6 +103,8 @@ function StoreAccessList({ storeId }) {
 export default function StoreDetail() {
   const { storeId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [store, setStore] = useState(null);
   const [customer, setCustomer] = useState(null);
@@ -281,8 +287,12 @@ export default function StoreDetail() {
                 ) : (
                   <button className="btn ghost" disabled title="Adres girilmemiş">Haritada Göster</button>
                 )}
-                <Link className="btn warn" to={`/admin/stores/${storeId}/edit`}>Düzenle</Link>
-                <button className="btn danger" onClick={handleDeleteStore}>Sil</button>
+                {!isLevel2 && (
+                  <>
+                    <Link className="btn warn" to={`/admin/stores/${storeId}/edit`}>Düzenle</Link>
+                    <button className="btn danger" onClick={handleDeleteStore}>Sil</button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -317,7 +327,7 @@ export default function StoreDetail() {
             Kurulu İstasyonlar {stations.length ? `(${stations.length})` : ""}
             <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
               <Link className="btn" to={`/admin/stores/${storeId}/stations`}>Tümünü Yönet</Link>
-              <Link className="btn primary" to={`/admin/stores/${storeId}/stations/new`}>+ İstasyon Ekle</Link>
+              {!isLevel2 && <Link className="btn primary" to={`/admin/stores/${storeId}/stations/new`}>+ İstasyon Ekle</Link>}
             </div>
           </div>
 
@@ -354,18 +364,20 @@ export default function StoreDetail() {
                       </span>
                     </td>
                     <td className="actions">
-                      <Link
-                        className="btn"
-                        to={`/admin/stations/${s.id}/edit`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          navigate(`/admin/stations/${s.id}/edit`);
-                        }}
-                        title="Düzenle"
-                      >
-                        Düzenle
-                      </Link>
+                      {!isLevel2 && (
+                        <Link
+                          className="btn"
+                          to={`/admin/stations/${s.id}/edit`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate(`/admin/stations/${s.id}/edit`);
+                          }}
+                          title="Düzenle"
+                        >
+                          Düzenle
+                        </Link>
+                      )}
                       <Link
                         className="btn ghost"
                         to={`/admin/stores/${storeId}/stations`}
@@ -438,7 +450,7 @@ export default function StoreDetail() {
                         {/* ✉️ Mail */}
                         <button className="btn" onClick={() => handleSendVisitMail(v.id)}>Mail</button>
                         {/* 🗑️ Sil */}
-                        <button className="btn danger" onClick={() => handleDeleteVisit(v.id)}>Sil</button>
+                        {!isLevel2 && <button className="btn danger" onClick={() => handleDeleteVisit(v.id)}>Sil</button>}
                         {/* EK-1 Önizleme / PDF */}
                         <Link
                           className="btn primary"
@@ -501,7 +513,7 @@ export default function StoreDetail() {
             <div className="card-title with-actions">
               <span className="title-text">Erişebilenler</span>
               <div className="title-actions">
-                <Link className="btn primary" to={`/admin/stores/${storeId}/access`}>Erişimi Yönet</Link>
+                {!isLevel2 && <Link className="btn primary" to={`/admin/stores/${storeId}/access`}>Erişimi Yönet</Link>}
               </div>
             </div>
 

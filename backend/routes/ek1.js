@@ -539,12 +539,15 @@ async function hCreateFreeEk1(req, res) {
 
     const freeStore = await ensureFreeContainerStore();
 
+    const isLevel2 = req.user.role === "employee" && req.user.level === 2;
+    const finalEndTime = isLevel2 ? new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : (endTime ?? null);
+
     const visit = await prisma.visit.create({
       data: {
         storeId: freeStore.id,
         date: new Date(date),
         startTime: startTime ?? null,
-        endTime: endTime ?? null,
+        endTime: finalEndTime,
         visitType: "DIGER",
         targetPests: targetPests ?? null,
         notes: notes ?? null,

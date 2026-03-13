@@ -20,6 +20,7 @@ const EMP_SELECT = {
   lastLoginAt: true,
   lastSeenAt: true,
   adminId: true,
+  level: true,
 };
 
 /** Liste:
@@ -78,7 +79,7 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 /** Oluştur (admin) */
 router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   try {
-    const { fullName, jobTitle, gsm, email, password, adminId } = req.body || {};
+    const { fullName, jobTitle, gsm, email, password, adminId, level } = req.body || {};
     if (!fullName || !jobTitle || !gsm || !email || !password) {
       return res.status(400).json({ message: "Zorunlu alanlar eksik." });
     }
@@ -94,6 +95,7 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
         email,
         password: hashed,
         adminId: adminId ? Number(adminId) : null,
+        level: level ? Number(level) : 1,
       },
       select: { id: true },
     });
@@ -117,6 +119,7 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     if (gsm !== undefined) data.gsm = String(gsm);
     if (email !== undefined) data.email = String(email);
     if (typeof adminId !== "undefined") data.adminId = adminId ? Number(adminId) : null;
+    if (level !== undefined) data.level = Number(level);
     if (password) data.password = await bcrypt.hash(String(password), 10);
 
     const updated = await prisma.employee.update({

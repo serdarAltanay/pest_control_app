@@ -349,6 +349,11 @@ router.post(
         return res.status(400).json({ message: "storeId, date, visitType zorunlu" });
       }
 
+      // Level 2 kısıtlaması: Manuel ziyaret oluşturamaz (planlama yetkisi yok)
+      if (req.user?.role === "employee" && req.user?.level === 2) {
+        return res.status(403).json({ message: "Planlama yetkiniz bulunmamaktadır." });
+      }
+
       await ensureEmployeeStoreAccess(req, sid);
 
       const serialNo = await getNextSerialNo();
@@ -392,7 +397,14 @@ router.put(
 
       const data = {};
       ["date", "startTime", "endTime", "visitType", "targetPests", "notes", "employees"].forEach((k) => {
-        if (k in req.body) data[k] = k === "date" ? new Date(req.body[k]) : req.body[k];
+        if (k in req.body) {
+          if (k === "endTime" && req.user?.role === "employee" && req.user?.level === 2) {
+            // Level 2 için bitiş saati sunucuda o anki saat olarak set edilir
+            data[k] = new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+          } else {
+            data[k] = k === "date" ? new Date(req.body[k]) : req.body[k];
+          }
+        }
       });
 
       const visit = await prisma.visit.update({ where: { id }, data });

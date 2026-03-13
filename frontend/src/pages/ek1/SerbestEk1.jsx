@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import useAuth from "../../hooks/useAuth";
 import "./Ek1.scss";
 
 /* ───────── Sabitler ───────── */
@@ -86,6 +87,8 @@ function MultiSelectDropdown({ options, value, onChange, placeholder = "Seçiniz
 /* ───────── Ana Bileşen ───────── */
 export default function SerbestEk1() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [biocides, setBiocides] = useState([]);
   const [empOptions, setEmpOptions] = useState([]);
@@ -279,10 +282,10 @@ export default function SerbestEk1() {
               </select>
             </div>
             <div>
-              <label>Çıkış Saati</label>
-              <select name="endTime" value={vForm.endTime} onChange={onChange(setVForm)}>
-                <option value="">Seçiniz</option>
-                {timeOpts.map((t) => <option key={t} value={t}>{t}</option>)}
+              <label>Çıkış Saati {isLevel2 && <small style={{color:"#888"}}>(Kayıt anında dolacak)</small>}</label>
+              <select name="endTime" value={vForm.endTime} onChange={onChange(setVForm)} disabled={isLevel2}>
+                <option value="">{isLevel2 ? "Otomatik" : "Seçiniz"}</option>
+                {!isLevel2 && timeOpts.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>

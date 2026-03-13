@@ -11,6 +11,7 @@ function EditEmployeeModal({ employee, onClose, onChanged }) {
   const [jobTitle, setJobTitle] = useState(employee.jobTitle || "");
   const [gsm, setGsm]           = useState(employee.gsm || "");
   const [email, setEmail]       = useState(employee.email || "");
+  const [level, setLevel]       = useState(employee.level || 1);
   const [password, setPassword] = useState("");
 
   const img = getAvatarUrl(employee?.profileImage);
@@ -30,7 +31,7 @@ function EditEmployeeModal({ employee, onClose, onChanged }) {
     e.preventDefault();
     try {
       await api.put(`/employees/${employee.id}`, {
-        fullName, jobTitle, gsm, email,
+        fullName, jobTitle, gsm, email, level: Number(level),
         password: password || undefined,
       });
       toast.success("Personel güncellendi");
@@ -63,6 +64,19 @@ function EditEmployeeModal({ employee, onClose, onChanged }) {
             <label>E-posta *</label>
             <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required/>
 
+            <label>Personel Seviyesi *</label>
+            <select value={level} onChange={(e)=>setLevel(e.target.value)} required>
+              <option value={1}>Seviye 1 (Tam Yetkili)</option>
+              <option value={2}>Seviye 2 (Kısıtlı)</option>
+            </select>
+            <div className="level-desc">
+              {Number(level) === 1 ? (
+                <span><strong>Seviye 1:</strong> Tam yetkili personel. Müşteri bilgilerini görür, ekler, siler ve planlama yapabilir.</span>
+              ) : (
+                <span><strong>Seviye 2:</strong> Kısıtlı personel. Sadece mağaza adresi, telefon ve isim görebilir. Mail göremez, müşteri düzenleyemez ve planlama yapamaz.</span>
+              )}
+            </div>
+
             <label>Parola (opsiyonel)</label>
             <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Boş bırakırsan değişmez"/>
           </div>
@@ -89,6 +103,7 @@ export default function AddEmployee() {
   const [jobTitle, setJobTitle] = useState("");
   const [gsm, setGsm]           = useState("");
   const [email, setEmail]       = useState("");
+  const [level, setLevel]       = useState(1);
   const [password, setPassword] = useState("");
   const [adminId, setAdminId]   = useState("");
 
@@ -160,7 +175,7 @@ export default function AddEmployee() {
     e.preventDefault();
     try {
       await api.post("/employees/create", {
-        fullName, jobTitle, gsm, email, password,
+        fullName, jobTitle, gsm, email, password, level: Number(level),
         adminId: adminId ? Number(adminId) : undefined,
       });
       toast.success("Personel eklendi");
@@ -201,6 +216,20 @@ export default function AddEmployee() {
                 {admins.map(a=> <option key={a.id} value={a.id}>{a.fullName} ({a.email})</option>)}
               </select>
             </div>
+            <div>
+              <label>Personel Seviyesi *</label>
+              <select value={level} onChange={(e)=>setLevel(e.target.value)} required>
+                <option value={1}>Seviye 1 (Tam Yetkili)</option>
+                <option value={2}>Seviye 2 (Kısıtlı)</option>
+              </select>
+            </div>
+            <div className="full-width desc-row">
+              {Number(level) === 1 ? (
+                <p><strong>Seviye 1:</strong> Müşteri bilgilerini tam erişim, ekleme/silme ve planlama yetkisi vardır.</p>
+              ) : (
+                <p><strong>Seviye 2:</strong> Kısıtlı erişim; sadece iş gereği olan mağaza bilgileri (isim, adres, tel) görünür. Planlama ve düzenleme yapamaz.</p>
+              )}
+            </div>
           </div>
           <button className="primary">Personel Ekle</button>
         </form>
@@ -215,7 +244,7 @@ export default function AddEmployee() {
             <table className="employees-table">
               <thead>
                 <tr>
-                  <th>Durum</th><th>Ad Soyad</th><th>E-posta</th><th>Görevi</th>
+                  <th>Durum</th><th>Ad Soyad</th><th>E-posta</th><th>Görevi</th><th>Seviye</th>
                   <th>Son Görülme</th><th>Son Giriş</th><th>Eklenme</th><th>Son Güncelleme</th><th>İşlem</th>
                 </tr>
               </thead>
@@ -234,6 +263,7 @@ export default function AddEmployee() {
                       <td><div className="name"><span className="avatar">{initials||"PE"}</span><span className="full">{emp.fullName||"—"}</span></div></td>
                       <td>{emp.email||"—"}</td>
                       <td>{emp.jobTitle||"—"}</td>
+                      <td>{emp.level === 2 ? "Seviye 2" : "Seviye 1"}</td>
                       <td>{lastSeen ? relTime(lastSeen) : "—"}</td>
                       <td>{fmt(emp.lastLoginAt)}</td>
                       <td>{fmt(emp.createdAt)}</td>

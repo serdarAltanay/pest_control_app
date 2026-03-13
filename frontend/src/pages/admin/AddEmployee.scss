@@ -54,6 +54,31 @@
       &:active { transform: translateY(1px) scale(.99); }
       &:disabled { opacity: .6; cursor: not-allowed; }
     }
+
+    .level-desc {
+      grid-column: span 1;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #666;
+      background: #f9f9f9;
+      padding: 8px;
+      border-radius: 6px;
+      margin-top: -4px;
+      border: 1px solid #eee;
+
+      strong { color: $color-secondary; }
+    }
+
+    .full-width { grid-column: 1 / -1; }
+    .desc-row {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #555;
+      background: rgba($color-secondary, 0.04);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px dashed rgba($color-secondary, 0.2);
+    }
   }
 
   .employees-list {
@@ -88,6 +113,8 @@
       thead th {
         text-align: left; background: var(--muted-surface); color: rgba($color-dark, 0.85);
         font-weight: 700; border-bottom: 1px solid #edf2f7;
+
+        &:nth-child(5) { width: 100px; } // Seviye kolonu
       }
 
       th, td {

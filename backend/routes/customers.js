@@ -31,7 +31,16 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       },
     });
 
-    res.json(customers);
+    const isLevel2 = req.user.role === "employee" && req.user.level === 2;
+    const cleaned = customers.map(c => {
+      if (isLevel2) {
+        const { email, ...rest } = c;
+        return rest;
+      }
+      return c;
+    });
+
+    res.json(cleaned);
   } catch (err) {
     console.error("GET /customers error:", err);
     res.status(500).json({ message: "Sunucu hatası" });
@@ -88,6 +97,13 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     });
 
     if (!c) return res.status(404).json({ message: "Müşteri bulunamadı" });
+
+    const isLevel2 = req.user.role === "employee" && req.user.level === 2;
+    if (isLevel2) {
+      delete c.email;
+      if (c.employee) delete c.employee.email;
+    }
+
     res.json(c);
   } catch (err) {
     console.error("GET /customers/:id error:", err);
@@ -100,6 +116,9 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
  * - password yok; email sadece iletişim için
  */
 router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  if (req.user.role === "employee" && req.user.level === 2) {
+    return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+  }
   try {
     const {
       code,
@@ -165,6 +184,9 @@ router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) 
  * - password yok; presence alanı yok
  */
 router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  if (req.user.role === "employee" && req.user.level === 2) {
+    return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+  }
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });

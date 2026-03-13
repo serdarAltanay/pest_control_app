@@ -182,7 +182,8 @@ export default function VisitCalendar() {
 
   const isAdmin = role === "admin";
   const isEmployee = role === "employee";
-  const isPlanner = isAdmin || isEmployee;
+  const isLevel2 = isEmployee && me?.level === 2;
+  const isPlanner = isAdmin || (isEmployee && !isLevel2);
 
   const dayCols = useResponsiveDayCols();
 
@@ -622,6 +623,14 @@ export default function VisitCalendar() {
                             }}
                             title={`${ev.title} • ${ev.employeeName || ""} • ${ev.storeName || ""}`}
                           >
+                            <div className="ev-header">
+                              <span className={`badge ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
+                              <div className="ev-time">
+                                <FiClock />
+                                {pad2(ev.start.getHours())}:{pad2(ev.start.getMinutes())}
+                              </div>
+                            </div>
+                            
                             {isPlanner && (
                               <button
                                 className="ev-delete-btn"
@@ -632,14 +641,7 @@ export default function VisitCalendar() {
                                 }}
                               >×</button>
                             )}
-                            <div className="ev-header">
-                              <span className={`badge ${statusClass(ev.status)}`}>{statusLabel(ev.status)}</span>
-                              <div className="ev-time">
-                                <FiClock />
-                                {pad2(ev.start.getHours())}:{pad2(ev.start.getMinutes())}
-                              </div>
-                            </div>
-                            
+
                             <div className="ev-title">{ev.title}</div>
                             
                             <div className="ev-details">
