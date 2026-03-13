@@ -74,6 +74,8 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
         createdAt: true,
         updatedAt: true,
         employee: { select: { id: true, fullName: true, email: true } },
+        taxOffice: true,
+        taxNumber: true,
         stores: {
           select: {
             id: true,
@@ -101,6 +103,8 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     const isLevel2 = req.user.role === "employee" && req.user.level === 2;
     if (isLevel2) {
       delete c.email;
+      delete c.taxOffice;
+      delete c.taxNumber;
       if (c.employee) delete c.employee.email;
     }
 

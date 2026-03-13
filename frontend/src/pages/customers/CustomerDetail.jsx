@@ -198,8 +198,12 @@ export default function CustomerDetail() {
                   <div><b>Yetkili</b><span>{customer.contactFullName || "—"}</span></div>
                   <div><b>Telefon</b><span>{customer.phone || "—"}</span></div>
                   <div><b>GSM</b><span>{customer.gsm || "—"}</span></div>
-                  <div><b>Vergi Dairesi</b><span>{customer.taxOffice || "—"}</span></div>
-                  <div><b>Vergi No / TCKN</b><span>{customer.taxNumber || "—"}</span></div>
+                  {!isLevel2 && (
+                    <>
+                      <div><b>Vergi Dairesi</b><span>{customer.taxOffice || " —"}</span></div>
+                      <div><b>Vergi No / TCKN</b><span>{customer.taxNumber || "—"}</span></div>
+                    </>
+                  )}
                 </div>
               </section>
 
