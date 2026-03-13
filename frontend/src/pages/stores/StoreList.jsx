@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
+import useAuth from "../../hooks/useAuth";
 import { toast } from "react-toastify";
 import "./StoreList.scss";
 
@@ -11,10 +12,13 @@ export default function StoreList() {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const role = (typeof window !== "undefined" ? localStorage.getItem("role") : "") || "";
-  const r = role.toLowerCase();
-  const canEdit = r === "admin" || r === "employee";
-  const canDelete = r === "admin";
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const isEmployee = user?.role === "employee";
+  const isLevel2 = isEmployee && user?.level === 2;
+
+  const canEdit = (isAdmin || isEmployee) && !isLevel2;
+  const canDelete = isAdmin;
 
   const [query, setQuery] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import useAuth from "../../hooks/useAuth";
 import VisitStatusModal from "../../components/VisitStatusModal";
 import "./Ek1.scss";
 
@@ -41,6 +42,9 @@ const timeOptions = (() => {
 export default function Ek1Flow() {
   const { storeId } = useParams();
   const navigate = useNavigate();
+
+  const { user } = useAuth();
+  const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [store, setStore] = useState(null);
   const [biocides, setBiocides] = useState([]);
@@ -204,8 +208,15 @@ export default function Ek1Flow() {
 
     try {
       /* 1) Ziyaret Oluştur */
+      let finalEndTime = formVisit.endTime;
+      if (isLevel2) {
+        const now = new Date();
+        finalEndTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      }
+
       const { data } = await api.post("/visits", {
         ...formVisit,
+        endTime: finalEndTime,
         storeId: Number(storeId),
       });
       const visitId = data?.visit?.id;
@@ -268,10 +279,10 @@ export default function Ek1Flow() {
               </select>
             </div>
             <div>
-              <label>Çıkış Saati</label>
-              <select name="endTime" value={formVisit.endTime} onChange={onVisitChange}>
-                <option value="">Seçiniz</option>
-                {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+              <label>Çıkış Saati {isLevel2 && <small style={{color:"#888"}}>(Kayıt anında dolacak)</small>}</label>
+              <select name="endTime" value={formVisit.endTime} onChange={onVisitChange} disabled={isLevel2}>
+                <option value="">{isLevel2 ? "Otomatik" : "Seçiniz"}</option>
+                {!isLevel2 && timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>

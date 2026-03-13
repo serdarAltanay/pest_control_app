@@ -2,17 +2,18 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/Sidebar.scss";
 import api from "../api/axios";
+import useAuth from "../hooks/useAuth";
 
 export default function Sidebar({ mobileOpen, onMobileClose }) {
   const [open, setOpen] = useState(false);
   const [myStores, setMyStores] = useState(null); // null=yükleniyor, []=yok
   const navigate = useNavigate();
   const location = useLocation();
-  const role = (localStorage.getItem("role") || "").toLowerCase();
-
-  const isAdmin = role === "admin";
-  const isEmployee = role === "employee";
-  const isCustomer = role === "customer";
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const isEmployee = user?.role === "employee";
+  const isCustomer = user?.role === "customer";
+  const isLevel2 = isEmployee && user?.level === 2;
   const canManageBasic = isAdmin || isEmployee; // müşteri/mağaza/biocide menüleri
 
   useEffect(() => {
@@ -88,7 +89,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
           {canManageBasic && (
             <>
               <li className="section-title">Yönetim İşleri</li>
-              <li className={`sidebar-item ${location.pathname === "/admin/customers/new" ? "active" : ""}`} onClick={() => navigate("/admin/customers/new")}>Müşteri Ekle</li>
+              {!isLevel2 && (
+                <li className={`sidebar-item ${location.pathname === "/admin/customers/new" ? "active" : ""}`} onClick={() => navigate("/admin/customers/new")}>Müşteri Ekle</li>
+              )}
               <li className={`sidebar-item ${location.pathname === "/admin/customers" ? "active" : ""}`} onClick={() => navigate("/admin/customers")}>Müşteri Listesi</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/admin/stores") ? "active" : ""}`} onClick={() => navigate("/admin/stores")}>Mağaza Listesi</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/admin/biocides") ? "active" : ""}`} onClick={() => navigate("/admin/biocides")}>Biyosidallar</li>

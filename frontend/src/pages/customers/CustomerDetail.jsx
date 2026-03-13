@@ -248,9 +248,11 @@ export default function CustomerDetail() {
                     )}
                   </div>
 
-                  <Link className="btn primary" to={`/admin/customers/${id}/stores/new`}>
-                    + Mağaza Ekle
-                  </Link>
+                  {!isLevel2 && (
+                    <Link className="btn primary" to={`/admin/customers/${id}/stores/new`}>
+                      + Mağaza Ekle
+                    </Link>
+                  )}
                 </div>
 
                 {stores.length === 0 ? (

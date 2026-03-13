@@ -183,7 +183,12 @@ export default function SerbestEk1() {
         areaM2: sForm.areaM2 ? Number(sForm.areaM2) : null,
         date: new Date(vForm.date).toISOString(),
         startTime: vForm.startTime,
-        endTime: vForm.endTime,
+        endTime: isLevel2
+          ? (() => {
+            const now = new Date();
+            return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+          })()
+          : vForm.endTime,
         visitType: vForm.visitType,
         targetPests: vForm.targetPests,
         notes: vForm.notes,
