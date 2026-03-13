@@ -226,6 +226,12 @@ router.post("/consent", auth, async (req, res) => {
       { expiresIn: "2h" }
     );
 
+    const newRefreshToken = jwt.sign(
+      { id, role, level: req.user.level || 1, hasAcceptedTerms: true },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     const currentRt = req.cookies.refreshToken;
     if (currentRt) {
       await prisma.refreshToken.updateMany({
@@ -236,7 +242,7 @@ router.post("/consent", auth, async (req, res) => {
 
     res.cookie("refreshToken", newRefreshToken, cookieOpts);
 
-    return res.json({ message: "Consent recorded successfully", accessToken: newAccessToken });
+    return res.json({ message: "Consent recorded successfully", accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {
     console.error("Consent error:", err);
     return res.status(500).json({ error: "Sunucu hatası" });
