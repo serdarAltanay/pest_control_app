@@ -67,6 +67,10 @@ router.get("/stores/:storeId/trend", auth, roleCheck(["admin","employee","custom
     const storeId = parseId(req.params.storeId);
     if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
+    if (req.user.role === "employee" && req.user.level === 2) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
+
     if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
@@ -116,6 +120,10 @@ router.get("/stores/:storeId/summary", auth, roleCheck(["admin","employee","cust
     const storeId = parseId(req.params.storeId);
     if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
+    if (req.user.role === "employee" && req.user.level === 2) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
+
     if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, storeId);
       if (!ok) return res.status(403).json({ message: "Yetkisiz" });
@@ -164,6 +172,10 @@ router.get("/stations/:stationId/trend", auth, roleCheck(["admin","employee","cu
 
     const st = await prisma.station.findUnique({ where:{ id: stationId }, select:{ storeId:true }});
     if(!st) return res.status(404).json({message:"İstasyon yok"});
+
+    if (req.user.role === "employee" && req.user.level === 2) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
 
     if (req.user.role === "customer") {
       const ok = await customerHasStoreAccess(req, st.storeId);

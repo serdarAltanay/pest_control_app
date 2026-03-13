@@ -268,7 +268,9 @@ export default function StoreDetail() {
             <Link to={`/admin/stores/${storeId}/ek1`} className="tab">EK-1 Rapor İşleri</Link>
             <Link to={`/admin/stores/${storeId}/stations`} className="tab">İstasyonlar</Link>
             <Link to={`/admin/stores/${storeId}/nonconformities`} className="tab">Uygunsuzluklar</Link>
+          {!isLevel2 && (
             <Link to={`/admin/stores/${storeId}/analytics`} className="tab">Trend Analizi</Link>
+          )}
             <Link to={`/admin/stores/${storeId}/reports`} className="tab">Raporlar</Link>
           </div>
         </div>
