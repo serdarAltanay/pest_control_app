@@ -774,72 +774,74 @@ export default function VisitCalendar() {
               >
                 <input type="hidden" name="storeId" value={selectedStoreId ?? ""} />
 
-                <div className="field">
-                  <label>Tarih</label>
-                  <input type="date" value={toDateInput(modalDate)} readOnly />
+                <div className="field-row">
+                  <div className="field">
+                    <label>Tarih</label>
+                    <input type="date" value={toDateInput(modalDate)} readOnly />
+                  </div>
+
+                  <div className="field">
+                    <label>Başlangıç</label>
+                    <select name="start" defaultValue={
+                      modalDefaults?.startMin != null
+                        ? `${pad2(Math.floor(modalDefaults.startMin / 60))}:${pad2(modalDefaults.startMin % 60)}`
+                        : "09:00"
+                    }>
+                      {Array.from({ length: 96 }, (_, i) => {
+                        const m = i * 15;
+                        return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+                      }).map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label>Bitiş</label>
+                    <select name="end" defaultValue={
+                      modalDefaults?.endMin != null
+                        ? `${pad2(Math.floor(modalDefaults.endMin / 60))}:${pad2(modalDefaults.endMin % 60)}`
+                        : "10:00"
+                    }>
+                      {Array.from({ length: 96 }, (_, i) => {
+                        const m = i * 15;
+                        return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+                      }).map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="field">
-                  <label>Başlangıç</label>
-                  <select name="start" defaultValue={
-                    modalDefaults?.startMin != null
-                      ? `${pad2(Math.floor(modalDefaults.startMin / 60))}:${pad2(modalDefaults.startMin % 60)}`
-                      : "09:00"
-                  }>
-                    {Array.from({ length: 96 }, (_, i) => {
-                      const m = i * 15;
-                      return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
-                    }).map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
+                <div className="field-row">
+                  <div className="field">
+                    <label>Personel</label>
+                    <select
+                      name="employeeId"
+                      required
+                      value={isEmployee ? (selfId || "") : undefined}
+                      defaultValue={isEmployee ? undefined : ""}
+                      onChange={() => { }}
+                      disabled={isEmployee}
+                    >
+                      {!isEmployee && <option value="">Seçin…</option>}
+                      {employees.map(e => (
+                        <option key={e.id} value={e.id}>{e.fullName || e.name || e.email}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="field">
-                  <label>Bitiş</label>
-                  <select name="end" defaultValue={
-                    modalDefaults?.endMin != null
-                      ? `${pad2(Math.floor(modalDefaults.endMin / 60))}:${pad2(modalDefaults.endMin % 60)}`
-                      : "10:00"
-                  }>
-                    {Array.from({ length: 96 }, (_, i) => {
-                      const m = i * 15;
-                      return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
-                    }).map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-
-                <div className="field">
-                  <label>Personel</label>
-                  <select
-                    name="employeeId"
-                    required
-                    value={isEmployee ? (selfId || "") : undefined}
-                    defaultValue={isEmployee ? undefined : ""}
-                    onChange={() => { }}
-                    disabled={isEmployee}
-                  >
-                    {!isEmployee && <option value="">Seçin…</option>}
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.fullName || e.name || e.email}</option>
-                    ))}
-                  </select>
-                  {isEmployee && <small>Kendi adınıza planlıyorsunuz.</small>}
-                </div>
-
-                {/* Müşteri -> Mağaza */}
-                <div className="field">
-                  <label>Müşteri</label>
-                  <select
-                    value={selectedCustomerId}
-                    onChange={(e) => setSelectedCustomerId(e.target.value)}
-                    required
-                  >
-                    <option value="">Seçin…</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {(c.code ? `${c.code} – ` : "") + (c.name || c.fullName || c.title || c.email || `Müşteri #${c.id}`)}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="field">
+                    <label>Müşteri</label>
+                    <select
+                      value={selectedCustomerId}
+                      onChange={(e) => setSelectedCustomerId(e.target.value)}
+                      required
+                    >
+                      <option value="">Seçin…</option>
+                      {customers.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {(c.code ? `${c.code} – ` : "") + (c.name || c.fullName || c.title || c.email || `Müşteri #${c.id}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="field full">

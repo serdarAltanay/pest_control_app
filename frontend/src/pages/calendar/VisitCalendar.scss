@@ -451,13 +451,15 @@
 }
 
 .vc-modal {
-  width: 720px;
+  width: 760px;
   max-width: calc(100vw - 24px);
+  max-height: 90vh;
   background: var(--surface);
   border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 
   .vc-modal-head { background: #0f172a !important; padding: 18px 24px !important;
     color: #fff;
@@ -474,10 +476,24 @@
     }
   }
 
-  .vc-modal-body { padding: 24px !important; gap: 20px !important;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+  .vc-modal-body { 
+    padding: 20px 24px !important;
+    gap: 16px !important;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex: 1;
+
+    .field-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+
+      .field {
+        flex: 1;
+        margin-bottom: 0;
+      }
+    }
 
     .field {
       display: flex;
@@ -485,7 +501,10 @@
       gap: 6px;
 
       label {
-        font-size: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         color: var(--text-muted);
       }
 
@@ -500,11 +519,11 @@
       }
 
       &.full {
-        grid-column: 1 / -1;
+        width: 100%;
       }
 
       &.recurrence-toggle {
-        grid-column: 1 / -1;
+        width: 100%;
         background: #f8fafc;
         padding: 16px;
         border-radius: 12px;
@@ -542,7 +561,7 @@
     }
 
     .recurrence-fields {
-      grid-column: 1 / -1;
+      width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
