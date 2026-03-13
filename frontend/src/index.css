@@ -72,6 +72,13 @@ body,
   overflow-x: hidden;
 }
 
+/* Masaüstünde daha ferah bir görünüm için ölçeklendirme */
+@media (min-width: 1200px) {
+  body {
+    zoom: 0.9;
+  }
+}
+
 * {
   transition: background-color .18s ease, color .18s ease, border-color .18s ease;
 }
