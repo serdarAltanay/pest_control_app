@@ -342,6 +342,132 @@ router.post(
 );
 
 /* =========================================
+   POST /api/schedule/events/bulk
+   - Tekrarlanan planlama için toplu oluşturma
+========================================= */
+router.post(
+  "/events/bulk",
+  auth, roleCheck(["admin", "employee"]),
+  async (req, res) => {
+    try {
+      const { 
+        title: rawTitle, 
+        notes, 
+        storeId: rawStoreId, 
+        employeeId: rawEmployeeId, 
+        start: rawStart, 
+        end: rawEnd,
+        frequency, // WEEKLY, BIWEEKLY, TRIWEEKLY, MONTHLY, QUARTERLY, YEARLY
+        duration,  // 3M, 6M, 1Y, 2Y, 3Y, INFINITE
+      } = req.body;
+
+      const title = String(rawTitle || "Ziyaret").trim();
+      const storeId = Number(rawStoreId);
+      let employeeId = Number(rawEmployeeId);
+      const startBase = new Date(rawStart);
+      const endBase = new Date(rawEnd);
+
+      if (!storeId || isNaN(startBase) || isNaN(endBase)) {
+        return res.status(400).json({ error: "Eksik veya geçersiz parametreler." });
+      }
+
+      const reqRole = (req.user?.role || "").toLowerCase();
+      const selfId = Number(req.user?.id ?? req.user?.userId) || null;
+
+      if (reqRole === "employee") {
+        if (!selfId) return res.status(403).json({ error: "Yetki yok." });
+        employeeId = selfId;
+      }
+
+      if (!employeeId) return res.status(400).json({ error: "Personel seçilmelidir." });
+
+      // Bitiş tarihini hesapla (Duration)
+      let until = new Date(startBase);
+      switch (duration) {
+        case "3M": until.setMonth(until.getMonth() + 3); break;
+        case "6M": until.setMonth(until.getMonth() + 6); break;
+        case "1Y": until.setFullYear(until.getFullYear() + 1); break;
+        case "2Y": until.setFullYear(until.getFullYear() + 2); break;
+        case "3Y": until.setFullYear(until.getFullYear() + 3); break;
+        case "INFINITE": until.setFullYear(until.getFullYear() + 10); break;
+        default: until.setMonth(until.getMonth() + 3); // Varsayılan 3 ay
+      }
+
+      const seriesId = `series_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const eventsToCreate = [];
+      let currentStart = new Date(startBase);
+      let currentEnd = new Date(endBase);
+
+      const durationMs = currentEnd.getTime() - currentStart.getTime();
+
+      // Planlayan bilgisi
+      const plannedById = Number(req.user?.id ?? req.user?.userId) || null;
+      const plannedByRole = req.user?.role ?? null;
+      const plannedByName = await resolvePlannerName(prisma, plannedByRole, plannedById, req.user);
+
+      while (currentStart <= until) {
+        // Çakışma kontrolü
+        const conflict = await prisma.scheduleEvent.findFirst({
+          where: { 
+            employeeId, 
+            AND: [
+              { start: { lt: currentEnd } }, 
+              { end: { gt: currentStart } }
+            ] 
+          },
+        });
+
+        if (!conflict) {
+          eventsToCreate.push({
+            title,
+            notes,
+            storeId,
+            employeeId,
+            start: new Date(currentStart),
+            end: new Date(currentEnd),
+            seriesId,
+            plannedById,
+            plannedByRole,
+            plannedByName,
+            plannedAt: new Date(),
+            status: "PLANNED"
+          });
+        }
+
+        // Bir sonraki tarihi hesapla (Frequency)
+        switch (frequency) {
+          case "WEEKLY": currentStart.setDate(currentStart.getDate() + 7); break;
+          case "BIWEEKLY": currentStart.setDate(currentStart.getDate() + 14); break;
+          case "TRIWEEKLY": currentStart.setDate(currentStart.getDate() + 21); break;
+          case "MONTHLY": currentStart.setMonth(currentStart.getMonth() + 1); break;
+          case "QUARTERLY": currentStart.setMonth(currentStart.getMonth() + 3); break;
+          case "YEARLY": currentStart.setFullYear(currentStart.getFullYear() + 1); break;
+          default: currentStart.setDate(currentStart.getDate() + 7);
+        }
+        currentEnd = new Date(currentStart.getTime() + durationMs);
+      }
+
+      if (eventsToCreate.length === 0) {
+        return res.status(409).json({ error: "Belirtilen aralıkta uygun boşluk bulunamadı veya tüm günler dolu." });
+      }
+
+      const result = await prisma.scheduleEvent.createMany({
+        data: eventsToCreate,
+      });
+
+      res.json({ 
+        message: `${result.count} adet ziyaret planlandı.`, 
+        count: result.count,
+        seriesId 
+      });
+    } catch (e) {
+      console.error("POST /schedule/events/bulk", e);
+      res.status(500).json({ error: "Sunucu hatası" });
+    }
+  }
+);
+
+/* =========================================
    PUT /api/schedule/events/:id
    - admin & employee tüm alanları güncelleyebilir
    - çakışma kontrolü her iki rol için de geçerli

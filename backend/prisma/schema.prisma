@@ -566,12 +566,14 @@ model ScheduleEvent {
   store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   status VisitStatus @default(PLANNED)
+  seriesId String?
 
   @@index([start])
   @@index([employeeId])
   @@index([storeId])
   @@index([plannedById])
   @@index([status])
+  @@index([seriesId])
 }
 
 model EmployeeTrackPoint {

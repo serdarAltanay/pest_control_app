@@ -211,6 +211,11 @@ export default function VisitCalendar() {
   const [storesLoading, setStoresLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Recurrance state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState("WEEKLY");
+  const [duration, setDuration] = useState("1Y");
+
   // Range
   const range = useMemo(() => {
     if (view === VIEW.DAY) {
@@ -450,8 +455,22 @@ export default function VisitCalendar() {
 
     try {
       setSaving(true);
-      await createEvent({ title, notes, employeeId, storeId: pickedStoreId, start, end });
-      toast.success("Ziyaret planlandı");
+      if (isRecurring) {
+        const res = await api.post("/schedule/events/bulk", {
+          title, 
+          notes, 
+          employeeId, 
+          storeId: pickedStoreId, 
+          start, 
+          end,
+          frequency,
+          duration
+        });
+        toast.success(res.data.message || "Tekrarlanan ziyaretler planlandı");
+      } else {
+        await createEvent({ title, notes, employeeId, storeId: pickedStoreId, start, end });
+        toast.success("Ziyaret planlandı");
+      }
       setModalOpen(false);
       setSelectedStoreId(null);
       await load();
@@ -867,6 +886,49 @@ export default function VisitCalendar() {
                   <label>Notlar</label>
                   <textarea name="notes" rows={3} placeholder="(Opsiyonel) Not ekleyin…" />
                 </div>
+
+                <div className="field full recurrence-toggle">
+                  <label>Ziyaret Türü</label>
+                  <div className="type-switch">
+                    <button 
+                      type="button" 
+                      className={!isRecurring ? "on" : ""} 
+                      onClick={() => setIsRecurring(false)}
+                    >Tek Seferlik</button>
+                    <button 
+                      type="button" 
+                      className={isRecurring ? "on" : ""} 
+                      onClick={() => setIsRecurring(true)}
+                    >Tekrarlanan</button>
+                  </div>
+                </div>
+
+                {isRecurring && (
+                  <div className="recurrence-fields">
+                    <div className="field">
+                      <label>Sıklık</label>
+                      <select value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+                        <option value="WEEKLY">Haftalık</option>
+                        <option value="BIWEEKLY">2 Haftada Bir</option>
+                        <option value="TRIWEEKLY">3 Haftada Bir</option>
+                        <option value="MONTHLY">Aylık</option>
+                        <option value="QUARTERLY">Çeyreklik (3 Ay)</option>
+                        <option value="YEARLY">Yıllık</option>
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>Planlama Süresi</label>
+                      <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                        <option value="3M">3 Ay Boyunca</option>
+                        <option value="6M">6 Ay Boyunca</option>
+                        <option value="1Y">1 Yıl Boyunca</option>
+                        <option value="2Y">2 Yıl Boyunca</option>
+                        <option value="3Y">3 Yıl Boyunca</option>
+                        <option value="INFINITE">Sınırsız (10 Yıl)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
               </form>
 
               <div className="vc-modal-foot">
