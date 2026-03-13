@@ -350,8 +350,17 @@ router.post(
       }
 
       // Level 2 kısıtlaması: Manuel ziyaret oluşturamaz (planlama yetkisi yok)
-      if (req.user?.role === "employee" && req.user?.level === 2) {
-        return res.status(403).json({ message: "Planlama yetkiniz bulunmamaktadır." });
+      // Ancak iş gereği Ek-1 doldururken yeni ziyaret kaydı oluşturması gerekebilir.
+      // Sadece "bugün" veya geçmiş için izin verelim, geleceğe (planlama) vermeyelim.
+      const isLevel2 = req.user?.role === "employee" && req.user?.level === 2;
+      if (isLevel2) {
+        const visitDate = new Date(date);
+        const todayAtEnd = new Date();
+        todayAtEnd.setHours(23, 59, 59, 999);
+
+        if (visitDate > todayAtEnd) {
+          return res.status(403).json({ message: "İleri bir tarihe planlama yetkiniz bulunmamaktadır." });
+        }
       }
 
       await ensureEmployeeStoreAccess(req, sid);
@@ -363,7 +372,9 @@ router.post(
           storeId: sid,
           date: new Date(date),
           startTime: startTime ?? null,
-          endTime: endTime ?? null,
+          endTime: isLevel2 
+            ? new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
+            : (endTime ?? null),
           visitType,
           targetPests: targetPests ?? null,
           notes: notes ?? null,
@@ -401,6 +412,17 @@ router.put(
           if (k === "endTime" && req.user?.role === "employee" && req.user?.level === 2) {
             // Level 2 için bitiş saati sunucuda o anki saat olarak set edilir
             data[k] = new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+          } else if (k === "date" && req.user?.role === "employee" && req.user?.level === 2) {
+            // Level 2 tarih güncellemesini geleceğe taşıyamaz
+            const newDate = new Date(req.body[k]);
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+            if (newDate > todayEnd) {
+               // Hata yerine tarihi güncellemeye dahil etmiyoruz veya hata dönüyoruz.
+               // Rapor doldurma sırasında tarihi değiştirememesi daha güvenli.
+               return res.status(403).json({ message: "Ziyareti ileri bir tarihe taşıma yetkiniz yoktur." });
+            }
+            data[k] = newDate;
           } else {
             data[k] = k === "date" ? new Date(req.body[k]) : req.body[k];
           }
