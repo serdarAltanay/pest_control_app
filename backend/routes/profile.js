@@ -33,6 +33,7 @@ profileRouter.get("/", auth, async (req, res) => {
       return res.json({
         id: u.id,
         role,
+        level: u.level || 1,
         email: u.email,
         fullName: u.fullName || "",
         profileImage: u.profileImage || null,

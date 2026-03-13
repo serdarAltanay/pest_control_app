@@ -112,7 +112,7 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-    const { fullName, jobTitle, gsm, email, password, adminId } = req.body || {};
+    const { fullName, jobTitle, gsm, email, password, adminId, level } = req.body || {};
     const data = {};
     if (fullName !== undefined) data.fullName = String(fullName);
     if (jobTitle !== undefined) data.jobTitle = String(jobTitle);
