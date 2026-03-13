@@ -351,14 +351,15 @@ router.post(
 
       // Level 2 kısıtlaması: Manuel ziyaret oluşturamaz (planlama yetkisi yok)
       // Ancak iş gereği Ek-1 doldururken yeni ziyaret kaydı oluşturması gerekebilir.
-      // Sadece "bugün" veya geçmiş için izin verelim, geleceğe (planlama) vermeyelim.
+      // Zaman dilimi farklarını (örn. TR UTC+3 sunucu UTC) düşünerek bir günlük opsiyon tanıyalım.
       const isLevel2 = req.user?.role === "employee" && req.user?.level === 2;
       if (isLevel2) {
         const visitDate = new Date(date);
-        const todayAtEnd = new Date();
-        todayAtEnd.setHours(23, 59, 59, 999);
+        const tomorrowEnd = new Date();
+        tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+        tomorrowEnd.setHours(23, 59, 59, 999);
 
-        if (visitDate > todayAtEnd) {
+        if (visitDate > tomorrowEnd) {
           return res.status(403).json({ message: "İleri bir tarihe planlama yetkiniz bulunmamaktadır." });
         }
       }
@@ -415,11 +416,10 @@ router.put(
           } else if (k === "date" && req.user?.role === "employee" && req.user?.level === 2) {
             // Level 2 tarih güncellemesini geleceğe taşıyamaz
             const newDate = new Date(req.body[k]);
-            const todayEnd = new Date();
-            todayEnd.setHours(23, 59, 59, 999);
-            if (newDate > todayEnd) {
-               // Hata yerine tarihi güncellemeye dahil etmiyoruz veya hata dönüyoruz.
-               // Rapor doldurma sırasında tarihi değiştirememesi daha güvenli.
+            const tomorrowEnd = new Date();
+            tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+            tomorrowEnd.setHours(23, 59, 59, 999);
+            if (newDate > tomorrowEnd) {
                return res.status(403).json({ message: "Ziyareti ileri bir tarihe taşıma yetkiniz yoktur." });
             }
             data[k] = newDate;
