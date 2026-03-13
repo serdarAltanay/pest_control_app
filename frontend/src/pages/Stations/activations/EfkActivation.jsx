@@ -20,12 +20,12 @@ export default function EFKActivation() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    sariBantDegisim: false,
-    arizaliEFK: false,
-    tamirdeEFK: false,
-    uvLambaDegisim: false,
-    uvLambaAriza: false,
-    ulasilamayanMonitor: false,
+    sariBantDegisim: 0,
+    arizaliEFK: 0,
+    tamirdeEFK: 0,
+    uvLambaDegisim: 0,
+    uvLambaAriza: 0,
+    ulasilamayanMonitor: 0,
     karasinek: 0,
     sivrisinek: 0,
     diger: 0,
@@ -96,10 +96,21 @@ export default function EFKActivation() {
                 ].map(([lbl, key]) => (
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
-                    <label className="switch">
-                      <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked)} />
-                      <span className="slider" />
-                    </label>
+                    {station?.isGroup ? (
+                      <input 
+                        type="number" 
+                        className="input" 
+                        min={0} 
+                        max={station.totalCount} 
+                        value={form[key]} 
+                        onChange={e => set(key, Math.min(station.totalCount, Math.max(0, Number(e.target.value || 0))))} 
+                      />
+                    ) : (
+                      <label className="switch">
+                        <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
+                        <span className="slider" />
+                      </label>
+                    )}
                   </div>
                 ))}
 

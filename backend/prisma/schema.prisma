@@ -251,30 +251,30 @@ model StationActivation {
   type       StationType
   observedAt DateTime    @default(now())
 
-  aktiviteVar Boolean?
+  aktiviteVar Int?      @default(0)
   risk        RiskLevel @default(RISK_YOK)
   notes       String?
 
-  deformeYem          Boolean?
-  yemDegisti          Boolean?
-  deformeMonitor      Boolean?
-  monitorDegisti      Boolean?
-  ulasilamayanMonitor Boolean?
-  yapiskanDegisti     Boolean?
+  deformeYem          Int? @default(0)
+  yemDegisti          Int? @default(0)
+  deformeMonitor      Int? @default(0)
+  monitorDegisti      Int? @default(0)
+  ulasilamayanMonitor Int? @default(0)
+  yapiskanDegisti     Int? @default(0)
 
-  sariBantDegisim Boolean?
-  arizaliEFK      Boolean?
-  tamirdeEFK      Boolean?
-  uvLambaDegisim  Boolean?
-  uvLambaAriza    Boolean?
-  karasinek       Int?     @default(0)
-  sivrisinek      Int?     @default(0)
-  diger           Int?     @default(0)
+  sariBantDegisim Int? @default(0)
+  arizaliEFK      Int? @default(0)
+  tamirdeEFK      Int? @default(0)
+  uvLambaDegisim  Int? @default(0)
+  uvLambaAriza    Int? @default(0)
+  karasinek       Int? @default(0)
+  sivrisinek      Int? @default(0)
+  diger           Int? @default(0)
 
-  feromonDegisti    Boolean?
-  deformeTuzak      Boolean?
-  tuzakDegisti      Boolean?
-  ulasilamayanTuzak Boolean?
+  feromonDegisti    Int? @default(0)
+  deformeTuzak      Int? @default(0)
+  tuzakDegisti      Int? @default(0)
+  ulasilamayanTuzak Int? @default(0)
   guve              Int?     @default(0)
 
   hedefZararliSayisi Int? @default(0)
@@ -441,12 +441,14 @@ model Station {
   id        Int         @id @default(autoincrement())
   storeId   Int
   store     Store       @relation("StoreStations", fields: [storeId], references: [id], onDelete: Cascade)
-  type      StationType
-  name      String
-  code      String
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  type       StationType
+  name       String
+  code       String
+  isGroup    Boolean     @default(false)
+  totalCount Int         @default(1)
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   activations StationActivation[] @relation("StationActivations")
 

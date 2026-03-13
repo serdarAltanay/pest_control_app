@@ -91,7 +91,7 @@ router.get("/stores/:storeId/trend", auth, roleCheck(["admin","employee","custom
         ...(type ? { type } : {}),
         ...(risk ? { risk } : {}),
       },
-      select: { observedAt:true, aktiviteVar:true },
+      select: { observedAt:true, aktiviteVar:true, station: { select: { totalCount: true } } },
       orderBy: { observedAt: "asc" },
     });
 
@@ -100,8 +100,8 @@ router.get("/stores/:storeId/trend", auth, roleCheck(["admin","employee","custom
       const d = new Date(it.observedAt);
       const key = bucketKey(d, bucket);
       if (!map[key]) map[key] = { bucket: key, count: 0, activityCount: 0 };
-      map[key].count += 1;
-      if (it.aktiviteVar) map[key].activityCount += 1;
+      map[key].count += (it.station?.totalCount || 1);
+      map[key].activityCount += (it.aktiviteVar || 0);
     }
     const out = Object.values(map).sort((a,b)=>a.bucket.localeCompare(b.bucket));
     res.json(out);
@@ -141,17 +141,18 @@ router.get("/stores/:storeId/summary", auth, roleCheck(["admin","employee","cust
         observedAt: { gte: from, lte: to },
         ...(type ? { type } : {}),
       },
-      select: { type:true, risk:true, aktiviteVar:true },
+      select: { type:true, risk:true, aktiviteVar:true, station: { select: { totalCount: true } } },
     });
 
     const byType = {};
     const byRisk = {};
     let total = 0, activeCnt = 0;
     for (const it of items) {
-      byType[it.type] = (byType[it.type] || 0) + 1;
-      byRisk[it.risk] = (byRisk[it.risk] || 0) + 1;
-      total += 1;
-      if (it.aktiviteVar) activeCnt += 1;
+      const stCount = it.station?.totalCount || 1;
+      byType[it.type] = (byType[it.type] || 0) + stCount;
+      byRisk[it.risk] = (byRisk[it.risk] || 0) + stCount;
+      total += stCount;
+      activeCnt += (it.aktiviteVar || 0);
     }
 
     res.json({ byType, byRisk, activityRate: total ? activeCnt/total : 0, range: { from, to } });
@@ -190,7 +191,7 @@ router.get("/stations/:stationId/trend", auth, roleCheck(["admin","employee","cu
 
     const items = await prisma.stationActivation.findMany({
       where: { stationId, observedAt: { gte: from, lte: to } },
-      select: { observedAt:true, aktiviteVar:true },
+      select: { observedAt:true, aktiviteVar:true, station: { select: { totalCount: true } } },
       orderBy: { observedAt: "asc" },
     });
 
@@ -199,8 +200,8 @@ router.get("/stations/:stationId/trend", auth, roleCheck(["admin","employee","cu
       const d = new Date(it.observedAt);
       const key = bucketKey(d, bucket);
       if(!map[key]) map[key] = { bucket:key, count:0, activityCount:0 };
-      map[key].count += 1;
-      if(it.aktiviteVar) map[key].activityCount += 1;
+      map[key].count += (it.station?.totalCount || 1);
+      map[key].activityCount += (it.aktiviteVar || 0);
     }
     const out = Object.values(map).sort((a,b)=>a.bucket.localeCompare(b.bucket));
     res.json(out);

@@ -20,8 +20,8 @@ export default function InsectMonitorActivation() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    aktiviteVar: false,
-    monitorDegisti: false,
+    aktiviteVar: 0,
+    monitorDegisti: 0,
     hedefZararliSayisi: 0,
     risk: "RISK_YOK",
   });
@@ -86,10 +86,21 @@ export default function InsectMonitorActivation() {
                 ].map(([lbl, key]) => (
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
-                    <label className="switch">
-                      <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked)} />
-                      <span className="slider" />
-                    </label>
+                    {station?.isGroup ? (
+                      <input 
+                        type="number" 
+                        className="input" 
+                        min={0} 
+                        max={station.totalCount} 
+                        value={form[key]} 
+                        onChange={e => set(key, Math.min(station.totalCount, Math.max(0, Number(e.target.value || 0))))} 
+                      />
+                    ) : (
+                      <label className="switch">
+                        <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
+                        <span className="slider" />
+                      </label>
+                    )}
                   </div>
                 ))}
 

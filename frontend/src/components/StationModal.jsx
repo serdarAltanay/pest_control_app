@@ -19,6 +19,8 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
     type: "FARE_YEMLEME",
     name: "",
     code: "",
+    isGroup: false,
+    totalCount: 1,
   });
 
   useEffect(() => {
@@ -27,6 +29,8 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
         type: initial.type || "FARE_YEMLEME",
         name: initial.name || "",
         code: initial.code || "",
+        isGroup: !!initial.isGroup,
+        totalCount: initial.totalCount || 1,
       });
     }
   }, [initial]);
@@ -42,6 +46,8 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
       type: form.type,
       name: form.name.trim(),
       code: form.code.trim(),
+      isGroup: !!form.isGroup,
+      totalCount: Number(form.totalCount) || 1,
     };
 
     try {
@@ -109,6 +115,29 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
               <label>Barkod &amp; QR *</label>
               <input name="code" value={form.code} onChange={onChange} required />
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "25px" }}>
+              <input 
+                type="checkbox" 
+                id="isGroup" 
+                name="isGroup" 
+                checked={form.isGroup || false} 
+                onChange={(e) => setForm(p => ({ ...p, isGroup: e.target.checked }))} 
+              />
+              <label htmlFor="isGroup" style={{ cursor: "pointer", margin: 0 }}>Toplu Grup (Büyük İşletme)</label>
+            </div>
+            {form.isGroup && (
+              <div>
+                <label>Toplam İstasyon Adedi *</label>
+                <input 
+                  type="number" 
+                  name="totalCount" 
+                  value={form.totalCount || 1} 
+                  onChange={onChange} 
+                  min="1" 
+                  required 
+                />
+              </div>
+            )}
           </div>
 
           <div className="modal-actions">

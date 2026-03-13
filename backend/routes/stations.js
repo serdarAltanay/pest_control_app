@@ -58,6 +58,8 @@ function pickStationPayload(body) {
   if ("isActive" in body) payload.isActive = !!body.isActive;
   if ("zone" in body) payload.zone = body.zone ? String(body.zone).trim() : null;
   if ("description" in body) payload.description = body.description ? String(body.description).trim() : null;
+  if ("isGroup" in body) payload.isGroup = !!body.isGroup;
+  if ("totalCount" in body) payload.totalCount = Number(body.totalCount) || 1;
   return payload;
 }
 

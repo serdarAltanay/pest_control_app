@@ -353,19 +353,19 @@ export default function StationDetail({ openEdit = false }) {
     }
     if (t === "CANLI_YAKALAMA") {
       const parts = [];
-      if (a.deformeMonitor) parts.push("Monitör deforme");
-      if (a.yapiskanDegisti) parts.push("Yapışkan değişti");
-      if (a.monitorDegisti) parts.push("Monitör değişti");
-      if (a.ulasilamayanMonitor) parts.push("Ulaşılamayan monitör");
+      if (a.deformeMonitor > 0) parts.push(`M. Deforme: ${a.deformeMonitor}`);
+      if (a.yapiskanDegisti > 0) parts.push(`Yapışkan D.: ${a.yapiskanDegisti}`);
+      if (a.monitorDegisti > 0) parts.push(`Monitör D.: ${a.monitorDegisti}`);
+      if (a.ulasilamayanMonitor > 0) parts.push(`Ulaşılamayan: ${a.ulasilamayanMonitor}`);
       return parts.join(" • ") || "—";
     }
     if (t === "FARE_YEMLEME") {
       const parts = [];
-      if (a.deformeYem) parts.push("Yem deforme");
-      if (a.yemDegisti) parts.push("Yem değişti");
-      if (a.deformeMonitor) parts.push("Monitör deforme");
-      if (a.monitorDegisti) parts.push("Monitör değişti");
-      if (a.ulasilamayanMonitor) parts.push("Ulaşılamayan monitör");
+      if (a.deformeYem > 0) parts.push(`Yem Def.: ${a.deformeYem}`);
+      if (a.yemDegisti > 0) parts.push(`Yem Değ.: ${a.yemDegisti}`);
+      if (a.deformeMonitor > 0) parts.push(`M. Deforme: ${a.deformeMonitor}`);
+      if (a.monitorDegisti > 0) parts.push(`Monitör D.: ${a.monitorDegisti}`);
+      if (a.ulasilamayanMonitor > 0) parts.push(`Ulaşılamayan: ${a.ulasilamayanMonitor}`);
       return parts.join(" • ") || "—";
     }
     return "—";
@@ -394,6 +394,12 @@ export default function StationDetail({ openEdit = false }) {
               <span className="muted">{TYPE_TR[station?.type] || station?.type || "—"}</span>
               {" • "}
               <span className="mono">{station?.code || "—"}</span>
+              {station?.isGroup && (
+                <>
+                  {" • "}
+                  <span className="badge amber">Toplu Grup ({station.totalCount} Adet)</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -423,8 +429,10 @@ export default function StationDetail({ openEdit = false }) {
                 <span className={`badge ${station?.isActive ? "ok" : "no"}`}>
                   {station?.isActive ? "Aktif" : "Pasif"}
                 </span>
+                {station?.isGroup && <span className="badge amber" style={{ marginLeft: "5px" }}>Grup</span>}
               </span>
             </div>
+            {station?.isGroup && <div><b>Grup Adedi</b><span>{station.totalCount}</span></div>}
             <div><b>Oluşturulma</b><span>{station?.createdAt ? new Date(station.createdAt).toLocaleString("tr-TR") : "—"}</span></div>
             <div><b>Güncelleme</b><span>{station?.updatedAt ? new Date(station.updatedAt).toLocaleString("tr-TR") : "—"}</span></div>
           </div>

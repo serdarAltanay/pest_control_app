@@ -178,10 +178,11 @@ const activationHref = (station) => {
                   <Link
                     to={`/admin/stations/${st.id}`}
                     className="link"
-                    onClick={(e) => e.stopPropagation()}   // << ekle
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {TYPE_TR[st.type] || st.type}
                   </Link>
+                  {st.isGroup && <span className="badge amber" style={{ fontSize: "11px", marginLeft: "10px", verticalAlign: "middle" }}>Grup ({st.totalCount} Adet)</span>}
                 </div>
                 <div className="kv">
                   <div><b>Adı:</b> <span>{st.name || "—"}</span></div>

@@ -20,12 +20,12 @@ export default function RodentBaitActivation() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    aktiviteVar: false,
-    deformeYem: false,
-    yemDegisti: false,
-    deformeMonitor: false,
-    monitorDegisti: false,
-    ulasilamayanMonitor: false,
+    aktiviteVar: 0,
+    deformeYem: 0,
+    yemDegisti: 0,
+    deformeMonitor: 0,
+    monitorDegisti: 0,
+    ulasilamayanMonitor: 0,
     risk: "RISK_YOK",
   });
 
@@ -84,53 +84,33 @@ export default function RodentBaitActivation() {
           {!loading && (
             <>
               <div className="activation-grid">
-                <div className="field">
-                  <div className="label">Aktivite Var mı ?</div>
-                  <label className="switch">
-                    <input type="checkbox" checked={form.aktiviteVar} onChange={e => set("aktiviteVar", e.target.checked)} />
-                    <span className="slider" />
-                  </label>
-                </div>
-
-                <div className="field">
-                  <div className="label">Deforme Yem</div>
-                  <label className="switch">
-                    <input type="checkbox" checked={form.deformeYem} onChange={e => set("deformeYem", e.target.checked)} />
-                    <span className="slider" />
-                  </label>
-                </div>
-
-                <div className="field">
-                  <div className="label">Yem Değişti mi ?</div>
-                  <label className="switch">
-                    <input type="checkbox" checked={form.yemDegisti} onChange={e => set("yemDegisti", e.target.checked)} />
-                    <span className="slider" />
-                  </label>
-                </div>
-
-                <div className="field">
-                  <div className="label">Monitör Deforme mi ?</div>
-                  <label className="switch">
-                    <input type="checkbox" checked={form.deformeMonitor} onChange={e => set("deformeMonitor", e.target.checked)} />
-                    <span className="slider" />
-                  </label>
-                </div>
-
-                <div className="field">
-                  <div className="label">Monitör Değişti mi ?</div>
-                  <label className="switch">
-                    <input type="checkbox" checked={form.monitorDegisti} onChange={e => set("monitorDegisti", e.target.checked)} />
-                    <span className="slider" />
-                  </label>
-                </div>
-
-                <div className="field">
-                  <div className="label">Ulaşılamayan Monitör</div>
-                  <label className="switch">
-                    <input type="checkbox" checked={form.ulasilamayanMonitor} onChange={e => set("ulasilamayanMonitor", e.target.checked)} />
-                    <span className="slider" />
-                  </label>
-                </div>
+                {[
+                  ["Aktivite Var mı ?", "aktiviteVar"],
+                  ["Deforme Yem", "deformeYem"],
+                  ["Yem Değişti mi ?", "yemDegisti"],
+                  ["Monitör Deforme mi ?", "deformeMonitor"],
+                  ["Monitör Değişti mi ?", "monitorDegisti"],
+                  ["Ulaşılamayan Monitör", "ulasilamayanMonitor"],
+                ].map(([lbl, key]) => (
+                  <div key={key} className="field">
+                    <div className="label">{lbl}</div>
+                    {station?.isGroup ? (
+                      <input 
+                        type="number" 
+                        className="input" 
+                        min={0} 
+                        max={station.totalCount} 
+                        value={form[key]} 
+                        onChange={e => set(key, Math.min(station.totalCount, Math.max(0, Number(e.target.value || 0))))} 
+                      />
+                    ) : (
+                      <label className="switch">
+                        <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
+                        <span className="slider" />
+                      </label>
+                    )}
+                  </div>
+                ))}
 
                 <div className="field">
                   <div className="label">Risk Değeri</div>
