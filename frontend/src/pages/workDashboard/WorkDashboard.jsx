@@ -94,14 +94,14 @@ export default function WorkDashboard() {
 
         {/* --- Summary Cards --- */}
         <div className="summary-grid">
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => navigate("/admin/customers")}>
             <div className="icon-box blue"><FiUsers /></div>
             <div className="stat-info">
               <span className="stat-label">Aktif Müşteri</span>
               <span className="stat-value">{stats.customers}</span>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card clickable" onClick={() => navigate("/admin/stores")}>
             <div className="icon-box green"><FiHome /></div>
             <div className="stat-info">
               <span className="stat-label">Toplam Mağaza</span>
