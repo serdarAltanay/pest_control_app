@@ -8,7 +8,7 @@ import "./Ek1.scss";
 
 /* ───────── Sabitler ───────── */
 const PEST_OPTIONS = [
-  "Kemirgen", "Hamamböceği", "Karınca", "Uçan Haşere", "Pire",
+  "Kemirgen", "Hamamböceği", "Karınca", "Uçan Haşere", "Yürüyen Haşere", "Pire",
   "Kene", "Güve", "Örümcek", "Akar", "Tahtakurusu",
 ];
 

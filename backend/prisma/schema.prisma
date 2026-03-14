@@ -22,8 +22,8 @@ enum VisitPeriod {
 
 enum PestType {
   KEMIRGEN
-  HACCADI
-  UCAN
+  YURUYEN_HASERE
+  UCAN_HASERE
   BELIRTILMEDI
 }
 

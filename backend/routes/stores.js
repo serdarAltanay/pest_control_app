@@ -489,7 +489,7 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       phone: phone ?? null,
       manager: manager ?? null,
       isActive: isActive !== undefined ? !!isActive : true,
-      pestType: ["KEMIRGEN", "HACCADI", "UCAN", "BELIRTILMEDI"].includes(pestType)
+      pestType: ["KEMIRGEN", "YURUYEN_HASERE", "UCAN_HASERE", "BELIRTILMEDI"].includes(pestType)
         ? pestType
         : "BELIRTILMEDI",
       placeType: ["OFIS", "DEPO", "MAGAZA", "FABRIKA", "BELIRTILMEDI"].includes(placeType)
@@ -610,7 +610,7 @@ router.put("/:storeId", auth, roleCheck(["admin", "employee"]), async (req, res)
     if ("pestType" in body)
       data.pestType = asEnum(
         body.pestType,
-        ["KEMIRGEN", "HACCADI", "UCAN", "BELIRTILMEDI"],
+        ["KEMIRGEN", "YURUYEN_HASERE", "UCAN_HASERE", "BELIRTILMEDI"],
         "BELIRTILMEDI"
       );
     if ("placeType" in body)
