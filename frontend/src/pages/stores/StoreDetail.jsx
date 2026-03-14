@@ -358,7 +358,14 @@ export default function StoreDetail() {
                     title="Detay"
                   >
                     <td>{s.code}</td>
-                    <td className="strong">{s.name}</td>
+                    <td className="strong">
+                      {s.name}
+                      {s.isGroup && (
+                        <span className="badge amber" style={{ fontSize: "10px", marginLeft: "6px", verticalAlign: "middle" }}>
+                          Grup ({s.totalCount})
+                        </span>
+                      )}
+                    </td>
                     <td>{TYPE_TR[s.type] || s.type}</td>
                     <td>
                       <span className={`badge ${s.isActive ? "ok" : "no"}`}>

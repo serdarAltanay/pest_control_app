@@ -1,0 +1,126 @@
+@import "../styles/variables";
+
+.station-modal-group-options {
+  grid-column: span 3;
+  background: var(--muted-surface);
+  margin-top: 10px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+
+    .label-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      span {
+        font-weight: 700;
+        color: var(--text);
+        font-size: 15px;
+      }
+      small {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+    }
+  }
+
+  .count-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeIn 0.3s ease;
+
+    label {
+      font-weight: 700;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      width: 140px;
+
+      input {
+        width: 100%;
+        padding-right: 40px;
+        text-align: center;
+        font-weight: 800;
+        font-size: 16px;
+        color: var(--primary);
+      }
+
+      &::after {
+        content: "Adet";
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        pointer-events: none;
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Switch for the toggle */
+.modern-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+
+    &:checked + .slider {
+      background-color: var(--primary);
+    }
+    &:focus + .slider {
+      box-shadow: 0 0 1px var(--primary);
+    }
+    &:checked + .slider:before {
+      transform: translateX(24px);
+    }
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #cbd5e1;
+    transition: .4s;
+    border-radius: 34px;
+
+    &:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+  }
+}

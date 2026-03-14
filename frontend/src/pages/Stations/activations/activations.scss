@@ -121,7 +121,14 @@ $warnc: #ffb86c;
 
   &:focus {
     border-color: $brand;
-    box-shadow: var(--shadow);
+    box-shadow: 0 0 0 3px rgba($brand, 0.1);
+  }
+
+  &[type="number"] {
+    font-weight: 700;
+    color: $brand;
+    text-align: center;
+    max-width: 100px;
   }
 }
 

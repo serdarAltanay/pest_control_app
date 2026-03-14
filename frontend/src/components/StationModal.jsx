@@ -1,7 +1,7 @@
-// src/components/StationModal.jsx
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
+import "./StationModal.scss";
 
 const TYPE_TR = {
   FARE_YEMLEME: "Fare Yemleme İstasyonu",
@@ -108,36 +108,47 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
               </select>
             </div>
             <div>
-              <label>İstasyon Adı *</label>
+              <label>{form.isGroup ? "Grup Adı *" : "İstasyon Adı *"}</label>
               <input name="name" value={form.name} onChange={onChange} required />
             </div>
             <div>
               <label>Barkod &amp; QR *</label>
               <input name="code" value={form.code} onChange={onChange} required />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "25px" }}>
-              <input 
-                type="checkbox" 
-                id="isGroup" 
-                name="isGroup" 
-                checked={form.isGroup || false} 
-                onChange={(e) => setForm(p => ({ ...p, isGroup: e.target.checked }))} 
-              />
-              <label htmlFor="isGroup" style={{ cursor: "pointer", margin: 0 }}>Toplu Grup (Büyük İşletme)</label>
-            </div>
-            {form.isGroup && (
-              <div>
-                <label>Toplam İstasyon Adedi *</label>
-                <input 
-                  type="number" 
-                  name="totalCount" 
-                  value={form.totalCount || 1} 
-                  onChange={onChange} 
-                  min="1" 
-                  required 
-                />
+            <div className="station-modal-group-options">
+              <div className="toggle-row">
+                <div className="label-group">
+                  <span>Toplu Grup (Büyük İşletme)</span>
+                  <small>Çok sayıda istasyon tek seferde işlenebilir</small>
+                </div>
+                <label className="modern-switch">
+                  <input 
+                    type="checkbox" 
+                    id="isGroup" 
+                    name="isGroup" 
+                    checked={form.isGroup || false} 
+                    onChange={(e) => setForm(p => ({ ...p, isGroup: e.target.checked }))} 
+                  />
+                  <span className="slider" />
+                </label>
               </div>
-            )}
+
+              {form.isGroup && (
+                <div className="count-row">
+                  <label>Toplam {form.isGroup ? "İstasyon" : ""} Adedi *</label>
+                  <div className="input-wrapper">
+                    <input 
+                      type="number" 
+                      name="totalCount" 
+                      value={form.totalCount || 1} 
+                      onChange={onChange} 
+                      min="1" 
+                      required 
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="modal-actions">

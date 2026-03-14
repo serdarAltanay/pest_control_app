@@ -109,12 +109,12 @@ stationsRouter.get(
       const list = await prisma.station.groupBy({
         by: ["type"],
         where: { storeId, isActive: true },
-        _count: { type: true },
+        _sum: { totalCount: true },
       });
 
       const all = ["FARE_YEMLEME","CANLI_YAKALAMA","ELEKTRIKLI_SINEK_TUTUCU","BOCEK_MONITOR","GUVE_TUZAGI"];
       const data = Object.fromEntries(all.map(t => [t, 0]));
-      for (const r of list) data[r.type] = r._count.type;
+      for (const r of list) data[r.type] = r._sum.totalCount || 0;
 
       res.json(data);
     } catch (e) {
@@ -282,12 +282,12 @@ stationsNestedRouter.get(
       const list = await prisma.station.groupBy({
         by: ["type"],
         where: { storeId, isActive: true },
-        _count: { type: true },
+        _sum: { totalCount: true },
       });
 
       const all = ["FARE_YEMLEME","CANLI_YAKALAMA","ELEKTRIKLI_SINEK_TUTUCU","BOCEK_MONITOR","GUVE_TUZAGI"];
       const data = Object.fromEntries(all.map(t => [t, 0]));
-      for (const r of list) data[r.type] = r._count.type;
+      for (const r of list) data[r.type] = r._sum.totalCount || 0;
 
       res.json(data);
     } catch (e) {
