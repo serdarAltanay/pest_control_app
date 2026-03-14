@@ -12,6 +12,19 @@ const RISK = [
   { value: "YUKSEK", label: "YÜKSEK" },
 ];
 
+const INITIAL_FORM = {
+  sariBantDegisim: 0,
+  arizaliEFK: 0,
+  tamirdeEFK: 0,
+  uvLambaDegisim: 0,
+  uvLambaAriza: 0,
+  ulasilamayanMonitor: 0,
+  karasinek: 0,
+  sivrisinek: 0,
+  diger: 0,
+  risk: "RISK_YOK",
+};
+
 export default function EFKActivation() {
   const { visitId, stationId, storeId } = useParams();
   const navigate = useNavigate();
@@ -20,23 +33,15 @@ export default function EFKActivation() {
   const [groupStations, setGroupStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    sariBantDegisim: 0,
-    arizaliEFK: 0,
-    tamirdeEFK: 0,
-    uvLambaDegisim: 0,
-    uvLambaAriza: 0,
-    ulasilamayanMonitor: 0,
-    karasinek: 0,
-    sivrisinek: 0,
-    diger: 0,
-    risk: "RISK_YOK",
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
+
   const set = (k, v) => setForm((s) => ({ ...s, [k]: v }));
 
   useEffect(() => {
     let m = true;
     setLoading(true);
+    setForm(INITIAL_FORM);
+
     api.get(`/stations/${stationId}`)
       .then(r => {
         if (!m) return;
@@ -95,7 +100,7 @@ export default function EFKActivation() {
             <div className="warn">Uyarı: Bu sayfa EFK tipine özeldir (mevcut: <b>{station.type}</b>).</div>
           )}
 
-          {groupStations.length > 0 && (
+          {groupStations.length > 1 && (
             <div className="group-selection">
               <div className="group-title">
                 <span className="icon">📂</span>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../../../components/Layout";
 import api from "../../../api/axios";
@@ -12,6 +12,15 @@ const RISK = [
   { value: "YUKSEK", label: "YÜKSEK" },
 ];
 
+const INITIAL_FORM = {
+  yemDurumu: "YOK",
+  yemTaze: 0,
+  yemTuketim: 0,
+  deformeYem: 0,
+  yemDegisti: 0,
+  risk: "RISK_YOK",
+};
+
 export default function RodentBaitActivation() {
   const { visitId, stationId, storeId } = useParams();
   const navigate = useNavigate();
@@ -20,21 +29,16 @@ export default function RodentBaitActivation() {
   const [groupStations, setGroupStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    aktiviteVar: 0,
-    deformeYem: 0,
-    yemDegisti: 0,
-    deformeMonitor: 0,
-    monitorDegisti: 0,
-    ulasilamayanMonitor: 0,
-    risk: "RISK_YOK",
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
 
   const set = (k, v) => setForm((s) => ({ ...s, [k]: v }));
 
   useEffect(() => {
     let m = true;
     setLoading(true);
+    // Her istasyon değişiminde formu sıfırla ki bir önceki istasyonun verileri kalmasın
+    setForm(INITIAL_FORM);
+
     api.get(`/stations/${stationId}`)
       .then(r => {
         if (!m) return;
@@ -53,10 +57,10 @@ export default function RodentBaitActivation() {
     return () => (m = false);
   }, [stationId]);
 
-  const title = useMemo(() => {
-    if (!station) return "Yükleniyor…";
-    return `tura | Fare Yemleme İstasyonu | ${station.name}`;
-  }, [station]);
+  const title = useMemo(
+    () => (station ? `tura | Fare Yemleme | ${station.name}` : "Yükleniyor…"),
+    [station]
+  );
 
   const save = async () => {
     try {
@@ -64,10 +68,14 @@ export default function RodentBaitActivation() {
       const url = visitId
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
+      
+      // Backend expects type: FARE_YEMLEME
       await api.post(url, { type: "FARE_YEMLEME", ...form });
       toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       
-      // Navigate back after saving
+      // Eğer bir grup ise ve sonraki istasyon varsa ona geçebiliriz (Opsiyonel iyileştirme)
+      // Şimdilik sadece geri dönelim ya da listede kalalım. 
+      // Kullanıcı genelde tek tek girip geri dönüyor.
       navigate(-1);
     } catch (e) {
       console.error(e);
@@ -78,6 +86,7 @@ export default function RodentBaitActivation() {
   };
 
   const switchStation = (id) => {
+    // URL'yi güncelleyerek useEffect'in tetiklenmesini sağla
     const baseUrl = visitId 
       ? `/admin/stores/${storeId}/visits/${visitId}/stations/${id}/activation/rodent-bait`
       : `/admin/stores/${storeId}/stations/${id}/activation/rodent-bait`;
@@ -93,10 +102,10 @@ export default function RodentBaitActivation() {
           </div>
 
           {station && station.type !== "FARE_YEMLEME" && (
-            <div className="warn">Uyarı: Bu sayfa Fare Yemleme tipine özeldir, istasyon tipi: <b>{station.type}</b>.</div>
+            <div className="warn">Uyarı: Bu sayfa Fare Yemleme tipine özeldir (mevcut: <b>{station.type}</b>).</div>
           )}
 
-          {groupStations.length > 0 && (
+          {groupStations.length > 1 && (
             <div className="group-selection">
               <div className="group-title">
                 <span className="icon">📂</span>
@@ -126,13 +135,21 @@ export default function RodentBaitActivation() {
           {!loading && (
             <>
               <div className="activation-grid">
+                <div className="field">
+                  <div className="label">Düzenek Yem Durumu</div>
+                  <select className="select" value={form.yemDurumu} onChange={e => set("yemDurumu", e.target.value)}>
+                    <option value="YOK">YOK</option>
+                    <option value="VAR">VAR</option>
+                    <option value="KIRLI">KİRLİ / KÜFLÜ</option>
+                    <option value="YENMIS">YENMİŞ</option>
+                  </select>
+                </div>
+
                 {[
-                  ["Aktivite Var mı ?", "aktiviteVar"],
-                  ["Deforme Yem", "deformeYem"],
+                  ["Yem Taze mi ?", "yemTaze"],
+                  ["Yem Tüketimi var mı ?", "yemTuketim"],
+                  ["Yem Deforme mi ?", "deformeYem"],
                   ["Yem Değişti mi ?", "yemDegisti"],
-                  ["Monitör Deforme mi ?", "deformeMonitor"],
-                  ["Monitör Değişti mi ?", "monitorDegisti"],
-                  ["Ulaşılamayan Monitör", "ulasilamayanMonitor"],
                 ].map(([lbl, key]) => (
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
