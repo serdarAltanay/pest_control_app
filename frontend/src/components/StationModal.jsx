@@ -80,7 +80,7 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
   const submit = (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("İstasyon adı zorunludur.");
-    if (!form.code.trim()) return toast.error("Barkod & QR zorunludur.");
+    // Barkod & QR artık opsiyonel (backend otomatik üretecek)
     save();
   };
 

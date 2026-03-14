@@ -13,10 +13,11 @@ const RISK = [
 ];
 
 export default function LiveCatchActivation() {
-  const { visitId, stationId } = useParams();
+  const { visitId, stationId, storeId } = useParams();
   const navigate = useNavigate();
 
   const [station, setStation] = useState(null);
+  const [groupStations, setGroupStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -31,8 +32,19 @@ export default function LiveCatchActivation() {
 
   useEffect(() => {
     let m = true;
+    setLoading(true);
     api.get(`/stations/${stationId}`)
-      .then(r => m && setStation(r.data))
+      .then(r => {
+        if (!m) return;
+        setStation(r.data);
+        if (r.data.groupId) {
+          api.get(`/stations/groupId/${r.data.groupId}`)
+            .then(gr => m && setGroupStations(gr.data))
+            .catch(e => console.error("Grup istasyonları alınamadı", e));
+        } else {
+          setGroupStations([]);
+        }
+      })
       .catch(e => { console.error(e); toast.error("İstasyon alınamadı"); })
       .finally(() => m && setLoading(false));
     return () => (m = false);
@@ -60,6 +72,13 @@ export default function LiveCatchActivation() {
     }
   };
 
+  const switchStation = (id) => {
+    const baseUrl = visitId 
+      ? `/admin/stores/${storeId}/visits/${visitId}/stations/${id}/activation/live-catch`
+      : `/admin/stores/${storeId}/stations/${id}/activation/live-catch`;
+    navigate(baseUrl);
+  };
+
   return (
     <Layout title={title}>
       <div className="ActivationPage">
@@ -70,6 +89,26 @@ export default function LiveCatchActivation() {
 
           {station && station.type !== "CANLI_YAKALAMA" && (
             <div className="warn">Uyarı: Bu sayfa Canlı Yakalama tipine özeldir (mevcut: <b>{station.type}</b>).</div>
+          )}
+
+          {groupStations.length > 0 && (
+            <div className="group-selection">
+              <div className="group-title">
+                <span className="icon">📂</span>
+                İstasyon Grubu Seçimi
+              </div>
+              <div className="station-list">
+                {groupStations.map(s => (
+                  <button
+                    key={s.id}
+                    className={`station-item ${s.id === Number(stationId) ? 'active' : ''}`}
+                    onClick={() => switchStation(s.id)}
+                  >
+                    {s.code}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="activation-title">
@@ -91,21 +130,10 @@ export default function LiveCatchActivation() {
                 ].map(([lbl, key]) => (
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
-                    {station?.isGroup ? (
-                      <input 
-                        type="number" 
-                        className="input" 
-                        min={0} 
-                        max={station.totalCount} 
-                        value={form[key]} 
-                        onChange={e => set(key, Math.min(station.totalCount, Math.max(0, Number(e.target.value || 0))))} 
-                      />
-                    ) : (
-                      <label className="switch">
-                        <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
-                        <span className="slider" />
-                      </label>
-                    )}
+                    <label className="switch">
+                      <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
+                      <span className="slider" />
+                    </label>
                   </div>
                 ))}
 

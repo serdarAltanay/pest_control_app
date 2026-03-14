@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { auth, roleCheck } from "../middleware/auth.js";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -60,7 +61,39 @@ function pickStationPayload(body) {
   if ("description" in body) payload.description = body.description ? String(body.description).trim() : null;
   if ("isGroup" in body) payload.isGroup = !!body.isGroup;
   if ("totalCount" in body) payload.totalCount = Number(body.totalCount) || 1;
+  if ("groupId" in body) payload.groupId = body.groupId ? String(body.groupId) : null;
   return payload;
+}
+
+async function generateNextCodes(storeId, count) {
+  const store = await prisma.store.findUnique({ where: { id: storeId }, select: { code: true } });
+  const prefix = (store?.code || "ST").trim();
+  
+  const stations = await prisma.station.findMany({
+    where: { storeId },
+    select: { code: true }
+  });
+
+  let maxSuffix = 0;
+  // Match prefix-digits or just digits if prefix is empty
+  const regex = new RegExp(`^${prefix}-(\\d+)$`);
+  
+  for (const s of stations) {
+    if (!s.code) continue;
+    const match = s.code.match(regex);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxSuffix) maxSuffix = num;
+    }
+  }
+
+  const codes = [];
+  for (let i = 1; i <= count; i++) {
+    const nextNum = maxSuffix + i;
+    const suffix = String(nextNum).padStart(3, '0');
+    codes.push(`${prefix}-${suffix}`);
+  }
+  return codes;
 }
 
 /** DÜZ ROUTER (/api/stations) */
@@ -153,6 +186,25 @@ stationsRouter.get(
   }
 );
 
+// GET /api/stations/groupId/:groupId
+stationsRouter.get(
+  "/groupId/:groupId",
+  auth, roleCheck(["admin", "employee", "customer"]),
+  async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const items = await prisma.station.findMany({
+        where: { groupId },
+        orderBy: { code: "asc" },
+      });
+      res.json(items);
+    } catch (e) {
+      console.error("GET /stations/groupId/:groupId", e);
+      res.status(500).json({ message: "Sunucu hatası" });
+    }
+  }
+);
+
 // POST /api/stations (YAZMA → admin + employee; employee sınırsız)
 stationsRouter.post(
   "/",
@@ -166,12 +218,35 @@ stationsRouter.post(
       if (!store) return res.status(404).json({ message: "Mağaza bulunamadı" });
 
       const data = pickStationPayload(req.body);
-      if (!data.type || !data.name || !data.code)
-        return res.status(400).json({ message: "type, name, code zorunlu." });
+      if (!data.type || !data.name)
+        return res.status(400).json({ message: "type ve name zorunlu." });
       if (!("isActive" in data)) data.isActive = true;
 
-      const created = await prisma.station.create({ data: { ...data, storeId: sid } });
-      res.json({ message: "İstasyon eklendi", station: created });
+      if (data.isGroup && data.totalCount > 1) {
+        const count = data.totalCount;
+        const codes = await generateNextCodes(sid, count);
+        const groupId = crypto.randomUUID();
+
+        // Her biri için ayrı kayıt (totalCount: 1)
+        const stations = codes.map(code => ({
+          ...data,
+          storeId: sid,
+          code,
+          totalCount: 1,
+          groupId
+        }));
+
+        await prisma.station.createMany({ data: stations });
+        return res.json({ message: `${count} istasyon eklendi`, groupId });
+      } else {
+        // Tek istasyon
+        if (!data.code) {
+          const [code] = await generateNextCodes(sid, 1);
+          data.code = code;
+        }
+        const created = await prisma.station.create({ data: { ...data, storeId: sid } });
+        res.json({ message: "İstasyon eklendi", station: created });
+      }
     } catch (e) {
       if (e.code === "P2002")
         return res.status(409).json({ message: "Bu barkod/kod zaten bu mağazada kayıtlı." });
@@ -314,7 +389,7 @@ stationsNestedRouter.get(
 
       const item = await prisma.station.findFirst({
         where:{ id: stationId, storeId },
-        select:{ id:true, storeId:true, type:true, name:true, code:true, isActive:true, zone:true, description:true, createdAt:true, updatedAt:true }
+        select:{ id:true, storeId:true, type:true, name:true, code:true, isActive:true, zone:true, description:true, isGroup:true, groupId:true, totalCount:true, createdAt:true, updatedAt:true }
       });
       if(!item) return res.status(404).json({message:"Bulunamadı"});
       res.json(item);
@@ -338,12 +413,33 @@ stationsNestedRouter.post(
       if (!store) return res.status(404).json({ message: "Mağaza bulunamadı" });
 
       const data = pickStationPayload(req.body);
-      if (!data.type || !data.name || !data.code)
-        return res.status(400).json({ message: "type, name, code zorunlu." });
+      if (!data.type || !data.name)
+        return res.status(400).json({ message: "type ve name zorunlu." });
       if (!("isActive" in data)) data.isActive = true;
 
-      const created = await prisma.station.create({ data: { ...data, storeId } });
-      res.json({ message: "İstasyon eklendi", station: created });
+      if (data.isGroup && data.totalCount > 1) {
+        const count = data.totalCount;
+        const codes = await generateNextCodes(storeId, count);
+        const groupId = crypto.randomUUID();
+
+        const stations = codes.map(code => ({
+          ...data,
+          storeId,
+          code,
+          totalCount: 1,
+          groupId
+        }));
+
+        await prisma.station.createMany({ data: stations });
+        return res.json({ message: `${count} istasyon eklendi`, groupId });
+      } else {
+        if (!data.code) {
+          const [code] = await generateNextCodes(storeId, 1);
+          data.code = code;
+        }
+        const created = await prisma.station.create({ data: { ...data, storeId } });
+        res.json({ message: "İstasyon eklendi", station: created });
+      }
     } catch (e) {
       if (e.code === "P2002")
         return res.status(409).json({ message: "Bu barkod/kod zaten bu mağazada kayıtlı." });

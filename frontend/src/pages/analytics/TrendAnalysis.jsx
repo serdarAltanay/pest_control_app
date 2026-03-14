@@ -220,7 +220,7 @@ export default function TrendAnalysis() {
         if (inRange(a.when, start, end)) {
           byType[t][i].total += 1;
           const hit =
-            a.aktiviteVar === true ||
+            !!a.aktiviteVar ||
             Number(a.hedefZararliSayisi) > 0 ||
             (Number(a.karasinek || 0) + Number(a.sivrisinek || 0) + Number(a.diger || 0) + Number(a.guve || 0)) > 0;
           if (hit) byType[t][i].count += 1;
