@@ -20,6 +20,20 @@
   }
 }
 
+.page-header {
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
+  
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+}
+
 // sidebar kapalıyken içerik sola yaklaşsın
 .sidebar.closed~.content {
   margin-left: $sidebar-collapsed;

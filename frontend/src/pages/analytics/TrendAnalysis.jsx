@@ -215,15 +215,22 @@ export default function TrendAnalysis() {
       const t = a.type;
       if (!byType[t]) continue;
 
+      const st = stations.find(s => s.id === a.stationId);
+      const totalInGroup = st?.totalCount || 1;
+
       for (let i = 0; i < months.length; i++) {
         const { start, end } = months[i];
         if (inRange(a.when, start, end)) {
-          byType[t][i].total += 1;
-          const hit =
-            !!a.aktiviteVar ||
-            Number(a.hedefZararliSayisi) > 0 ||
-            (Number(a.karasinek || 0) + Number(a.sivrisinek || 0) + Number(a.diger || 0) + Number(a.guve || 0)) > 0;
-          if (hit) byType[t][i].count += 1;
+          byType[t][i].total += totalInGroup;
+          
+          // Aktivite her türlü zararlı sayısını veya tüketimi de kapsamalı
+          const hitCount = 
+            Number(a.aktiviteVar || 0) || 
+            Number(a.yemTuketim || 0) || 
+            Number(a.hedefZararliSayisi || 0) || 
+            (Number(a.karasinek || 0) + Number(a.sivrisinek || 0) + Number(a.diger || 0) + Number(a.guve || 0));
+          
+          if (hitCount > 0) byType[t][i].count += hitCount;
           break;
         }
       }

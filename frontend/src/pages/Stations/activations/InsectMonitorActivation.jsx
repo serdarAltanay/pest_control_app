@@ -54,7 +54,7 @@ export default function InsectMonitorActivation() {
   }, [stationId]);
 
   const title = useMemo(
-    () => (station ? `tura | Böcek Monitörü | ${station.name}` : "Yükleniyor…"),
+    () => (station ? `Böcek Monitörü | ${station.name}` : "Yükleniyor…"),
     [station]
   );
 
@@ -93,7 +93,13 @@ export default function InsectMonitorActivation() {
       const url = visitId
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
-      await api.post(url, { type: "BOCEK_MONITOR", ...form, subCode: selectedSubCode });
+      const payload = { 
+        type: "BOCEK_MONITOR", 
+        ...form, 
+        aktiviteVar: Number(form.hedefZararliSayisi) || 0,
+        subCode: selectedSubCode 
+      };
+      await api.post(url, payload);
       toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       navigate(-1);
     } catch (e) {

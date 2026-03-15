@@ -237,7 +237,8 @@ export default function StationDetail({ openEdit = false }) {
       inRange.forEach((a) => {
         const mk = ymKey(new Date(a.observedAt));
         const r = a.risk || "RISK_YOK";
-        if (riskMap[mk] && RISK_KEYS.includes(r)) riskMap[mk][r] += 1;
+        const countToAdd = station?.totalCount || 1; // Grup ise tüm istasyonları say
+        if (riskMap[mk] && RISK_KEYS.includes(r)) riskMap[mk][r] += countToAdd;
       });
       setRiskByMonth(monthKeys.map((m) => riskMap[m]));
 
@@ -249,7 +250,10 @@ export default function StationDetail({ openEdit = false }) {
         );
         inRange.forEach((a) => {
           const mk = ymKey(new Date(a.observedAt));
-          if (a[sec.key]) secMap[mk].changed += 1;
+          // Numeric ise direkt ekle, değilse 1 ekle (grup ise numeric gelmeli)
+          const val = Number(a[sec.key]) || 0;
+          if (val > 0) secMap[mk].changed += val;
+          else if (a[sec.key] === true) secMap[mk].changed += 1;
         });
         setSecondaryByMonth(monthKeys.map((m) => secMap[m]));
       } else {

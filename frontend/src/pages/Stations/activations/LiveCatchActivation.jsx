@@ -56,7 +56,7 @@ export default function LiveCatchActivation() {
   }, [stationId]);
 
   const title = useMemo(
-    () => (station ? `tura | Canlı Yakalama İstasyonu | ${station.name}` : "Yükleniyor…"),
+    () => (station ? `Canlı Yakalama İstasyonu | ${station.name}` : "Yükleniyor…"),
     [station]
   );
 
@@ -95,7 +95,12 @@ export default function LiveCatchActivation() {
       const url = visitId
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
-      await api.post(url, { type: "CANLI_YAKALAMA", ...form, subCode: selectedSubCode });
+      const payload = { 
+        type: "CANLI_YAKALAMA", 
+        ...form, 
+        subCode: selectedSubCode 
+      };
+      await api.post(url, payload);
       toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       navigate(-1);
     } catch (e) {

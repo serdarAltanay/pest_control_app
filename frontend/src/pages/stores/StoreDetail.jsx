@@ -367,7 +367,8 @@ export default function StoreDetail() {
                         if (isNaN(startNum)) return s.code;
                         const endNum = startNum + s.totalCount - 1;
                         const endSuffix = String(endNum).padStart(startSuffix.length, "0");
-                        return `${s.code} - ${prefix}-${endSuffix}`;
+                        const endCode = prefix ? `${prefix}-${endSuffix}` : endSuffix;
+                        return `${s.code} - ${endCode}`;
                       })()}
                     </td>
                     <td className="strong">

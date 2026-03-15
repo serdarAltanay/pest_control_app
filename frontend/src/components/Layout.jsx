@@ -9,7 +9,7 @@ import { ProfileContext } from "../context/ProfileContext";
 import { useLocation } from "react-router-dom";
 import useHeartbeat from "../hooks/useHeartbeat";
 
-export default function Layout({ children, onCustomerClick }) {
+export default function Layout({ children, onCustomerClick, title }) {
   const { profile } = useContext(ProfileContext);
   const role = (profile?.role || "").toLowerCase();
   const location = useLocation();
@@ -40,7 +40,14 @@ export default function Layout({ children, onCustomerClick }) {
         mobileOpen={mobileOpen}
         onMobileClose={closeMobileSidebar}
       />
-      <main className="content">{children}</main>
+      <main className="content">
+        {title && (
+          <div className="page-header">
+            <h1 className="page-title">{title}</h1>
+          </div>
+        )}
+        {children}
+      </main>
       <Footer />
     </div>
   );

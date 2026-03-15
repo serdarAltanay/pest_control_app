@@ -58,7 +58,7 @@ export default function RodentBaitActivation() {
   }, [stationId]);
 
   const title = useMemo(
-    () => (station ? `tura | Fare Yemleme | ${station.name}` : "Yükleniyor…"),
+    () => (station ? `Fare Yemleme İstasyonu | ${station.name}` : "Yükleniyor…"),
     [station]
   );
 
@@ -102,6 +102,7 @@ export default function RodentBaitActivation() {
       const payload = { 
         type: "FARE_YEMLEME", 
         ...form,
+        aktiviteVar: Number(form.yemTuketim) || 0, // Trend analizinde görünmesi için
         subCode: selectedSubCode // Optional: record which sub-unit if needed
       };
 

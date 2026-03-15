@@ -60,7 +60,7 @@ export default function EFKActivation() {
   }, [stationId]);
 
   const title = useMemo(
-    () => (station ? `tura | Elektrikli Sinek Tutucu | ${station.name}` : "Yükleniyor…"),
+    () => (station ? `Elektrikli Sinek Tutucu | ${station.name}` : "Yükleniyor…"),
     [station]
   );
 
@@ -99,7 +99,13 @@ export default function EFKActivation() {
       const url = visitId
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
-      await api.post(url, { type: "ELEKTRIKLI_SINEK_TUTUCU", ...form, subCode: selectedSubCode });
+      const payload = { 
+        type: "ELEKTRIKLI_SINEK_TUTUCU", 
+        ...form,
+        aktiviteVar: (Number(form.karasinek) || 0) + (Number(form.sivrisinek) || 0) + (Number(form.diger) || 0),
+        subCode: selectedSubCode 
+      };
+      await api.post(url, payload);
       toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       navigate(-1);
     } catch (e) {
