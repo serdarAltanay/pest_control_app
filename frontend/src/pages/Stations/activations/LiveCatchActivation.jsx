@@ -60,13 +60,42 @@ export default function LiveCatchActivation() {
     [station]
   );
 
+  const groupUnitCodes = useMemo(() => {
+    if (!station || !station.isGroup || !station.totalCount) return [];
+    const codes = [];
+    const baseCode = station.code || "ST";
+    const prefixMatch = baseCode.match(/^(.*?)(\d+)$/);
+    if (prefixMatch) {
+      const prefix = prefixMatch[1];
+      const startNum = parseInt(prefixMatch[2], 10);
+      for (let i = 0; i < station.totalCount; i++) {
+        const num = startNum + i;
+        const suffix = String(num).padStart(prefixMatch[2].length, '0');
+        codes.push(`${prefix}${suffix}`);
+      }
+    } else {
+      for (let i = 1; i <= station.totalCount; i++) {
+        codes.push(`${baseCode}-${String(i).padStart(3, '0')}`);
+      }
+    }
+    return codes;
+  }, [station]);
+
+  const [selectedSubCode, setSelectedSubCode] = useState("");
+
+  useEffect(() => {
+    if (groupUnitCodes.length > 0 && !selectedSubCode) {
+      setSelectedSubCode(groupUnitCodes[0]);
+    }
+  }, [groupUnitCodes, selectedSubCode]);
+
   const save = async () => {
     try {
       setSaving(true);
       const url = visitId
         ? `/activations/visits/${visitId}/stations/${stationId}`
         : `/activations/stations/${stationId}`;
-      await api.post(url, { type: "CANLI_YAKALAMA", ...form });
+      await api.post(url, { type: "CANLI_YAKALAMA", ...form, subCode: selectedSubCode });
       toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
       navigate(-1);
     } catch (e) {
@@ -75,13 +104,6 @@ export default function LiveCatchActivation() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const switchStation = (id) => {
-    const baseUrl = visitId 
-      ? `/admin/stores/${storeId}/visits/${visitId}/stations/${id}/activation/live-catch`
-      : `/admin/stores/${storeId}/stations/${id}/activation/live-catch`;
-    navigate(baseUrl);
   };
 
   return (
@@ -96,29 +118,34 @@ export default function LiveCatchActivation() {
             <div className="warn">Uyarı: Bu sayfa Canlı Yakalama tipine özeldir (mevcut: <b>{station.type}</b>).</div>
           )}
 
-          {groupStations.length > 1 && (
+          {station?.isGroup && (
             <div className="group-selection">
               <div className="group-title">
                 <span className="icon">📂</span>
-                İstasyon Grubu Seçimi
+                Grup İçi Ünite Seçimi
               </div>
-              <div className="station-list">
-                {groupStations.map(s => (
-                  <button
-                    key={s.id}
-                    className={`station-item ${s.id === Number(stationId) ? 'active' : ''}`}
-                    onClick={() => switchStation(s.id)}
-                  >
-                    {s.code}
-                  </button>
-                ))}
+              <div className="sub-station-selector">
+                <select 
+                  className="select" 
+                  value={selectedSubCode} 
+                  onChange={e => setSelectedSubCode(e.target.value)}
+                >
+                  {groupUnitCodes.map(code => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+                <small className="help-text">Gruptaki hangi ünite için işlem yapıldığını seçin.</small>
               </div>
             </div>
           )}
 
           <div className="activation-title">
-            <div className="name">{station?.name} <span className="sep">|</span> {station?.code}</div>
-            <div className="subtitle">Dikkat: <b>{station?.name}</b> isimli istasyonu için işlem yapıyorsunuz.</div>
+            <div className="name">
+              {station?.name} 
+              <span className="sep">|</span> 
+              {station?.isGroup ? selectedSubCode : station?.code}
+            </div>
+            <div className="subtitle">Dikkat: <b>{station?.name}</b> {station?.isGroup ? `(${selectedSubCode})` : ""} isimli istasyonu için işlem yapıyorsunuz.</div>
           </div>
 
           {loading && <div className="skeleton">Yükleniyor…</div>}
@@ -135,10 +162,21 @@ export default function LiveCatchActivation() {
                 ].map(([lbl, key]) => (
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
-                    <label className="switch">
-                      <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
-                      <span className="slider" />
-                    </label>
+                    {station?.isGroup ? (
+                      <input 
+                        className="input" 
+                        type="number" 
+                        min={0} 
+                        max={station.totalCount} 
+                        value={form[key]} 
+                        onChange={e => set(key, Number(e.target.value || 0))} 
+                      />
+                    ) : (
+                      <label className="switch">
+                        <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
+                        <span className="slider" />
+                      </label>
+                    )}
                   </div>
                 ))}
 

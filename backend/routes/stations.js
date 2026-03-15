@@ -223,21 +223,13 @@ stationsRouter.post(
       if (!("isActive" in data)) data.isActive = true;
 
       if (data.isGroup && data.totalCount > 1) {
-        const count = data.totalCount;
-        const codes = await generateNextCodes(sid, count);
-        const groupId = crypto.randomUUID();
-
-        // Her biri için ayrı kayıt (totalCount: 1)
-        const stations = codes.map(code => ({
-          ...data,
-          storeId: sid,
-          code,
-          totalCount: 1,
-          groupId
-        }));
-
-        await prisma.station.createMany({ data: stations });
-        return res.json({ message: `${count} istasyon eklendi`, groupId });
+        // Tek bir kayıt oluşturuyoruz (totalCount alanı ile toplu olduğunu belirtiyoruz)
+        if (!data.code) {
+          const [code] = await generateNextCodes(sid, 1);
+          data.code = code;
+        }
+        const created = await prisma.station.create({ data: { ...data, storeId: sid } });
+        return res.json({ message: `Grup istasyonu eklendi (${data.totalCount} adet)`, station: created });
       } else {
         // Tek istasyon
         if (!data.code) {
@@ -418,20 +410,12 @@ stationsNestedRouter.post(
       if (!("isActive" in data)) data.isActive = true;
 
       if (data.isGroup && data.totalCount > 1) {
-        const count = data.totalCount;
-        const codes = await generateNextCodes(storeId, count);
-        const groupId = crypto.randomUUID();
-
-        const stations = codes.map(code => ({
-          ...data,
-          storeId,
-          code,
-          totalCount: 1,
-          groupId
-        }));
-
-        await prisma.station.createMany({ data: stations });
-        return res.json({ message: `${count} istasyon eklendi`, groupId });
+        if (!data.code) {
+          const [code] = await generateNextCodes(storeId, 1);
+          data.code = code;
+        }
+        const created = await prisma.station.create({ data: { ...data, storeId } });
+        return res.json({ message: `Grup istasyonu eklendi (${data.totalCount} adet)`, station: created });
       } else {
         if (!data.code) {
           const [code] = await generateNextCodes(storeId, 1);
