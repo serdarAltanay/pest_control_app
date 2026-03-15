@@ -111,10 +111,7 @@ export default function StationModal({ storeId, initial, onClose, onSaved }) {
               <label>{form.isGroup ? "Grup Adı *" : "İstasyon Adı *"}</label>
               <input name="name" value={form.name} onChange={onChange} required />
             </div>
-            <div>
-              <label>Barkod &amp; QR *</label>
-              <input name="code" value={form.code} onChange={onChange} required />
-            </div>
+            {/* Barkod & QR otomatik üretiliyor */}
             <div className="station-modal-group-options">
               <div className="toggle-row">
                 <div className="label-group">

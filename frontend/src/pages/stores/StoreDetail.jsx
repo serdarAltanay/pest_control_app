@@ -357,7 +357,19 @@ export default function StoreDetail() {
                     onKeyDown={(e) => { if (e.key === "Enter") navigate(`/admin/stations/${s.id}`); }}
                     title="Detay"
                   >
-                    <td>{s.code}</td>
+                    <td>
+                      {(() => {
+                        if (!s.isGroup || s.totalCount <= 1) return s.code;
+                        const parts = s.code.split("-");
+                        const prefix = parts.slice(0, -1).join("-");
+                        const startSuffix = parts[parts.length - 1];
+                        const startNum = parseInt(startSuffix, 10);
+                        if (isNaN(startNum)) return s.code;
+                        const endNum = startNum + s.totalCount - 1;
+                        const endSuffix = String(endNum).padStart(startSuffix.length, "0");
+                        return `${s.code} - ${prefix}-${endSuffix}`;
+                      })()}
+                    </td>
                     <td className="strong">
                       {s.name}
                       {s.isGroup && (

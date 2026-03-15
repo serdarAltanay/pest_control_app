@@ -75,15 +75,26 @@ async function generateNextCodes(storeId, count) {
   });
 
   let maxSuffix = 0;
-  // Match prefix-digits or just digits if prefix is empty
+  // Regex to match prefix-[digits]
   const regex = new RegExp(`^${prefix}-(\\d+)$`);
   
   for (const s of stations) {
     if (!s.code) continue;
+    
+    // Check if it matches exactly prefix-[digits]
     const match = s.code.match(regex);
     if (match) {
       const num = parseInt(match[1], 10);
       if (num > maxSuffix) maxSuffix = num;
+    } else {
+      // Fallback: If someone manually entered a code like "00015-001X", 
+      // we still try to find the numeric part after the last "-"
+      const parts = s.code.split("-");
+      const lastPart = parts[parts.length - 1];
+      const num = parseInt(lastPart, 10);
+      if (!isNaN(num) && num > maxSuffix) {
+        maxSuffix = num;
+      }
     }
   }
 
@@ -223,19 +234,17 @@ stationsRouter.post(
       if (!("isActive" in data)) data.isActive = true;
 
       if (data.isGroup && data.totalCount > 1) {
-        // Tek bir kayıt oluşturuyoruz (totalCount alanı ile toplu olduğunu belirtiyoruz)
-        if (!data.code) {
-          const [code] = await generateNextCodes(sid, 1);
-          data.code = code;
-        }
+        // Otomatik kod üretimi (isGroup için)
+        const [startCode] = await generateNextCodes(sid, 1);
+        data.code = startCode;
+        
         const created = await prisma.station.create({ data: { ...data, storeId: sid } });
         return res.json({ message: `Grup istasyonu eklendi (${data.totalCount} adet)`, station: created });
       } else {
-        // Tek istasyon
-        if (!data.code) {
-          const [code] = await generateNextCodes(sid, 1);
-          data.code = code;
-        }
+        // Tek istasyon (her zaman otomatik kod)
+        const [code] = await generateNextCodes(sid, 1);
+        data.code = code;
+        
         const created = await prisma.station.create({ data: { ...data, storeId: sid } });
         res.json({ message: "İstasyon eklendi", station: created });
       }
@@ -410,17 +419,17 @@ stationsNestedRouter.post(
       if (!("isActive" in data)) data.isActive = true;
 
       if (data.isGroup && data.totalCount > 1) {
-        if (!data.code) {
-          const [code] = await generateNextCodes(storeId, 1);
-          data.code = code;
-        }
+        // Otomatik kod üretimi (isGroup için)
+        const [startCode] = await generateNextCodes(storeId, 1);
+        data.code = startCode;
+        
         const created = await prisma.station.create({ data: { ...data, storeId } });
         return res.json({ message: `Grup istasyonu eklendi (${data.totalCount} adet)`, station: created });
       } else {
-        if (!data.code) {
-          const [code] = await generateNextCodes(storeId, 1);
-          data.code = code;
-        }
+        // Tek istasyon (her zaman otomatik kod)
+        const [code] = await generateNextCodes(storeId, 1);
+        data.code = code;
+        
         const created = await prisma.station.create({ data: { ...data, storeId } });
         res.json({ message: "İstasyon eklendi", station: created });
       }
