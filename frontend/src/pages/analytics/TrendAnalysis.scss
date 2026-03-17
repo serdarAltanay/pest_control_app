@@ -124,7 +124,6 @@
     text-transform: uppercase;
     letter-spacing: .6px;
     color: #e11d48;
-    /* marka vurgusu */
   }
 
   .report-meta {
@@ -260,6 +259,9 @@
   margin-top: 16px;
 
   .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     height: 38px;
     padding: 0 14px;
     border-radius: 10px;
@@ -267,8 +269,17 @@
     cursor: pointer;
     border: 1px solid var(--border);
     background: var(--surface);
+    text-decoration: none;
+    font-size: 13px;
+    color: inherit;
+    transition: opacity .15s, filter .15s;
+
+    &:hover {
+      opacity: .85;
+    }
   }
 
+  /* Mevcut butonlar — değişmedi */
   .btn.primary {
     background: #2563eb;
     color: #fff;
@@ -277,6 +288,28 @@
 
   .btn.ghost {
     background: var(--surface);
+  }
+
+  /* ── YENİ: PDF Raporu butonu ── */
+  .btn.pdf {
+    background: #0d9488;
+    color: #fff;
+    border-color: #0f766e;
+    gap: 6px;
+
+    /* isteğe bağlı küçük ikon (SVG data-url) */
+    &::before {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3Cline x1='16' y1='13' x2='8' y2='13'/%3E%3Cline x1='16' y1='17' x2='8' y2='17'/%3E%3Cpolyline points='10 9 9 9 8 9'/%3E%3C/svg%3E") center / contain no-repeat;
+    }
+
+    &:hover {
+      filter: brightness(1.08);
+      opacity: 1;
+    }
   }
 }
 
@@ -332,12 +365,10 @@
     margin-bottom: 20px !important;
   }
 
-  /* Grafikler için genislik ayari */
   .recharts-responsive-container {
     width: 100% !important;
   }
 
-  /* Tablolar tasmasin/kesilmesin diye scroll kapat */
   .table-wrap {
     overflow: visible !important;
   }
