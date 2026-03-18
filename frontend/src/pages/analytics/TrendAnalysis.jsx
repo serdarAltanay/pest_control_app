@@ -66,6 +66,16 @@ const SPECIES_COLORS = {
 };
 
 const PIE_PALETTE = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4"];
+const METHOD_LABELS = {
+  ULV: "ULV Uygulama",
+  PUSKURTME: "Püskürtme",
+  JEL: "Jel Uygulama",
+  SISLEME: "Sisleme",
+  YENILEME: "Yenileme",
+  ATOMIZER: "Atomizer",
+  YEMLEME: "Yemleme",
+  "PULVERİZE": "Pulverize"
+};
 const TEAL = "#0d9488";
 const RED = "#ef4444";
 const GREEN = "#22c55e";
@@ -1117,17 +1127,27 @@ export default function TrendPDFReport() {
                     <div key={key} className="tpdf-chem-section">
                       <SubTitle>{label}</SubTitle>
                       <table className="tpdf-table">
-                        <thead><tr><th>Periyot Tarihi</th><th>Etken Madde</th><th>Miktar ({unit})</th></tr></thead>
+                        <thead>
+                          <tr>
+                            <th>Periyot Tarihi</th>
+                            <th>Etken Madde</th>
+                            <th>Uygulama Şekli</th>
+                            <th>Ruhsat Tarihi</th>
+                            <th>Miktar ({unit})</th>
+                          </tr>
+                        </thead>
                         <tbody>
                           {items.map((c, i) => (
                             <tr key={i}>
                               <td>{fmtDate(c.applicationDate || c.date || c.createdAt)}</td>
                               <td>{c.activeIngredient || c.productName || c.name || "—"}</td>
+                              <td>{METHOD_LABELS[c.method] || c.method || "—"}</td>
+                              <td>{c.licenseDate || "—"}</td>
                               <td>{c.amount}</td>
                             </tr>
                           ))}
                           <tr className="tpdf-table__total-row">
-                            <td colSpan={2}><strong>Toplam</strong></td>
+                            <td colSpan={4}><strong>Toplam</strong></td>
                             <td><strong>{total}</strong></td>
                           </tr>
                         </tbody>

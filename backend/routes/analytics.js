@@ -154,7 +154,8 @@ router.get("/stores/:storeId/chemicals", auth, roleCheck(["admin","employee","cu
       method: l.method,
       name: l.biosidal?.name || "Bilinmiyor",
       activeIngredient: l.biosidal?.activeIngredient,
-      pestType: l.biosidal?.targetPest || ""
+      pestType: l.biosidal?.targetPest || "",
+      licenseDate: l.biosidal?.licenseDate || "—"
     }));
 
     res.json(mapped);
