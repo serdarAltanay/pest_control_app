@@ -33,7 +33,7 @@ export default function InsectMonitorActivation() {
   const navigate = useNavigate();
 
   const [station, setStation] = useState(null);
-  const [groupStations, setGroupStations] = useState([]);
+  const [selectedSubCode, setSelectedSubCode] = useState("");
   const [groupActivationStatus, setGroupActivationStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,45 +48,70 @@ export default function InsectMonitorActivation() {
     setForm(INITIAL_FORM);
 
     api.get(`/stations/${stationId}`)
-      .then(r => {
+      .then(async r => {
         if (!m) return;
         setStation(r.data);
-        if (r.data.groupId) {
-          api.get(`/stations/groupId/${r.data.groupId}`)
-            .then(gr => {
-              if (!m) return;
-              const siblings = Array.isArray(gr.data) ? gr.data : [];
-              setGroupStations(siblings);
-              checkGroupActivationStatus(siblings);
-            })
-            .catch(e => console.error("Grup istasyonları alınamadı", e));
-        } else {
-          setGroupStations([]);
+        
+        if (r.data.isGroup && r.data.totalCount) {
+          try {
+            const url = visitId 
+              ? `/activations/visits/${visitId}/stations/${stationId}?limit=500`
+              : `/activations/stations/${stationId}?limit=500`;
+            const actRes = await api.get(url);
+            const items = Array.isArray(actRes.data?.items) ? actRes.data.items : [];
+            
+            let relevantItems = items;
+            if (!visitId) {
+                const today = new Date().toDateString();
+                relevantItems = items.filter(a => new Date(a.createdAt).toDateString() === today);
+            }
+            
+            const statusMap = {};
+            relevantItems.forEach(a => {
+              if (a.subCode) statusMap[a.subCode] = true;
+            });
+            if (m) setGroupActivationStatus(statusMap);
+          } catch (e) {
+            console.error("Aktivasyon durumları alınamadı", e);
+          }
         }
       })
       .catch(e => { console.error(e); toast.error("İstasyon alınamadı"); })
       .finally(() => m && setLoading(false));
     return () => (m = false);
-  }, [stationId]);
-
-  const checkGroupActivationStatus = async (stations) => {
-    const statusMap = {};
-    for (const st of stations) {
-      try {
-        const { data } = await api.get(`/activations/stations/${st.id}?limit=1&offset=0`);
-        const items = Array.isArray(data?.items) ? data.items : [];
-        statusMap[st.id] = items.length > 0;
-      } catch {
-        statusMap[st.id] = false;
-      }
-    }
-    setGroupActivationStatus(statusMap);
-  };
+  }, [stationId, visitId]);
 
   const title = useMemo(
     () => (station ? `Böcek Monitörü | ${station.name}` : "Yükleniyor…"),
     [station]
   );
+
+  const groupUnitCodes = useMemo(() => {
+    if (!station || !station.isGroup || !station.totalCount) return [];
+    const codes = [];
+    const baseCode = station.code || "ST";
+    const prefixMatch = baseCode.match(/^(.*?)(\d+)$/);
+    if (prefixMatch) {
+      const prefix = prefixMatch[1];
+      const startNum = parseInt(prefixMatch[2], 10);
+      for (let i = 0; i < station.totalCount; i++) {
+        const num = startNum + i;
+        const suffix = String(num).padStart(prefixMatch[2].length, '0');
+        codes.push(`${prefix}${suffix}`);
+      }
+    } else {
+      for (let i = 1; i <= station.totalCount; i++) {
+        codes.push(`${baseCode}-${String(i).padStart(3, '0')}`);
+      }
+    }
+    return codes;
+  }, [station]);
+
+  useEffect(() => {
+    if (groupUnitCodes.length > 0 && !selectedSubCode) {
+      setSelectedSubCode(groupUnitCodes[0]);
+    }
+  }, [groupUnitCodes, selectedSubCode]);
 
   const save = async () => {
     try {
@@ -98,13 +123,24 @@ export default function InsectMonitorActivation() {
         type: "BOCEK_MONITOR", 
         ...form, 
         aktiviteVar: Number(form.hedefZararliSayisi) || 0,
+        subCode: station?.isGroup ? selectedSubCode : undefined,
       };
       await api.post(url, payload);
-      toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
-      if (groupStations.length > 0) {
-        setGroupActivationStatus(prev => ({ ...prev, [stationId]: true }));
+      
+      if (station?.isGroup) {
+        setGroupActivationStatus(prev => ({ ...prev, [selectedSubCode]: true }));
+        toast.success(`${selectedSubCode} aktivasyon kaydı başarıyla oluşturuldu.`);
+        
+        const nextPending = groupUnitCodes.find(c => c !== selectedSubCode && !groupActivationStatus[c]);
+        if (nextPending) {
+          switchStation(nextPending);
+        } else {
+          toast.info("Gruptaki tüm istasyonlar tamamlandı.");
+        }
+      } else {
+        toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
+        navigate(-1);
       }
-      navigate(-1);
     } catch (e) {
       console.error(e);
       toast.error("Kayıt başarısız");
@@ -113,17 +149,13 @@ export default function InsectMonitorActivation() {
     }
   };
 
-  const switchStation = (id) => {
-    const baseUrl = visitId 
-      ? `/admin/stores/${storeId}/visits/${visitId}/stations/${id}/activation/insect-monitor`
-      : `/admin/stores/${storeId}/stations/${id}/activation/insect-monitor`;
-    navigate(baseUrl);
+  const switchStation = (code) => {
+    setSelectedSubCode(code);
+    setForm(INITIAL_FORM);
   };
 
   const fillRemainingNoActivity = async () => {
-    const remaining = groupStations.filter(st => 
-      st.isActive && !groupActivationStatus[st.id]
-    );
+    const remaining = groupUnitCodes.filter(c => !groupActivationStatus[c]);
     if (remaining.length === 0) {
       toast.info("Tüm istasyonlara zaten aktivasyon girilmiş.");
       return;
@@ -133,14 +165,14 @@ export default function InsectMonitorActivation() {
     setFillingRemaining(true);
     let success = 0;
     let fail = 0;
-    for (const st of remaining) {
+    for (const code of remaining) {
       try {
         const url = visitId
-          ? `/activations/visits/${visitId}/stations/${st.id}`
-          : `/activations/stations/${st.id}`;
-        await api.post(url, NO_ACTIVITY_PAYLOAD);
+          ? `/activations/visits/${visitId}/stations/${stationId}`
+          : `/activations/stations/${stationId}`;
+        await api.post(url, { ...NO_ACTIVITY_PAYLOAD, subCode: code });
         success++;
-        setGroupActivationStatus(prev => ({ ...prev, [st.id]: true }));
+        setGroupActivationStatus(prev => ({ ...prev, [code]: true }));
       } catch {
         fail++;
       }
@@ -150,8 +182,8 @@ export default function InsectMonitorActivation() {
     if (fail > 0) toast.error(`${fail} istasyonda hata oluştu.`);
   };
 
-  const filledCount = groupStations.filter(st => groupActivationStatus[st.id]).length;
-  const activeCount = groupStations.filter(st => st.isActive).length;
+  const filledCount = groupUnitCodes.filter(c => groupActivationStatus[c]).length;
+  const activeCount = groupUnitCodes.length;
 
   return (
     <Layout title={title}>
@@ -166,38 +198,38 @@ export default function InsectMonitorActivation() {
           )}
 
           {/* Grup istasyon navigasyonu */}
-          {groupStations.length > 1 && (
+          {station?.isGroup && groupUnitCodes.length > 0 && (
             <div className="group-navigation">
               <div className="group-nav-header">
                 <span className="icon">📂</span>
-                Grup İstasyonları
+                Grup İstasyonları (Alt Üniteler)
                 <span className="group-progress">({filledCount}/{activeCount} tamamlandı)</span>
               </div>
               <div className="group-dropdown">
                 <select 
                   className="select" 
-                  value={stationId} 
+                  value={selectedSubCode} 
                   onChange={e => switchStation(e.target.value)}
                 >
-                  {groupStations.filter(st => st.isActive).map(st => (
-                    <option key={st.id} value={st.id}>
-                      {st.name || st.code} {groupActivationStatus[st.id] ? "✓" : ""}
+                  {groupUnitCodes.map(code => (
+                    <option key={code} value={code}>
+                      {code} {groupActivationStatus[code] ? "✓" : ""}
                     </option>
                   ))}
                 </select>
-                <small className="help-text">Gruptaki diğer istasyonlara geçiş yapabilirsiniz.</small>
+                <small className="help-text">Gruptaki diğer ünitelere geçiş yapabilirsiniz.</small>
               </div>
               <div className="group-station-list">
-                {groupStations.filter(st => st.isActive).map(st => (
+                {groupUnitCodes.map(code => (
                   <button
-                    key={st.id}
-                    className={`group-station-btn ${st.id === Number(stationId) ? "active" : ""} ${groupActivationStatus[st.id] ? "done" : ""}`}
-                    onClick={() => switchStation(st.id)}
-                    title={groupActivationStatus[st.id] ? "Aktivasyon girildi ✓" : "Henüz aktivasyon girilmedi"}
+                    key={code}
+                    className={`group-station-btn ${code === selectedSubCode ? "active" : ""} ${groupActivationStatus[code] ? "done" : ""}`}
+                    onClick={() => switchStation(code)}
+                    title={groupActivationStatus[code] ? "Aktivasyon girildi ✓" : "Henüz aktivasyon girilmedi"}
                   >
-                    <span className="st-name">{st.name || st.code}</span>
-                    <span className={`st-status ${groupActivationStatus[st.id] ? "ok" : "pending"}`}>
-                      {groupActivationStatus[st.id] ? "✓" : "○"}
+                    <span className="st-name">{code}</span>
+                    <span className={`st-status ${groupActivationStatus[code] ? "ok" : "pending"}`}>
+                      {groupActivationStatus[code] ? "✓" : "○"}
                     </span>
                   </button>
                 ))}
@@ -218,9 +250,9 @@ export default function InsectMonitorActivation() {
             <div className="name">
               {station?.name} 
               <span className="sep">|</span> 
-              {station?.code}
+              {station?.isGroup ? selectedSubCode : station?.code}
             </div>
-            <div className="subtitle">Dikkat: <b>{station?.name}</b> isimli istasyonu için işlem yapıyorsunuz.</div>
+            <div className="subtitle">Dikkat: <b>{station?.name}</b> {station?.isGroup ? `(${selectedSubCode})` : ""} isimli istasyonu için işlem yapıyorsunuz.</div>
           </div>
 
           {loading && <div className="skeleton">Yükleniyor…</div>}
