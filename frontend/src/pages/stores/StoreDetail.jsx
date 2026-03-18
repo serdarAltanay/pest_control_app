@@ -499,13 +499,13 @@ export default function StoreDetail() {
 
             {Recharts && pieData.length > 0 ? (
               <Recharts.ResponsiveContainer width="100%" height={260}>
-                <Recharts.PieChart>
+                <Recharts.PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                   <Recharts.Pie
                     data={pieData}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={60}
-                    outerRadius={100}
+                    innerRadius={50}
+                    outerRadius={80}
                     label
                   >
                     {pieData.map((_, index) => (
