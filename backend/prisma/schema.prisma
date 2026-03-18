@@ -251,6 +251,8 @@ model StationActivation {
   type       StationType
   observedAt DateTime    @default(now())
 
+  subCode     String?   // Grouped station alt kodu (örn: ST-001)
+
   aktiviteVar Int?      @default(0)
   risk        RiskLevel @default(RISK_YOK)
   notes       String?

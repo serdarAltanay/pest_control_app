@@ -218,6 +218,7 @@ router.post("/", auth, roleCheck(["admin","employee"]), async (req,res)=>{
     const base = {
       stationId: st.id,
       storeId: st.storeId,
+      subCode: req.body?.subCode ? String(req.body.subCode).trim() : null,
       type: String(req.body?.type || ""),
       risk: String(req.body?.risk || ""),
       aktiviteVar: Number(req.body?.aktiviteVar) || 0,
@@ -259,6 +260,7 @@ router.post("/stations/:stationId", auth, roleCheck(["admin","employee"]), async
     const base = {
       stationId: st.id,
       storeId: st.storeId,
+      subCode: req.body?.subCode ? String(req.body.subCode).trim() : null,
       type: String(req.body?.type || ""),
       risk: String(req.body?.risk || ""),
       aktiviteVar: Number(req.body?.aktiviteVar) || 0,
@@ -311,6 +313,7 @@ router.post("/visits/:visitId/stations/:stationId", auth, roleCheck(["admin","em
       stationId: station.id,
       storeId: station.storeId,
       visitId: visit.id, // şeman varsa
+      subCode: req.body?.subCode ? String(req.body.subCode).trim() : null,
       type: String(req.body?.type || ""),
       risk: String(req.body?.risk || ""),
       aktiviteVar: !!req.body?.aktiviteVar,
@@ -343,6 +346,7 @@ router.put("/:id", auth, roleCheck(["admin","employee"]), async (req,res)=>{
     if(!old) return res.status(404).json({message:"Bulunamadı"});
 
     const data = {};
+    if ("subCode" in req.body) data.subCode = req.body.subCode ? String(req.body.subCode).trim() : null;
     if ("type" in req.body) data.type = String(req.body.type);
     if ("risk" in req.body) data.risk = String(req.body.risk);
     if ("aktiviteVar" in req.body) data.aktiviteVar = Number(req.body.aktiviteVar) || 0;
