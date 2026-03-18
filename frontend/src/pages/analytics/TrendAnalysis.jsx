@@ -997,66 +997,89 @@ export default function TrendPDFReport() {
               {/* ════ DETAYLI KARŞILAŞTIRMA (her grup için) ════ */}
               {Object.entries(grps).map(([grp, sts]) => {
                 if (!sts.length || !months.length) return null;
+
+                // Group-specific headers
+                let extraHeaders = [];
+                if (grp === "toxic") extraHeaders = ["Aktivite", "Deforme Yem", "Yem Değişimi", "Notlar"];
+                else if (grp === "nontoxic") extraHeaders = ["Hareket Var", "Zararlı Türleri", "Deformasyon", "Değişim"];
+                else if (grp === "indoor_fly" || grp === "outdoor_fly") extraHeaders = ["Karasinek", "Sivrisinek", "Diğer", "Toplam", "Floresan", "EFK Arıza"];
+
                 return (
                   <div className="tpdf-card tpdf-card--overflow" key={grp}>
                     <h2 className="tpdf-card__h2">{GROUP_LABEL[grp]} - Detaylı Karşılaştırma</h2>
                     <div className="tpdf-scroll-x">
-                      <table className="tpdf-table tpdf-table--comparison">
+                      <table className="tpdf-table tpdf-table--detailed">
                         <thead>
                           <tr>
                             <th>İstasyon No</th>
-                            {months.map(m => <th key={m.label}>{m.fullLabel} {year}</th>)}
+                            <th>Tarih</th>
+                            {extraHeaders.map(h => <th key={h}>{h}</th>)}
                           </tr>
                         </thead>
                         <tbody>
-                          {sts.map(s => (
-                            <tr key={s.id}>
-                              <td className="tpdf-td-bold">{s.code || `#${s.id}`}</td>
-                              {months.map(m => {
-                                const acts = actsInPeriod.filter(a =>
-                                  a.stationId === s.id && inRange(a.when, m.start, m.end)
-                                );
-                                if (!acts.length) return <td key={m.label} className="tpdf-td-empty">—</td>;
-                                const a = acts.sort((x, y) => new Date(y.when) - new Date(x.when))[0];
-                                const isBroken = a.durum === "KIRIK_KAYIP" || a.isKirikKayip || a.kirikKayip;
-                                const hasAct = Number(a.aktiviteVar) > 0 || Number(a.yemTuketim) > 0;
-                                const flyTotal = (Number(a.karasinek) || 0) + (Number(a.sivrisinek) || 0);
-                                const lampChanged = a.floresanDegistirildi || a.lampChanged;
-                                return (
-                                  <td key={m.label}>
-                                    <div className="tpdf-cmp-date">{fmtDate(a.when)}</div>
-                                    {isBroken && <div className="tpdf-cmp-chip tpdf-cmp-chip--broken">İstasyon Kırık / Kayıp</div>}
-                                    {!isBroken && grp === "toxic" && (
-                                      <div className={`tpdf-cmp-chip ${hasAct ? "tpdf-cmp-chip--active" : "tpdf-cmp-chip--inactive"}`}>
-                                        {hasAct ? "Yem Tüketimi Var" : "Yem Tüketimi Yok"}
-                                      </div>
-                                    )}
-                                    {!isBroken && grp === "nontoxic" && (
-                                      <>
-                                        <div className={`tpdf-cmp-chip ${hasAct ? "tpdf-cmp-chip--active" : "tpdf-cmp-chip--inactive"}`}>
-                                          {hasAct ? "Hareket Var" : "Hareket Yok"}
-                                        </div>
-                                        {hasAct && (a.pestSpecies || a.species) && (
-                                          <div className="tpdf-cmp-species">
-                                            {(a.pestSpecies || a.species).split(",").map((s, idx) => (
-                                              <div key={idx}>{s.trim()}</div>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
-                                    {!isBroken && (grp === "indoor_fly" || grp === "outdoor_fly") && (
-                                      <>
-                                        <div className="tpdf-cmp-count">Sayım: <strong>{flyTotal}</strong></div>
-                                        {lampChanged && <div className="tpdf-cmp-note">Floresan: Değiştirildi</div>}
-                                        {!lampChanged && <div className="tpdf-cmp-note">Floresan: Değiştirilmedi</div>}
-                                      </>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
+                          {sts.map(s => {
+                            const sActs = activations.filter(a => a.stationId === s.id && inRange(a.when, months[0].start, months[months.length - 1].end))
+                              .sort((a, b) => new Date(b.when) - new Date(a.when));
+
+                            if (sActs.length === 0) {
+                              return (
+                                <tr key={s.id}>
+                                  <td className="tpdf-td-bold">{s.code || `#${s.id}`}</td>
+                                  <td colSpan={extraHeaders.length + 1} className="tpdf-td-empty">Kayıt bulunamadı</td>
+                                </tr>
+                              );
+                            }
+
+                            return sActs.map((a, idx) => {
+                              const isBroken = a.durum === "KIRIK_KAYIP" || a.isKirikKayip || a.kirikKayip;
+                              const hasAct = Number(a.aktiviteVar) > 0 || Number(a.yemTuketim) > 0;
+                              
+                              return (
+                                <tr key={`${s.id}-${idx}`}>
+                                  {idx === 0 ? (
+                                    <td rowSpan={sActs.length} className="tpdf-td-bold" style={{ verticalAlign: 'top', paddingTop: '8px' }}>
+                                      {s.code || `#${s.id}`}
+                                    </td>
+                                  ) : null}
+                                  <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(a.when)}</td>
+                                  
+                                  {grp === "toxic" && (
+                                    <>
+                                      <td>
+                                        {isBroken ? <Badge type="amber">Kırık/Kayıp</Badge> : 
+                                         hasAct ? <Badge type="red">Aktivite Var</Badge> : <Badge type="green">Temiz</Badge>}
+                                      </td>
+                                      <td>{a.deformeYem || 0}</td>
+                                      <td>{a.yemDegisti || 0}</td>
+                                      <td className="tpdf-td-notes">{a.notes || "—"}</td>
+                                    </>
+                                  )}
+
+                                  {grp === "nontoxic" && (
+                                    <>
+                                      <td>{hasAct ? <Badge type="red">Hareket Var</Badge> : <Badge type="green">Hareket Yok</Badge>}</td>
+                                      <td className="tpdf-td-species">{a.pestSpecies || a.species || "—"}</td>
+                                      <td>{a.deformeMonitor || 0}</td>
+                                      <td>{a.monitorDegisti || a.yapiskanDegisti || 0}</td>
+                                    </>
+                                  )}
+
+                                  {(grp === "indoor_fly" || grp === "outdoor_fly") && (
+                                    <>
+                                      <td>{a.karasinek || 0}</td>
+                                      <td>{a.sivrisinek || 0}</td>
+                                      <td>{a.diger || a.guve || 0}</td>
+                                      <td className="tpdf-td-bold">{(Number(a.karasinek)||0)+(Number(a.sivrisinek)||0)+(Number(a.diger)||0)+(Number(a.guve)||0)}</td>
+                                      <td>
+                                        {a.uvLambaDegisim || a.lampChanged || a.floresanDegistirildi ? "Değişti" : "—"}
+                                      </td>
+                                      <td>{a.arizaliEFK || a.uvLambaAriza ? "ARIZA" : "Normal"}</td>
+                                    </>
+                                  )}
+                                </tr>
+                              );
+                            });
+                          })}
                         </tbody>
                       </table>
                     </div>
