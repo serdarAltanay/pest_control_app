@@ -167,11 +167,42 @@ export default function TrendPDFReport() {
         try { const { data: c } = await api.get(`/company`); setCompany(c); } catch { }
 
         try {
+          let stList = [];
           const { data } = await api.get(`/stations/store/${storeId}`);
-          setStations(Array.isArray(data) ? data : []);
+          stList = Array.isArray(data) ? data : [];
+          if (!stList.length) {
+            const { data: d2 } = await api.get(`/stores/${storeId}/stations`);
+            stList = Array.isArray(d2) ? d2 : [];
+          }
+          
+          // Expand group stations into individual units so all math works perfectly.
+          const expanded = [];
+          for (const st of stList) {
+            if (st.isGroup && st.totalCount > 1) {
+              const codes = [];
+              const baseCode = st.code || "ST";
+              const prefixMatch = baseCode.match(/^(.*?)(\d+)$/);
+              if (prefixMatch) {
+                const prefix = prefixMatch[1];
+                const startNum = parseInt(prefixMatch[2], 10);
+                for (let i = 0; i < st.totalCount; i++) {
+                  codes.push(`${prefix}${String(startNum + i).padStart(prefixMatch[2].length, '0')}`);
+                }
+              } else {
+                for (let i = 1; i <= st.totalCount; i++) {
+                  codes.push(`${baseCode}-${String(i).padStart(3, '0')}`);
+                }
+              }
+              codes.forEach(c => {
+                expanded.push({ ...st, originalId: st.id, id: `${st.id}-${c}`, code: c });
+              });
+            } else {
+              expanded.push({ ...st, originalId: st.id, id: st.id });
+            }
+          }
+          setStations(expanded);
         } catch {
-          const { data } = await api.get(`/stores/${storeId}/stations`);
-          setStations(Array.isArray(data) ? data : []);
+          setStations([]);
         }
 
         // Kimyasal uygulama verisi – endpoint adı farklı olabilir
@@ -214,14 +245,21 @@ export default function TrendPDFReport() {
     (async () => {
       const typeById = Object.fromEntries(stations.map(s => [s.id, s.type]));
       const all = [];
-      for (const s of stations) {
-        try { all.push(...(await fetchStationActs(s.id))); } catch { }
+      
+      const uniqueOriginalIds = [...new Set(stations.map(s => s.originalId))];
+      for (const originalId of uniqueOriginalIds) {
+        try { all.push(...(await fetchStationActs(originalId))); } catch { }
       }
-      const norm = all.map(a => ({
-        ...a,
-        type: a.type || typeById[a.stationId],
-        when: a.observedAt || a.createdAt || a.updatedAt,
-      }));
+      
+      const norm = all.map(a => {
+        const expandedId = a.subCode ? `${a.stationId}-${a.subCode}` : a.stationId;
+        return {
+          ...a,
+          type: a.type || typeById[expandedId],
+          when: a.observedAt || a.createdAt || a.updatedAt,
+          stationId: expandedId,
+        };
+      });
       if (alive) setActivations(norm);
     })();
     return () => { alive = false; };
@@ -509,17 +547,17 @@ export default function TrendPDFReport() {
               <div className="tpdf-cover__info-row">
                 <div className="tpdf-cover__info-card">
                   <div className="tpdf-cover__info-badge">FİRMA</div>
-                  <div className="tpdf-cover__info-name">{company?.name || "—"}</div>
+                  <div className="tpdf-cover__info-name">Turaçevre</div>
                   {company?.city && <div>{company.city}</div>}
                   {company?.address && <div>{company.address}</div>}
                   {company?.phone && <div>{company.phone}</div>}
                 </div>
                 <div className="tpdf-cover__info-card">
-                  <div className="tpdf-cover__info-badge">MÜŞTERİ</div>
+                  <div className="tpdf-cover__info-badge">MAĞAZA</div>
                   <div className="tpdf-cover__info-name">
-                    {store?.customerName || store?.customer?.name || "—"}
+                    {store?.name || "—"}
                   </div>
-                  {store?.name && <div>{store.name}</div>}
+                  <div>Müşteri: {store?.customerName || store?.customer?.name || "—"}</div>
                   {store?.address && <div>{store.address}</div>}
                   {store?.phone && <div>{store.phone}</div>}
                 </div>
