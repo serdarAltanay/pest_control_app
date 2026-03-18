@@ -183,14 +183,14 @@ export default function BiocidalCertificates() {
                                     {cert.file ? (
                                         cert.mime?.startsWith("image/") ? (
                                             <img
-                                                src={toAbsoluteUrl(cert.file, { forceApi: true })}
+                                                src={toAbsoluteUrl(`api/biocidal-certificates/${cert.id}/view`, { forceApi: true })}
                                                 alt={cert.title}
                                                 className="preview-frame"
                                                 style={{ objectFit: "contain" }}
                                             />
                                         ) : (
                                             <iframe
-                                                src={`${toAbsoluteUrl(cert.file, { forceApi: true })}#toolbar=0&navpanes=0`}
+                                                src={`${toAbsoluteUrl(`api/biocidal-certificates/${cert.id}/view`, { forceApi: true })}#toolbar=0&navpanes=0`}
                                                 className="preview-frame"
                                                 title={cert.title}
                                             />

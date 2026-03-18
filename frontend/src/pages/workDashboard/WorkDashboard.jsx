@@ -83,7 +83,7 @@ export default function WorkDashboard() {
 
   return (
     <Layout onCustomerClick={() => setShowCustomerSection(true)}>
-      <div className="work-dashboard">
+      <div className="work-dashboard dashboard-container">
         <header className="dashboard-header">
           <div className="header-left">
             <span className="date-pill">{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })}</span>

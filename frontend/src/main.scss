@@ -22,6 +22,13 @@ main {
   }
 }
 
+.dashboard-container {
+  max-width: 1050px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 20px 40px;
+}
+
 main.sidebar-closed {
   margin-left: $sidebar-collapsed;
 

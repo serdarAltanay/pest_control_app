@@ -212,7 +212,7 @@ try { Ek1List = require("../ek1/Ek1List.jsx").default; } catch {}
 export default function CustomerDashboard() {
   return (
     <Layout>
-      <div className="customer-dashboard">
+      <div className="customer-dashboard dashboard-container">
         <HeroCarousel />
         <div className="lists-grid">
           <PlannedVisits days={14} />

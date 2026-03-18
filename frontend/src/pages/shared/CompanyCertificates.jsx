@@ -122,14 +122,14 @@ export default function CompanyCertificates() {
                                 {it.file ? (
                                     it.mime?.startsWith("image/") ? (
                                         <img
-                                            src={toAbsoluteUrl(it.file, { forceApi: true })}
+                                            src={toAbsoluteUrl(`api/certificates/${it.id}/view`, { forceApi: true })}
                                             alt={it.title}
                                             className="preview-frame"
                                             style={{ objectFit: "contain" }}
                                         />
                                     ) : (
                                         <iframe
-                                            src={`${toAbsoluteUrl(it.file, { forceApi: true })}#toolbar=0&navpanes=0`}
+                                            src={`${toAbsoluteUrl(`api/certificates/${it.id}/view`, { forceApi: true })}#toolbar=0&navpanes=0`}
                                             className="preview-frame"
                                             title={it.title}
                                         />
