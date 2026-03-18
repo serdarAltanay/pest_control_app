@@ -658,14 +658,32 @@
 
   .tpdf-page {
     padding: 0;
+    display: block !important;
+  }
+
+  .tpdf-body {
+    display: block !important;
   }
 
   .tpdf-card {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    display: block !important;
+    page-break-inside: auto !important; /* Allow the card itself to break across pages if needed */
     box-shadow: none !important;
-    border: 1px solid #ccc !important;
+    border: none !important; /* Remove borders in print to avoid ugly breaks */
+    border-top: 2px solid #ccc !important;
+    border-radius: 0 !important;
+    padding: 10px 0 !important;
     margin-bottom: 20px !important;
+    clear: both;
+  }
+
+  .tpdf-card__h2,
+  .tpdf-sub-title,
+  .recharts-responsive-container,
+  .tpdf-infobox,
+  .tpdf-table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .tpdf-cover {
@@ -683,9 +701,8 @@
   }
 
   .tpdf-table {
-    page-break-inside: auto;
     font-size: 9px !important;
-    margin: 2px 0 !important;
+    margin: 2px 0 10px !important;
 
     &--comparison {
       th, td {

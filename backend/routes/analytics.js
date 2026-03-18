@@ -111,6 +111,59 @@ router.get("/stores/:storeId/trend", auth, roleCheck(["admin","employee","custom
   }
 });
 
+/** ---------------- STORE-BAZLI KİMYASAL (EK-1) ----------------
+ * GET /api/analytics/stores/:storeId/chemicals?from&to
+ * admin/employee/customer → read-only
+ */
+router.get("/stores/:storeId/chemicals", auth, roleCheck(["admin","employee","customer"]), async (req,res)=>{
+  try{
+    const storeId = parseId(req.params.storeId);
+    if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
+
+    if (req.user.role === "employee" && req.user.level === 2) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
+
+    if (req.user.role === "customer") {
+      const ok = await customerHasStoreAccess(req, storeId);
+      if (!ok) return res.status(403).json({ message: "Yetkisiz" });
+    }
+
+    const now = new Date();
+    const to = parseISO(req.query.to) || now;
+    const from = parseISO(req.query.from) || new Date(now.getFullYear(), now.getMonth()-11, 1);
+
+    const lines = await prisma.ek1Line.findMany({
+      where: {
+        visit: {
+          storeId,
+          date: { gte: from, lte: to }
+        }
+      },
+      include: {
+        visit: { select: { date: true } },
+        biosidal: true
+      },
+      orderBy: { visit: { date: 'asc' } }
+    });
+
+    const mapped = lines.map(l => ({
+      id: l.id,
+      applicationDate: l.visit?.date,
+      amount: l.amount,
+      method: l.method,
+      name: l.biosidal?.name || "Bilinmiyor",
+      activeIngredient: l.biosidal?.activeIngredient,
+      pestType: l.biosidal?.targetPest || ""
+    }));
+
+    res.json(mapped);
+  }catch(e){
+    console.error("GET /analytics/stores/:storeId/chemicals", e);
+    res.status(500).json({message:"Sunucu hatası"});
+  }
+});
+
 /** ---------------- STORE-BAZLI ÖZET ----------------
  * GET /api/analytics/stores/:storeId/summary?from&to&type=
  * admin/employee/customer → read-only

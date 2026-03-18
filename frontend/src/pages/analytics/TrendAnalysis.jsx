@@ -205,17 +205,10 @@ export default function TrendPDFReport() {
           setStations([]);
         }
 
-        // Kimyasal uygulama verisi – endpoint adı farklı olabilir
-        for (const ep of [
-          `/chemical-applications/store/${storeId}`,
-          `/applications/store/${storeId}`,
-          `/chemicals/store/${storeId}`,
-        ]) {
-          try {
-            const { data } = await api.get(ep);
-            if (Array.isArray(data) && data.length >= 0) { setChemicals(data); break; }
-          } catch { }
-        }
+        try {
+          const { data } = await api.get(`/analytics/stores/${storeId}/chemicals`);
+          if (Array.isArray(data)) setChemicals(data);
+        } catch { }
       } catch (e) {
         toast.error(e?.response?.data?.error || "Veriler alınamadı");
       } finally {
@@ -303,7 +296,7 @@ export default function TrendPDFReport() {
     const calcRate = (sts, prevActs, field) => {
       if (!sts.length) return 0;
       const active = sts.filter(s => prevActs.some(a =>
-        a.stationId === s.id && (Number(a[field]) > 0 || Number(a.aktiviteVar) > 0)
+        a.stationId === s.id && (Number(a[field]) > 0 || Number(a.aktiviteVar) > 0 || Number(a.deformeYem) > 0 || Number(a.yemDegisti) > 0)
       )).length;
       return Math.round((active / sts.length) * 100);
     };
@@ -1112,8 +1105,8 @@ export default function TrendPDFReport() {
                       const ma = activations.filter(a => inRange(a.when, s, e));
                       const flyIds = new Set([...grps.indoor_fly, ...grps.outdoor_fly].map(st => st.id));
                       const rodIds = new Set([...grps.toxic, ...grps.nontoxic].map(st => st.id));
-                      const uckunAkt = ma.filter(a => flyIds.has(a.stationId)).length;
-                      const kemirgenAkt = ma.filter(a => rodIds.has(a.stationId)).length;
+                      const uckunAkt = ma.filter(a => flyIds.has(a.stationId)).reduce((sum, a) => sum + (Number(a.karasinek) || 0) + (Number(a.sivrisinek) || 0) + (Number(a.guve) || 0) + (Number(a.diger) || 0), 0);
+                      const kemirgenAkt = ma.filter(a => rodIds.has(a.stationId)).filter(a => Number(a.aktiviteVar) > 0 || Number(a.deformeYem) > 0 || Number(a.yemDegisti) > 0).length;
                       const isInsekt = c => { const t = (c.pestType || "").toLowerCase(); return t.includes("ucun") || t.includes("fly") || t.includes("yuruy"); };
                       const isRodent = c => { const t = (c.pestType || "").toLowerCase(); return t.includes("kemirgen") || t.includes("rodent"); };
                       const mc = chemicals.filter(c => inRange(c.applicationDate || c.date || c.createdAt, s, e));
