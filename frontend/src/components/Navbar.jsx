@@ -14,20 +14,13 @@ export default function Navbar({ onHamburgerClick }) {
   const { profile, setProfile } = useContext(ProfileContext);
   const { theme, setTheme } = useTheme();
 
-  const roleLower = (profile?.role || profile?.userRole || "").toString().toLowerCase();
+  const roleLower = (profile?.role || profile?.userRole || localStorage.getItem("role") || "").toString().toLowerCase();
+  const displayName = profile?.fullName || localStorage.getItem("fullName") || "Kullanıcı";
+  const displayRole = (profile?.role || profile?.userRole || localStorage.getItem("role") || "—")?.toString().toUpperCase();
 
-  // CUSTOMER (access owner) için her zaman noavatar.jpg göster
-  const rawAvatar =
-    roleLower === "customer" ? null : (profile?.profileImage ?? localStorage.getItem("profileImage"));
-
-  const imgSrc =
-    roleLower === "customer"
-      ? "/noavatar.jpg"
-      : (getAvatarUrl(rawAvatar) || "/noavatar.jpg");
-
-  const displayName =
-    profile?.fullName || profile?.name || profile?.email?.split("@")[0] || "Kullanıcı";
-  const displayRole = (profile?.role || profile?.userRole || "—")?.toString().toUpperCase();
+  // Her zaman profil resmi alanı olsun (müşteri dahil)
+  const rawAvatar = profile?.profileImage ?? localStorage.getItem("profileImage");
+  const imgSrc = getAvatarUrl(rawAvatar) || "/noavatar.jpg";
 
   const [open, setOpen] = useState(false);
   const ddRef = useRef(null);
@@ -75,21 +68,19 @@ export default function Navbar({ onHamburgerClick }) {
         {/* PROFİL DROPDOWN */}
         <div className="profile-dropdown" ref={ddRef}>
           <button className="profile-trigger" onClick={() => setOpen((v) => !v)}>
-            {roleLower !== "customer" && (
-              <span className="avatar">
-                <img
-                  src={imgSrc}
-                  alt="Profil"
-                  onError={(e) => {
-                    if (e.currentTarget.dataset.errorFired) return;
-                    e.currentTarget.dataset.errorFired = "true";
-                    if (!e.currentTarget.src.endsWith("/noavatar.jpg")) {
-                      e.currentTarget.src = "/noavatar.jpg";
-                    }
-                  }}
-                />
-              </span>
-            )}
+            <span className="avatar">
+              <img
+                src={imgSrc}
+                alt="Profil"
+                onError={(e) => {
+                  if (e.currentTarget.dataset.errorFired) return;
+                  e.currentTarget.dataset.errorFired = "true";
+                  if (!e.currentTarget.src.endsWith("/noavatar.jpg")) {
+                    e.currentTarget.src = "/noavatar.jpg";
+                  }
+                }}
+              />
+            </span>
             <span className="who">
               <span className="name">{displayName}</span>
               <span className="role">{displayRole}</span>
