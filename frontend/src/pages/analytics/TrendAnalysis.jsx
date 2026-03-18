@@ -321,9 +321,17 @@ export default function TrendPDFReport() {
     const flyCount = actsInPeriod.reduce((s, a) =>
       s + (Number(a.karasinek) || 0) + (Number(a.sivrisinek) || 0) + (Number(a.guve) || 0) + (Number(a.diger) || 0), 0);
     const rodentCount = actsInPeriod.reduce((s, a) =>
-      s + (Number(a.yemTuketim) || 0) + (Number(a.hedefZararliSayisi) || 0), 0);
+      s + (Number(a.yemTuketim) || 0) + (Number(a.hedefZararliSayisi) || 0) + (Number(a.aktiviteVar) || 0), 0);
+    
+    // Find absolute dominant species if any
+    const speciesMap = {};
+    actsInPeriod.forEach(a => {
+      const sp = (a.pestSpecies || a.zararlıTuru || a.species || "").split(",")[0].trim();
+      if (sp) speciesMap[sp] = (speciesMap[sp] || 0) + 1;
+    });
+    const sortedSp = Object.entries(speciesMap).sort((a,b) => b[1] - a[1]);
+    const dominantSpecies = sortedSp.length > 0 ? sortedSp[0][0] : (flyCount >= rodentCount ? "Karasinek" : "Fare");
     const dominantGroup = flyCount >= rodentCount ? "Uçkun" : "Kemirgen";
-    const dominantSpecies = flyCount >= rodentCount ? "Karasinek" : "Fare";
 
     return { total, activeRate: avgRate, toxicRate, ntRate, prevToxicRate, prevNtRate, diff, diffText, dominantGroup, dominantSpecies };
   }, [stations, grps, actsInPeriod, actsInPrev]);
@@ -458,15 +466,35 @@ export default function TrendPDFReport() {
       if (!months.length) return true;
       return inRange(c.applicationDate || c.date || c.createdAt, months[0].start, months[months.length - 1].end);
     });
-    const classify = (c) => {
+    const classifyMulti = (c) => {
       const t = (c.pestType || c.type || c.targetPest || "").toLowerCase();
-      if (t.includes("kemirgen") || t.includes("rodent")) return "kemirgen";
-      if (t.includes("ucun") || t.includes("uçkun") || t.includes("fly") || t.includes("insect")) return "ucukun";
-      if (t.includes("yuruy") || t.includes("yürüy") || t.includes("crawl") || t.includes("bocek") || t.includes("böcek")) return "yuruyen";
-      return "diger";
+      const n = (c.name || "").toLowerCase();
+      const ai = (c.activeIngredient || "").toLowerCase();
+      const str = `${t} ${n} ${ai}`;
+      const res = [];
+      
+      if (str.match(/kemirgen|rodent|fare|sıçan|rat|mouse|difenacoum|brodifacoum|bromadiolone|flocoumafen|coumatetralyl|difethialone|fosfür|pasta/)) {
+        res.push("kemirgen");
+      }
+      
+      const isFlyOnly = str.match(/thiamethoxam|agita/);
+      
+      if (str.match(/ucun|uçkun|fly|sinek|sivrisinek|karasinek|insect|alfacypermethrin|cypermethrin|tetramethrin|deltamethrin|permethrin|imidacloprid|acetamiprid/)) {
+        res.push("ucukun");
+      }
+      
+      if (!isFlyOnly && str.match(/yuruy|yürüy|crawl|bocek|böcek|hamam|karınca|roach|ant|insect|alfacypermethrin|cypermethrin|tetramethrin|deltamethrin|permethrin|imidacloprid|acetamiprid|fipronil/)) {
+        res.push("yuruyen");
+      }
+      
+      if (res.length === 0) res.push("diger");
+      return [...new Set(res)];
     };
     const g = { kemirgen: [], ucukun: [], yuruyen: [], diger: [] };
-    inPeriod.forEach(c => g[classify(c)].push(c));
+    inPeriod.forEach(c => {
+       const cats = classifyMulti(c);
+       cats.forEach(cat => g[cat].push(c));
+    });
     return g;
   }, [chemicals, months]);
 
@@ -475,8 +503,14 @@ export default function TrendPDFReport() {
     const s = new Date(year, i, 1), e = new Date(year, i + 1, 1);
     const mc = chemicals.filter(c => inRange(c.applicationDate || c.date || c.createdAt, s, e));
     const sum = (pred) => mc.filter(pred).reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
-    const isInsekt = c => { const t = (c.pestType || "").toLowerCase(); return t.includes("ucun") || t.includes("fly") || t.includes("yuruy") || t.includes("insect"); };
-    const isRodent = c => { const t = (c.pestType || "").toLowerCase(); return t.includes("kemirgen") || t.includes("rodent"); };
+    const isInsekt = c => { 
+        const str = `${c.pestType||""} ${c.name||""} ${c.activeIngredient||""}`.toLowerCase();
+        return str.match(/ucun|uçkun|fly|yuruy|yürüy|crawl|bocek|böcek|insect|sinek|hamam|karınca|thiamethoxam|alfacypermethrin|cypermethrin|tetramethrin|deltamethrin|permethrin|imidacloprid|acetamiprid|fipronil|agita/);
+    };
+    const isRodent = c => { 
+        const str = `${c.pestType||""} ${c.name||""} ${c.activeIngredient||""}`.toLowerCase();
+        return str.match(/kemirgen|rodent|fare|sıçan|rat|mouse|difenacoum|brodifacoum|bromadiolone|flocoumafen|coumatetralyl|difethialone|fosfür|pasta/);
+    };
     return { label, "İnsektisit (ml)": sum(isInsekt), "Rodentisit (g)": sum(isRodent) };
   }), [chemicals, year]);
 
@@ -576,12 +610,13 @@ export default function TrendPDFReport() {
               {/* ════ GENEL ÖZET ════ */}
               <div className="tpdf-card">
                 <h2 className="tpdf-card__h2">Trend Analizi - Genel Özet</h2>
-                <p className="tpdf-card__intro">
+                <div className="tpdf-card__intro">
                   İncelenen dönemde toplam <strong>{summary.total}</strong> istasyonda izleme
                   yapılmıştır. İstasyonların <strong>%{summary.activeRate}</strong>'inde aktivite
                   tespit edilmiştir. Aktivitenin baskın grubu <strong>{summary.dominantGroup}</strong>{" "}
-                  ({summary.dominantSpecies}) olarak görülmüştür.
-                </p>
+                  olarak görülmüş, en sık rastlanan zararalı türü ise <strong>{summary.dominantSpecies}</strong>{" "}
+                  olmuştur.
+                </div>
 
                 <div className="tpdf-tag-row">
                   <span className="tpdf-tag tpdf-tag--teal">En Sık Görülen Grup: {summary.dominantGroup}</span>
@@ -990,25 +1025,31 @@ export default function TrendPDFReport() {
                                 return (
                                   <td key={m.label}>
                                     <div className="tpdf-cmp-date">{fmtDate(a.when)}</div>
-                                    {isBroken && <div className="tpdf-cmp-chip tpdf-cmp-chip--broken">Kırık/Kayıp</div>}
+                                    {isBroken && <div className="tpdf-cmp-chip tpdf-cmp-chip--broken">İstasyon Kırık / Kayıp</div>}
                                     {!isBroken && grp === "toxic" && (
                                       <div className={`tpdf-cmp-chip ${hasAct ? "tpdf-cmp-chip--active" : "tpdf-cmp-chip--inactive"}`}>
-                                        {hasAct ? "Tüketim Var" : "Temiz/Yok"}
+                                        {hasAct ? "Yem Tüketimi Var" : "Yem Tüketimi Yok"}
                                       </div>
                                     )}
                                     {!isBroken && grp === "nontoxic" && (
                                       <>
                                         <div className={`tpdf-cmp-chip ${hasAct ? "tpdf-cmp-chip--active" : "tpdf-cmp-chip--inactive"}`}>
-                                          {hasAct ? "Aktivite (+)" : "Temiz (-)"}
+                                          {hasAct ? "Hareket Var" : "Hareket Yok"}
                                         </div>
-                                        {a.pestSpecies && <div className="tpdf-cmp-species">{a.pestSpecies}</div>}
+                                        {hasAct && (a.pestSpecies || a.species) && (
+                                          <div className="tpdf-cmp-species">
+                                            {(a.pestSpecies || a.species).split(",").map((s, idx) => (
+                                              <div key={idx}>{s.trim()}</div>
+                                            ))}
+                                          </div>
+                                        )}
                                       </>
                                     )}
                                     {!isBroken && (grp === "indoor_fly" || grp === "outdoor_fly") && (
                                       <>
                                         <div className="tpdf-cmp-count">Sayım: <strong>{flyTotal}</strong></div>
-                                        {lampChanged && <div className="tpdf-cmp-note">Flor: Değişti</div>}
-                                        {!lampChanged && grp === "indoor_fly" && <div className="tpdf-cmp-note tpdf-cmp-note--warn">Flor: Aynı</div>}
+                                        {lampChanged && <div className="tpdf-cmp-note">Floresan: Değiştirildi</div>}
+                                        {!lampChanged && <div className="tpdf-cmp-note">Floresan: Değiştirilmedi</div>}
                                       </>
                                     )}
                                   </td>
@@ -1103,21 +1144,44 @@ export default function TrendPDFReport() {
                     {MONTHS_FULL.map((m, i) => {
                       const s = new Date(year, i, 1), e = new Date(year, i + 1, 1);
                       const ma = activations.filter(a => inRange(a.when, s, e));
-                      const flyIds = new Set([...grps.indoor_fly, ...grps.outdoor_fly].map(st => st.id));
-                      const rodIds = new Set([...grps.toxic, ...grps.nontoxic].map(st => st.id));
-                      const uckunAkt = ma.filter(a => flyIds.has(a.stationId)).reduce((sum, a) => sum + (Number(a.karasinek) || 0) + (Number(a.sivrisinek) || 0) + (Number(a.guve) || 0) + (Number(a.diger) || 0), 0);
-                      const kemirgenAkt = ma.filter(a => rodIds.has(a.stationId)).filter(a => Number(a.aktiviteVar) > 0 || Number(a.deformeYem) > 0 || Number(a.yemDegisti) > 0).length;
-                      const isInsekt = c => { const t = (c.pestType || "").toLowerCase(); return t.includes("ucun") || t.includes("fly") || t.includes("yuruy"); };
-                      const isRodent = c => { const t = (c.pestType || "").toLowerCase(); return t.includes("kemirgen") || t.includes("rodent"); };
+                      
+                      const flyIds = new Set(stations.filter(st => {
+                        const base = TYPE_TO_GROUP[st.type];
+                        if (base !== "fly") return false;
+                        const loc = (st.location || st.subType || "").toLowerCase();
+                        return !(loc.includes("dis") || loc.includes("dış") || loc.includes("out"));
+                      }).map(st => st.id));
+                      
+                      const outdoorFlyIds = new Set(stations.filter(st => {
+                        const base = TYPE_TO_GROUP[st.type];
+                        if (base !== "fly") return false;
+                        const loc = (st.location || st.subType || "").toLowerCase();
+                        return (loc.includes("dis") || loc.includes("dış") || loc.includes("out"));
+                      }).map(st => st.id));
+
+                      const insectIds = new Set(stations.filter(st => TYPE_TO_GROUP[st.type] === "nontoxic").map(st => st.id));
+                      const rodentIds = new Set(stations.filter(st => TYPE_TO_GROUP[st.type] === "toxic").map(st => st.id));
+
+                      const hasereAkt = ma.filter(a => insectIds.has(a.stationId) && Number(a.aktiviteVar) > 0).length;
+                      const uckunAkt = ma.filter(a => flyIds.has(a.stationId) || outdoorFlyIds.has(a.stationId))
+                                        .reduce((sum, a) => sum + (Number(a.karasinek) || 0) + (Number(a.sivrisinek) || 0) + (Number(a.guve) || 0) + (Number(a.diger) || 0), 0);
+                      const kemirgenAkt = ma.filter(a => rodentIds.has(a.stationId))
+                                          .filter(a => Number(a.aktiviteVar) > 0 || (Number(a.deformeYem) || 0) > 0 || (Number(a.yemDegisti) || 0) > 0).length;
+
                       const mc = chemicals.filter(c => inRange(c.applicationDate || c.date || c.createdAt, s, e));
-                      const insektisit = mc.filter(isInsekt).reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
-                      const rodentisit = mc.filter(isRodent).reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+                      const regexInsekt = /ucun|uçkun|fly|yuruy|yürüy|crawl|bocek|böcek|insect|sinek|hamam|karınca|thiamethoxam|alfacypermethrin|cypermethrin|tetramethrin|deltamethrin|permethrin|imidacloprid|acetamiprid|fipronil|agita/;
+                      const regexRodent = /kemirgen|rodent|fare|sıçan|rat|mouse|difenacoum|brodifacoum|bromadiolone|flocoumafen|coumatetralyl|difethialone|fosfür|pasta/;
+                      
+                      const insektisit = mc.filter(c => `${c.pestType||""} ${c.name||""} ${c.activeIngredient||""}`.toLowerCase().match(regexInsekt))
+                                          .reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+                      const rodentisit = mc.filter(c => `${c.pestType||""} ${c.name||""} ${c.activeIngredient||""}`.toLowerCase().match(regexRodent))
+                                          .reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
                       return (
                         <tr key={m}>
                           <td><strong>{m}</strong></td>
                           <td>{insektisit || 0}</td>
                           <td>{rodentisit || 0}</td>
-                          <td>{ma.length || 0}</td>
+                          <td>{hasereAkt || 0}</td>
                           <td>{uckunAkt || 0}</td>
                           <td>{kemirgenAkt || 0}</td>
                         </tr>
