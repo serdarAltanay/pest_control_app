@@ -186,6 +186,20 @@ export default function EFKActivation() {
                 Grup İstasyonları
                 <span className="group-progress">({filledCount}/{activeCount} tamamlandı)</span>
               </div>
+              <div className="group-dropdown">
+                <select 
+                  className="select" 
+                  value={stationId} 
+                  onChange={e => switchStation(e.target.value)}
+                >
+                  {groupStations.filter(st => st.isActive).map(st => (
+                    <option key={st.id} value={st.id}>
+                      {st.name || st.code} {groupActivationStatus[st.id] ? "✓" : ""}
+                    </option>
+                  ))}
+                </select>
+                <small className="help-text">Gruptaki diğer istasyonlara geçiş yapabilirsiniz.</small>
+              </div>
               <div className="group-station-list">
                 {groupStations.filter(st => st.isActive).map(st => (
                   <button
