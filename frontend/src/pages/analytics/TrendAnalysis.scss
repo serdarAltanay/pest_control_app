@@ -3,6 +3,14 @@
 /* ═══════════ Sayfa kökü ═══════════ */
 .tpdf-page {
   padding: 12px 12px 48px;
+  background: #f1f5f9;
+  min-height: 100vh;
+}
+
+.tpdf-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .tpdf-loading {
@@ -606,8 +614,20 @@
 .tpdf-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+
+  &--top {
+    margin-bottom: 20px;
+    margin-top: 0;
+    justify-content: space-between;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
 
   .btn {
     display: inline-flex;

@@ -346,6 +346,39 @@ export default function TrendPDFReport() {
     return { total, activeRate: avgRate, toxicRate, ntRate, prevToxicRate, prevNtRate, diff, diffText, dominantGroup, dominantSpecies };
   }, [stations, grps, actsInPeriod, actsInPrev]);
 
+  /* ── uçkun risk haritası (top 5) ── */
+  const flyRiskMap = useMemo(() => {
+    const calcTop = (sts) => {
+      const stIds = new Set(sts.map(s => s.id));
+      const relevantActs = actsInPeriod.filter(a => stIds.has(a.stationId));
+      
+      const stMap = {};
+      relevantActs.forEach(a => {
+        const count = (Number(a.karasinek) || 0) + (Number(a.sivrisinek) || 0) + (Number(a.guve) || 0) + (Number(a.diger) || 0);
+        if (count <= 0) return;
+        if (!stMap[a.stationId] || count > stMap[a.stationId].count) {
+          const st = sts.find(s => s.id === a.stationId);
+          stMap[a.stationId] = {
+            id: a.stationId,
+            code: st?.code || `#${a.stationId}`,
+            type: (st?.type === "FLY_OUTDOOR" || (st?.location || st?.subType || "").toLowerCase().match(/dis|dış|out/)) ? "Dış Alan" : "İç Alan",
+            count,
+            date: a.when || a.date || a.createdAt
+          };
+        }
+      });
+
+      return Object.values(stMap)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+    };
+
+    return {
+      indoor: calcTop(grps.indoor_fly),
+      outdoor: calcTop(grps.outdoor_fly)
+    };
+  }, [grps, actsInPeriod]);
+
   /* ── kırık/kayıp istasyonlar ── */
   const brokenMap = useMemo(() => {
     const res = {};
@@ -574,8 +607,18 @@ export default function TrendPDFReport() {
 
         {!showPicker && (
           <>
-            {/* ═══════════ KAPAK SAYFASI ═══════════ */}
-            <div className="tpdf-cover">
+            {/* Top actions */}
+            <div className="tpdf-actions tpdf-actions--top print-hide">
+              <div style={{ fontWeight: 800, fontSize: "14px", color: "#1e293b" }}>Trend Analiz Raporu</div>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button className="btn ghost" onClick={() => setShowPicker(true)}>Tarih Değiştir</button>
+                <button className="btn primary" onClick={() => window.print()}>Yazdır / PDF İndir</button>
+              </div>
+            </div>
+
+            <div className="tpdf-container">
+              {/* ═══════════ KAPAK SAYFASI ═══════════ */}
+              <div className="tpdf-cover">
               <div className="tpdf-cover__logo">Tura<span>çevre</span></div>
               <div className="tpdf-cover__title-block">
                 <h1 className="tpdf-cover__h1">Trend Analizi Raporu</h1>
@@ -964,20 +1007,20 @@ export default function TrendPDFReport() {
               )}
 
               {/* ════ RİSK HARİTASI / TOP 5 ════ */}
-              {(top5.indoor.length > 0 || top5.outdoor.length > 0) && (
+              {(flyRiskMap.indoor.length > 0 || flyRiskMap.outdoor.length > 0) && (
                 <div className="tpdf-card">
                   <h2 className="tpdf-card__h2">Risk Haritası / Önceliklendirme (Top 5 Uçkun)</h2>
 
-                  {top5.indoor.length > 0 && (
+                  {flyRiskMap.indoor.length > 0 && (
                     <>
                       <SubTitle>İç Alan (Top 5)</SubTitle>
                       <table className="tpdf-table">
                         <thead><tr><th>Periyot Tarihi</th><th>İstasyon No</th><th>İstasyon Türü</th><th>Sayım (Adet)</th></tr></thead>
                         <tbody>
-                          {top5.indoor.map((r, i) => (
+                          {flyRiskMap.indoor.map((r, i) => (
                             <tr key={i}>
-                              <td>{months.length ? fmtDate(months[months.length - 1].start) : "—"}</td>
-                              <td>{r.code}</td><td>{r.type}</td><td>{r.count}</td>
+                              <td>{fmtDate(r.date)}</td>
+                              <td><strong>{r.code}</strong></td><td>{r.type}</td><td><strong>{r.count}</strong></td>
                             </tr>
                           ))}
                         </tbody>
@@ -985,16 +1028,16 @@ export default function TrendPDFReport() {
                     </>
                   )}
 
-                  {top5.outdoor.length > 0 && (
+                  {flyRiskMap.outdoor.length > 0 && (
                     <>
                       <SubTitle>Dış Alan (Top 5)</SubTitle>
                       <table className="tpdf-table">
                         <thead><tr><th>Periyot Tarihi</th><th>İstasyon No</th><th>İstasyon Türü</th><th>Sayım (Adet)</th></tr></thead>
                         <tbody>
-                          {top5.outdoor.map((r, i) => (
+                          {flyRiskMap.outdoor.map((r, i) => (
                             <tr key={i}>
-                              <td>{months.length ? fmtDate(months[months.length - 1].start) : "—"}</td>
-                              <td>{r.code}</td><td>{r.type}</td><td>{r.count}</td>
+                              <td>{fmtDate(r.date)}</td>
+                              <td><strong>{r.code}</strong></td><td>{r.type}</td><td><strong>{r.count}</strong></td>
                             </tr>
                           ))}
                         </tbody>
@@ -1254,6 +1297,7 @@ export default function TrendPDFReport() {
               </div>
 
             </div>{/* /tpdf-body */}
+          </div>{/* /tpdf-container */}
 
             {/* ════ ALT AKSİYONLAR ════ */}
             <div className="tpdf-actions print-hide">
