@@ -1,12 +1,19 @@
 @import "../../styles/variables";
 
-/* Sayfa kökü */
-.trend-analysis-page {
+/* ═══════════ Sayfa kökü ═══════════ */
+.tpdf-page {
   padding: 12px 12px 48px;
 }
 
-/* ---------- Modal (Tarih seçimi) ---------- */
-.ta-modal-backdrop {
+.tpdf-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+/* ═══════════ Tarih Seçici Modal ═══════════ */
+.tpdf-modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, .35);
@@ -15,7 +22,7 @@
   z-index: 50;
 }
 
-.ta-modal {
+.tpdf-modal {
   width: min(720px, 92vw);
   background: var(--surface);
   border-radius: 14px;
@@ -24,7 +31,7 @@
   overflow: hidden;
 }
 
-.ta-modal-head {
+.tpdf-modal__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -37,222 +44,522 @@
     font-weight: 800;
     color: #111827;
   }
+}
 
-  .close {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    font-size: 24px;
-    cursor: pointer;
-    line-height: 1;
-    padding: 4px 6px;
-    border-radius: 8px;
+.tpdf-modal__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 8px;
 
-    &:hover {
-      background: var(--muted-surface);
-    }
+  &:hover {
+    background: var(--muted-surface);
   }
 }
 
-.ta-modal-body {
+.tpdf-modal__body {
   padding: 16px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px 16px;
-
-  .form-row {
-    display: grid;
-    gap: 6px;
-
-    label {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-weight: 700;
-    }
-
-    input,
-    select {
-      height: 38px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0 10px;
-      font-weight: 600;
-      background: var(--surface);
-    }
-  }
-
-  .actions {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 6px;
-
-    .btn {
-      height: 38px;
-      padding: 0 14px;
-      border-radius: 10px;
-      font-weight: 800;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .btn.primary {
-      background: #22c55e;
-      border-color: #22c55e;
-      color: #fff;
-    }
-
-    .btn.ghost {
-      background: var(--surface);
-    }
-  }
 }
 
-/* ---------- Yazdırılabilir Üst Başlık ---------- */
-.ta-print-head {
+.tpdf-form-row {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 6px;
 
-  .brand {
-    font-weight: 900;
-    font-size: 22px;
-    text-transform: uppercase;
-    letter-spacing: .6px;
-    color: #e11d48;
+  label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 700;
   }
 
-  .report-meta {
-    text-align: center;
-
-    .title {
-      font-weight: 900;
-      color: #111827;
-    }
-
-    .range {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-  }
-
-  .store-name {
-    justify-self: end;
-    font-weight: 800;
-    color: #111827;
-    background: var(--muted-surface);
+  input,
+  select {
+    height: 38px;
     border: 1px solid var(--border);
-    padding: 6px 10px;
-    border-radius: 10px;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-weight: 600;
+    background: var(--surface);
+    color: inherit;
   }
 }
 
-/* ---------- Grid ---------- */
-.ta-grid {
+.tpdf-modal__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+
+  .btn {
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: inherit;
+  }
+
+  .btn.primary {
+    background: #22c55e;
+    border-color: #22c55e;
+    color: #fff;
+  }
+
+  .btn.ghost {
+    background: var(--surface);
+  }
+}
+
+/* ═══════════ Kapak Sayfası ═══════════ */
+.tpdf-cover {
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  border-radius: 14px;
+  padding: 40px 30px;
+  color: #fff;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.tpdf-cover__logo {
+  font-size: 28px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+
+  span {
+    font-weight: 400;
+    opacity: 0.8;
+  }
+}
+
+.tpdf-cover__title-block {
+  margin-bottom: 30px;
+}
+
+.tpdf-cover__h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.tpdf-cover__period {
+  font-size: 16px;
+  margin-top: 6px;
+  opacity: 0.85;
+}
+
+.tpdf-cover__info-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 16px;
+  text-align: left;
 }
 
-@media (max-width: 900px) {
-  .ta-grid {
-    grid-template-columns: 1fr;
-  }
+.tpdf-cover__info-card {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-/* ---------- Kart ---------- */
-.ta-card {
+.tpdf-cover__info-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.tpdf-cover__info-name {
+  font-weight: 800;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+/* ═══════════ Rapor Gövdesi ═══════════ */
+.tpdf-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Meta Bar ── */
+.tpdf-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  background: var(--muted-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* ── Banner ── */
+.tpdf-banner {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  border-radius: 10px;
+  padding: 16px 20px;
+  color: #fff;
+}
+
+.tpdf-banner__title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.tpdf-banner__sub {
+  font-size: 13px;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+/* ═══════════ Kart ═══════════ */
+.tpdf-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
+  padding: 16px;
+
+  &--overflow {
+    overflow: visible;
+  }
+
+  &--teal-banner {
+    border-top: 4px solid #0d9488;
+  }
+}
+
+.tpdf-card__h2 {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #111827;
+  border-left: 4px solid #0d9488;
+  padding-left: 10px;
+}
+
+.tpdf-card__intro {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ═══════════ KPI Grid ═══════════ */
+.tpdf-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 14px 0;
+
+  &--2col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.tpdf-kpi {
+  background: var(--muted-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 12px;
+  text-align: center;
 
-  .ta-card-title {
-    font-weight: 800;
-    color: #111827;
-    margin-bottom: 8px;
-    border-left: 4px solid #2563eb;
-    padding-left: 8px;
-  }
-
-  &.chart {
-    padding-bottom: 4px;
-  }
-
-  &.chart.wide {
-    grid-column: 1 / -1;
-  }
-
-  .empty {
-    border: 1px dashed var(--border);
-    background: var(--muted-surface);
-    color: var(--text-muted);
-    font-size: 13px;
-    border-radius: 10px;
-    padding: 12px;
-    text-align: center;
+  &--accent {
+    border-color: #0d9488;
+    background: rgba(13, 148, 136, 0.05);
   }
 }
 
-/* ---------- Tablo ---------- */
-.table-wrap {
-  overflow: auto;
+.tpdf-kpi__label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
-.table {
+.tpdf-kpi__value {
+  font-size: 22px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.tpdf-kpi__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ═══════════ Tag Row ═══════════ */
+.tpdf-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.tpdf-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+
+  &--teal {
+    background: #0d9488;
+  }
+
+  &--blue {
+    background: #3b82f6;
+  }
+}
+
+/* ═══════════ InfoBox ═══════════ */
+.tpdf-infobox {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 12px 0;
+
+  &--neutral {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+  }
+
+  &--info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+  }
+
+  &--warning {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+  }
+}
+
+/* ═══════════ SubTitle ═══════════ */
+.tpdf-sub-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+  margin: 16px 0 10px;
+}
+
+/* ═══════════ Badge ═══════════ */
+.tpdf-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+
+  &--default {
+    background: #9ca3af;
+  }
+
+  &--red {
+    background: #ef4444;
+  }
+
+  &--amber {
+    background: #f59e0b;
+  }
+
+  &--green {
+    background: #22c55e;
+  }
+}
+
+/* ═══════════ List ═══════════ */
+.tpdf-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #374151;
+}
+
+/* ═══════════ Tablo ═══════════ */
+.tpdf-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 13px;
+  margin: 8px 0;
 
   thead th {
     text-align: left;
     white-space: nowrap;
     padding: 10px 12px;
-    background: var(--muted-surface);
-    border-bottom: 1px solid #edf2f7;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 700;
+    color: #475569;
+    font-size: 12px;
   }
 
   tbody td {
-    padding: 10px 12px;
+    padding: 9px 12px;
     border-bottom: 1px solid #f1f5f9;
-    white-space: nowrap;
     vertical-align: middle;
+    color: #374151;
   }
 
-  .strong {
-    font-weight: 800;
-    color: #111827;
+  tbody tr:hover {
+    background: rgba(0, 0, 0, 0.015);
   }
 
-  .badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 800;
-    color: #fff;
-
-    &.ok {
-      background: #10b981;
-    }
-
-    &.no {
-      background: #9ca3af;
-    }
-
-    &.warn {
-      background: #ef4444;
+  &--comparison {
+    th, td {
+      white-space: nowrap;
+      min-width: 120px;
     }
   }
 }
 
-/* ---------- Alt aksiyonlar ---------- */
-.ta-bottom-actions {
+.tpdf-table__total-row {
+  background: #f8fafc;
+  font-weight: 800;
+}
+
+.tpdf-td-center {
+  text-align: center;
+}
+
+.tpdf-td-bold {
+  font-weight: 800;
+  color: #111827;
+}
+
+.tpdf-td-empty {
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ═══════════ Scroll-X (detaylı karşılaştırma için) ═══════════ */
+.tpdf-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+}
+
+/* ═══════════ Comparison Chip'ler ═══════════ */
+.tpdf-cmp-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.tpdf-cmp-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+
+  &--active {
+    background: rgba(34, 197, 94, 0.12);
+    color: #166534;
+  }
+
+  &--inactive {
+    background: rgba(156, 163, 175, 0.15);
+    color: #6b7280;
+  }
+
+  &--broken {
+    background: rgba(245, 158, 11, 0.12);
+    color: #92400e;
+  }
+}
+
+.tpdf-cmp-species {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.tpdf-cmp-count {
+  font-size: 12px;
+  color: #374151;
+  margin-top: 2px;
+}
+
+.tpdf-cmp-note {
+  font-size: 11px;
+  color: #0d9488;
+
+  &--warn {
+    color: #f59e0b;
+  }
+}
+
+/* ═══════════ Pie Wrap ═══════════ */
+.tpdf-pie-wrap {
+  margin: 14px 0;
+}
+
+/* ═══════════ Teal Header (Kimyasal) ═══════════ */
+.tpdf-teal-header {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  border-radius: 10px 10px 0 0;
+  padding: 14px 16px;
+  margin: -16px -16px 16px;
+  color: #fff;
+}
+
+.tpdf-teal-header__title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.tpdf-teal-header__sub {
+  font-size: 12px;
+  margin-top: 3px;
+  opacity: 0.8;
+}
+
+/* ═══════════ Chemical Section ═══════════ */
+.tpdf-chem-section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+}
+
+/* ═══════════ Alt Aksiyonlar ═══════════ */
+.tpdf-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -279,7 +586,6 @@
     }
   }
 
-  /* Mevcut butonlar — değişmedi */
   .btn.primary {
     background: #2563eb;
     color: #fff;
@@ -289,44 +595,44 @@
   .btn.ghost {
     background: var(--surface);
   }
-
-  /* ── YENİ: PDF Raporu butonu ── */
-  .btn.pdf {
-    background: #0d9488;
-    color: #fff;
-    border-color: #0f766e;
-    gap: 6px;
-
-    /* isteğe bağlı küçük ikon (SVG data-url) */
-    &::before {
-      content: "";
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpolyline points='14 2 14 8 20 8'/%3E%3Cline x1='16' y1='13' x2='8' y2='13'/%3E%3Cline x1='16' y1='17' x2='8' y2='17'/%3E%3Cpolyline points='10 9 9 9 8 9'/%3E%3C/svg%3E") center / contain no-repeat;
-    }
-
-    &:hover {
-      filter: brightness(1.08);
-      opacity: 1;
-    }
-  }
 }
 
-/* ---------- Renkli grafik hissi için küçük dokunuşlar ---------- */
+/* ═══════════ Recharts ═══════════ */
 .recharts-legend-item-text {
   font-weight: 700;
   fill: #111827 !important;
 }
 
-/* ---------- Print ---------- */
+/* ═══════════ Responsive ═══════════ */
+@media (max-width: 768px) {
+  .tpdf-cover__info-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tpdf-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tpdf-modal__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .tpdf-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════ Print ═══════════ */
 @media print {
   @page {
     margin: 10mm;
   }
 
   .print-hide,
-  .ta-modal-backdrop,
+  .tpdf-modal-backdrop,
+  .tpdf-actions,
   nav,
   .navbar,
   .sidebar,
@@ -349,15 +655,11 @@
     background: white !important;
   }
 
-  .trend-analysis-page {
+  .tpdf-page {
     padding: 0;
   }
 
-  .ta-grid {
-    display: block !important;
-  }
-
-  .ta-card {
+  .tpdf-card {
     page-break-inside: avoid;
     break-inside: avoid;
     box-shadow: none !important;
@@ -365,19 +667,25 @@
     margin-bottom: 20px !important;
   }
 
+  .tpdf-cover {
+    background: #0d9488 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .recharts-responsive-container {
     width: 100% !important;
   }
 
-  .table-wrap {
+  .tpdf-scroll-x {
     overflow: visible !important;
   }
 
-  .table {
+  .tpdf-table {
     page-break-inside: auto;
   }
 
-  .table tr {
+  .tpdf-table tr {
     page-break-inside: avoid;
     break-inside: avoid;
   }
