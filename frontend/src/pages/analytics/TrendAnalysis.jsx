@@ -1035,7 +1035,7 @@ export default function TrendPDFReport() {
                               return (
                                 <tr key={s.id}>
                                   <td className="tpdf-td-bold">{s.code || `#${s.id}`}</td>
-                                  <td colSpan={extraHeaders.length + 1} className="tpdf-td-empty">Kayıt bulunamadı</td>
+                                  <td colSpan={extraHeaders.length + 1} className="tpdf-td-empty">Aktivasyon kaydı bulunamadı</td>
                                 </tr>
                               );
                             }
