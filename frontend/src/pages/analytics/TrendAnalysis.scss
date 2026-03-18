@@ -649,22 +649,77 @@
 
 /* ═══════════ Responsive ═══════════ */
 @media (max-width: 768px) {
+  .tpdf-page {
+    padding: 8px 8px 32px;
+  }
+
+  .tpdf-cover {
+    padding: 24px 16px;
+    height: auto;
+    min-height: auto;
+  }
+
   .tpdf-cover__info-row {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .tpdf-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .tpdf-summary-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .tpdf-infobox {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 12px;
+    
+    .tpdf-infobox__icon {
+      margin: 0 auto 8px;
+    }
+  }
+
+  .tpdf-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   .tpdf-modal__body {
     grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .tpdf-card {
+    padding: 12px;
+  }
+
+  .tpdf-card__h2 {
+    font-size: 15px;
+  }
+
+  .recharts-responsive-container {
+    height: 200px !important;
   }
 }
 
 @media (max-width: 480px) {
   .tpdf-kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tpdf-cover__title {
+    font-size: 22px;
   }
 }
 
