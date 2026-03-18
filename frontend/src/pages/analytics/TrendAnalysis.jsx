@@ -539,7 +539,7 @@ export default function TrendPDFReport() {
           <>
             {/* ═══════════ KAPAK SAYFASI ═══════════ */}
             <div className="tpdf-cover">
-              <div className="tpdf-cover__logo">PCO<span>yonetimi.com</span></div>
+              <div className="tpdf-cover__logo">Tura<span>çevre</span></div>
               <div className="tpdf-cover__title-block">
                 <h1 className="tpdf-cover__h1">Trend Analizi Raporu</h1>
                 <div className="tpdf-cover__period">{periodLabel}</div>
@@ -997,16 +997,16 @@ export default function TrendPDFReport() {
                                 return (
                                   <td key={m.label}>
                                     <div className="tpdf-cmp-date">{fmtDate(a.when)}</div>
-                                    {isBroken && <div className="tpdf-cmp-chip tpdf-cmp-chip--broken">İstasyon Kırık / Kayıp</div>}
+                                    {isBroken && <div className="tpdf-cmp-chip tpdf-cmp-chip--broken">Kırık/Kayıp</div>}
                                     {!isBroken && grp === "toxic" && (
                                       <div className={`tpdf-cmp-chip ${hasAct ? "tpdf-cmp-chip--active" : "tpdf-cmp-chip--inactive"}`}>
-                                        {hasAct ? "Yem Tüketimi Var" : "Yem Tüketimi Yok"}
+                                        {hasAct ? "Tüketim Var" : "Temiz/Yok"}
                                       </div>
                                     )}
                                     {!isBroken && grp === "nontoxic" && (
                                       <>
                                         <div className={`tpdf-cmp-chip ${hasAct ? "tpdf-cmp-chip--active" : "tpdf-cmp-chip--inactive"}`}>
-                                          {hasAct ? "Hareket Var" : "Hareket Yok"}
+                                          {hasAct ? "Aktivite (+)" : "Temiz (-)"}
                                         </div>
                                         {a.pestSpecies && <div className="tpdf-cmp-species">{a.pestSpecies}</div>}
                                       </>
@@ -1014,8 +1014,8 @@ export default function TrendPDFReport() {
                                     {!isBroken && (grp === "indoor_fly" || grp === "outdoor_fly") && (
                                       <>
                                         <div className="tpdf-cmp-count">Sayım: <strong>{flyTotal}</strong></div>
-                                        {lampChanged && <div className="tpdf-cmp-note">Floresan: Değiştirildi</div>}
-                                        {!lampChanged && grp === "indoor_fly" && <div className="tpdf-cmp-note tpdf-cmp-note--warn">Floresan: Değiştirilmedi</div>}
+                                        {lampChanged && <div className="tpdf-cmp-note">Flor: Değişti</div>}
+                                        {!lampChanged && grp === "indoor_fly" && <div className="tpdf-cmp-note tpdf-cmp-note--warn">Flor: Aynı</div>}
                                       </>
                                     )}
                                   </td>
