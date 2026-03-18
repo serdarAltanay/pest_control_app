@@ -21,14 +21,27 @@ const INITIAL_FORM = {
   risk: "RISK_YOK",
 };
 
+// Aktivasyon yok değerleri — otomatik doldurma için
+const NO_ACTIVITY_PAYLOAD = {
+  type: "CANLI_YAKALAMA",
+  aktiviteVar: 0,
+  deformeMonitor: 0,
+  yapiskanDegisti: 0,
+  monitorDegisti: 0,
+  ulasilamayanMonitor: 0,
+  risk: "RISK_YOK",
+};
+
 export default function LiveCatchActivation() {
   const { visitId, stationId, storeId } = useParams();
   const navigate = useNavigate();
 
   const [station, setStation] = useState(null);
   const [groupStations, setGroupStations] = useState([]);
+  const [groupActivationStatus, setGroupActivationStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [fillingRemaining, setFillingRemaining] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
 
   const set = (k, v) => setForm((s) => ({ ...s, [k]: v }));
@@ -44,7 +57,12 @@ export default function LiveCatchActivation() {
         setStation(r.data);
         if (r.data.groupId) {
           api.get(`/stations/groupId/${r.data.groupId}`)
-            .then(gr => m && setGroupStations(gr.data))
+            .then(gr => {
+              if (!m) return;
+              const siblings = Array.isArray(gr.data) ? gr.data : [];
+              setGroupStations(siblings);
+              checkGroupActivationStatus(siblings);
+            })
             .catch(e => console.error("Grup istasyonları alınamadı", e));
         } else {
           setGroupStations([]);
@@ -55,39 +73,24 @@ export default function LiveCatchActivation() {
     return () => (m = false);
   }, [stationId]);
 
+  const checkGroupActivationStatus = async (stations) => {
+    const statusMap = {};
+    for (const st of stations) {
+      try {
+        const { data } = await api.get(`/activations/stations/${st.id}?limit=1&offset=0`);
+        const items = Array.isArray(data?.items) ? data.items : [];
+        statusMap[st.id] = items.length > 0;
+      } catch {
+        statusMap[st.id] = false;
+      }
+    }
+    setGroupActivationStatus(statusMap);
+  };
+
   const title = useMemo(
     () => (station ? `Canlı Yakalama İstasyonu | ${station.name}` : "Yükleniyor…"),
     [station]
   );
-
-  const groupUnitCodes = useMemo(() => {
-    if (!station || !station.isGroup || !station.totalCount) return [];
-    const codes = [];
-    const baseCode = station.code || "ST";
-    const prefixMatch = baseCode.match(/^(.*?)(\d+)$/);
-    if (prefixMatch) {
-      const prefix = prefixMatch[1];
-      const startNum = parseInt(prefixMatch[2], 10);
-      for (let i = 0; i < station.totalCount; i++) {
-        const num = startNum + i;
-        const suffix = String(num).padStart(prefixMatch[2].length, '0');
-        codes.push(`${prefix}${suffix}`);
-      }
-    } else {
-      for (let i = 1; i <= station.totalCount; i++) {
-        codes.push(`${baseCode}-${String(i).padStart(3, '0')}`);
-      }
-    }
-    return codes;
-  }, [station]);
-
-  const [selectedSubCode, setSelectedSubCode] = useState("");
-
-  useEffect(() => {
-    if (groupUnitCodes.length > 0 && !selectedSubCode) {
-      setSelectedSubCode(groupUnitCodes[0]);
-    }
-  }, [groupUnitCodes, selectedSubCode]);
 
   const save = async () => {
     try {
@@ -97,11 +100,13 @@ export default function LiveCatchActivation() {
         : `/activations/stations/${stationId}`;
       const payload = { 
         type: "CANLI_YAKALAMA", 
-        ...form, 
-        subCode: selectedSubCode 
+        ...form,
       };
       await api.post(url, payload);
       toast.success("Aktivasyon kaydı başarıyla oluşturuldu.");
+      if (groupStations.length > 0) {
+        setGroupActivationStatus(prev => ({ ...prev, [stationId]: true }));
+      }
       navigate(-1);
     } catch (e) {
       console.error(e);
@@ -110,6 +115,46 @@ export default function LiveCatchActivation() {
       setSaving(false);
     }
   };
+
+  const switchStation = (id) => {
+    const baseUrl = visitId 
+      ? `/admin/stores/${storeId}/visits/${visitId}/stations/${id}/activation/live-catch`
+      : `/admin/stores/${storeId}/stations/${id}/activation/live-catch`;
+    navigate(baseUrl);
+  };
+
+  const fillRemainingNoActivity = async () => {
+    const remaining = groupStations.filter(st => 
+      st.isActive && !groupActivationStatus[st.id]
+    );
+    if (remaining.length === 0) {
+      toast.info("Tüm istasyonlara zaten aktivasyon girilmiş.");
+      return;
+    }
+    if (!window.confirm(`${remaining.length} istasyona "Aktivasyon Yok" kaydı girilecek. Devam?`)) return;
+
+    setFillingRemaining(true);
+    let success = 0;
+    let fail = 0;
+    for (const st of remaining) {
+      try {
+        const url = visitId
+          ? `/activations/visits/${visitId}/stations/${st.id}`
+          : `/activations/stations/${st.id}`;
+        await api.post(url, NO_ACTIVITY_PAYLOAD);
+        success++;
+        setGroupActivationStatus(prev => ({ ...prev, [st.id]: true }));
+      } catch {
+        fail++;
+      }
+    }
+    setFillingRemaining(false);
+    if (success > 0) toast.success(`${success} istasyona "Aktivasyon Yok" girildi.`);
+    if (fail > 0) toast.error(`${fail} istasyonda hata oluştu.`);
+  };
+
+  const filledCount = groupStations.filter(st => groupActivationStatus[st.id]).length;
+  const activeCount = groupStations.filter(st => st.isActive).length;
 
   return (
     <Layout title={title}>
@@ -123,24 +168,38 @@ export default function LiveCatchActivation() {
             <div className="warn">Uyarı: Bu sayfa Canlı Yakalama tipine özeldir (mevcut: <b>{station.type}</b>).</div>
           )}
 
-          {station?.isGroup && (
-            <div className="group-selection">
-              <div className="group-title">
+          {/* Grup istasyon navigasyonu */}
+          {groupStations.length > 1 && (
+            <div className="group-navigation">
+              <div className="group-nav-header">
                 <span className="icon">📂</span>
-                Grup İçi Ünite Seçimi
+                Grup İstasyonları
+                <span className="group-progress">({filledCount}/{activeCount} tamamlandı)</span>
               </div>
-              <div className="sub-station-selector">
-                <select 
-                  className="select" 
-                  value={selectedSubCode} 
-                  onChange={e => setSelectedSubCode(e.target.value)}
+              <div className="group-station-list">
+                {groupStations.filter(st => st.isActive).map(st => (
+                  <button
+                    key={st.id}
+                    className={`group-station-btn ${st.id === Number(stationId) ? "active" : ""} ${groupActivationStatus[st.id] ? "done" : ""}`}
+                    onClick={() => switchStation(st.id)}
+                    title={groupActivationStatus[st.id] ? "Aktivasyon girildi ✓" : "Henüz aktivasyon girilmedi"}
+                  >
+                    <span className="st-name">{st.name || st.code}</span>
+                    <span className={`st-status ${groupActivationStatus[st.id] ? "ok" : "pending"}`}>
+                      {groupActivationStatus[st.id] ? "✓" : "○"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {activeCount > filledCount && (
+                <button 
+                  className="btn-fill-remaining" 
+                  disabled={fillingRemaining}
+                  onClick={fillRemainingNoActivity}
                 >
-                  {groupUnitCodes.map(code => (
-                    <option key={code} value={code}>{code}</option>
-                  ))}
-                </select>
-                <small className="help-text">Gruptaki hangi ünite için işlem yapıldığını seçin.</small>
-              </div>
+                  {fillingRemaining ? "İşleniyor…" : `Geri Kalanlara "Aktivasyon Yok" Gir (${activeCount - filledCount} adet)`}
+                </button>
+              )}
             </div>
           )}
 
@@ -148,9 +207,9 @@ export default function LiveCatchActivation() {
             <div className="name">
               {station?.name} 
               <span className="sep">|</span> 
-              {station?.isGroup ? selectedSubCode : station?.code}
+              {station?.code}
             </div>
-            <div className="subtitle">Dikkat: <b>{station?.name}</b> {station?.isGroup ? `(${selectedSubCode})` : ""} isimli istasyonu için işlem yapıyorsunuz.</div>
+            <div className="subtitle">Dikkat: <b>{station?.name}</b> isimli istasyonu için işlem yapıyorsunuz.</div>
           </div>
 
           {loading && <div className="skeleton">Yükleniyor…</div>}
@@ -167,21 +226,10 @@ export default function LiveCatchActivation() {
                 ].map(([lbl, key]) => (
                   <div key={key} className="field">
                     <div className="label">{lbl}</div>
-                    {station?.isGroup ? (
-                      <input 
-                        className="input" 
-                        type="number" 
-                        min={0} 
-                        max={station.totalCount} 
-                        value={form[key]} 
-                        onChange={e => set(key, Number(e.target.value || 0))} 
-                      />
-                    ) : (
-                      <label className="switch">
-                        <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
-                        <span className="slider" />
-                      </label>
-                    )}
+                    <label className="switch">
+                      <input type="checkbox" checked={!!form[key]} onChange={e => set(key, e.target.checked ? 1 : 0)} />
+                      <span className="slider" />
+                    </label>
                   </div>
                 ))}
 

@@ -227,15 +227,15 @@ $warnc: #ffb86c;
   margin-bottom: 10px;
 }
 
-/* --------- Grup İstasyon Seçimi --------- */
-.group-selection {
+/* --------- Grup İstasyon Navigasyonu --------- */
+.group-navigation {
   margin-bottom: 20px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 15px;
 
-  .group-title {
+  .group-nav-header {
     font-size: 14px;
     font-weight: 600;
     color: #475569;
@@ -243,34 +243,103 @@ $warnc: #ffb86c;
     display: flex;
     align-items: center;
     gap: 8px;
+
+    .group-progress {
+      font-size: 12px;
+      font-weight: 500;
+      color: #64748b;
+      margin-left: auto;
+    }
   }
 
-  .sub-station-selector {
+  .group-station-list {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .group-station-btn {
+    display: flex;
+    align-items: center;
     gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+    transition: all 0.15s ease;
 
-    .select {
-      max-width: 300px;
-      font-weight: 600;
-      border-color: #cbd5e1;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      background-size: 16px;
-      appearance: none;
-      padding-right: 40px;
+    &:hover {
+      border-color: $brand;
+      color: $brand;
+      background: rgba($brand, 0.04);
+    }
 
-      &:focus {
-        border-color: $brand;
-        box-shadow: 0 0 0 3px rgba($brand, 0.1);
+    &.active {
+      border-color: $brand;
+      background: rgba($brand, 0.08);
+      color: $brand;
+      font-weight: 700;
+      box-shadow: 0 0 0 2px rgba($brand, 0.15);
+    }
+
+    &.done {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.06);
+
+      .st-status.ok {
+        color: #22c55e;
+        font-weight: 700;
       }
     }
 
-    .help-text {
-      font-size: 11px;
-      color: #64748b;
-      font-style: italic;
+    &.done.active {
+      border-color: $brand;
+      box-shadow: 0 0 0 2px rgba($brand, 0.15);
+    }
+
+    .st-name {
+      white-space: nowrap;
+    }
+
+    .st-status {
+      font-size: 14px;
+      line-height: 1;
+
+      &.pending {
+        color: #94a3b8;
+      }
+
+      &.ok {
+        color: #22c55e;
+      }
+    }
+  }
+
+  .btn-fill-remaining {
+    width: 100%;
+    padding: 10px 16px;
+    border: 2px dashed #f59e0b;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.06);
+    color: #92400e;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: #d97706;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
   }
 }
