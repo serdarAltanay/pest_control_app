@@ -81,8 +81,8 @@ export default function FastEk1() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/admin/customers");
-        setCustomers(Array.isArray(data) ? data : []);
+        const { data } = await api.get("/customers");
+        setCustomers(Array.isArray(data) ? data.filter(c => c.code !== "FREE") : []);
       } catch (err) {
         toast.error("Müşteri listesi yüklenemedi.");
       }
@@ -98,7 +98,7 @@ export default function FastEk1() {
     }
     (async () => {
         try {
-            const { data } = await api.get(`/admin/customers/${selectedCustomerId}/stores`);
+            const { data } = await api.get(`/stores/customer/${selectedCustomerId}`);
             setStores(Array.isArray(data) ? data : []);
             setSelectedStoreId("");
             setStore(null);
@@ -116,16 +116,21 @@ export default function FastEk1() {
     }
     (async () => {
         try {
-            const [resS, resB, resE] = await Promise.all([
-                api.get(`/stores/${selectedStoreId}`),
-                api.get("/biocides"),
-                api.get("/employees").catch(() => api.get("/admin/employees")),
-            ]);
+            const resS = await api.get(`/stores/${selectedStoreId}`);
             setStore(resS.data);
-            setBiocides(Array.isArray(resB.data) ? resB.data : []);
-            setAllEmployees(Array.isArray(resE.data) ? resE.data : []);
-        } catch {
-            toast.error("Mağaza/biyosidal/personel verisi yüklenemedi.");
+            
+            // Biyosidal ve Personel listelerini ayırarak alıyoruz ki biri hata verirse diğeri yüklenmeye devam etsin
+            api.get("/biocides")
+                .then(res => setBiocides(Array.isArray(res.data) ? res.data : []))
+                .catch(err => console.error("Biocides fetch error:", err));
+
+            api.get("/employees")
+                .then(res => setAllEmployees(Array.isArray(res.data) ? res.data : []))
+                .catch(err => console.error("Employees fetch error:", err));
+
+        } catch (err) {
+            console.error("Store fetch error:", err);
+            toast.error("Mağaza verisi yüklenemedi.");
         }
     })();
   }, [selectedStoreId]);

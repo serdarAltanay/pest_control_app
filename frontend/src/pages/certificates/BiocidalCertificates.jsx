@@ -32,7 +32,7 @@ export default function BiocidalCertificates() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [profile]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -40,13 +40,11 @@ export default function BiocidalCertificates() {
             // Paralel veri çekimi
             const [certsRes, biocidesRes] = await Promise.all([
                 api.get("/biocidal-certificates"),
-                canManageCerts ? api.get("/biocides") : Promise.resolve({ data: [] })
+                api.get("/biocides").catch(() => ({ data: [] }))
             ]);
 
             setCertificates(certsRes.data);
-            if (canManageCerts) {
-                setBiocides(biocidesRes.data);
-            }
+            setBiocides(Array.isArray(biocidesRes.data) ? biocidesRes.data : []);
 
         } catch (error) {
             console.error("SDS Formları yüklenirken hata:", error);
