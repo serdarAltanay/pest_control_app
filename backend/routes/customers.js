@@ -124,7 +124,7 @@ router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) 
     return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
   }
   try {
-    const {
+    let {
       code,
       title,
       accountingTitle,
@@ -139,7 +139,7 @@ router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) 
       employeeId,
     } = req.body;
 
-    let finalCode = code;
+    let finalCode = code ? String(code).trim() : null;
     if (!finalCode) {
       const customers = await prisma.customer.findMany({
         where: { code: { not: "FREE" } },
@@ -178,6 +178,9 @@ router.post("/create", auth, roleCheck(["admin", "employee"]), async (req, res) 
 
     res.json({ message: "Müşteri eklendi", customer: c });
   } catch (e) {
+    if (e.code === "P2002") {
+      return res.status(409).json({ message: "Bu müşteri kodu zaten kullanımda." });
+    }
     console.error("POST /customers/create error:", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -211,14 +214,14 @@ router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     } = req.body;
 
     if (code) {
-      const other = await prisma.customer.findUnique({ where: { code } });
+      const normalizedCode = String(code).trim();
+      const other = await prisma.customer.findUnique({ where: { code: normalizedCode } });
       if (other && other.id !== id) {
-        return res.status(409).json({ message: "Bu müşteri kodu kullanımda." });
+        return res.status(409).json({ message: "Bu müşteri kodu zaten kullanımda." });
       }
+      data.code = normalizedCode;
     }
 
-    const data = {};
-    if (code !== undefined) data.code = String(code);
     if (title !== undefined) data.title = String(title);
     if (accountingTitle !== undefined) data.accountingTitle = accountingTitle || null;
     if (email !== undefined) data.email = email || null;
@@ -234,6 +237,9 @@ router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     const updated = await prisma.customer.update({ where: { id }, data });
     res.json({ message: "Müşteri güncellendi", customer: updated });
   } catch (e) {
+    if (e.code === "P2002") {
+      return res.status(409).json({ message: "Bu müşteri kodu zaten kullanımda." });
+    }
     if (e.code === "P2025")
       return res.status(404).json({ message: "Müşteri bulunamadı" });
     console.error("PUT /customers/:id error:", e);

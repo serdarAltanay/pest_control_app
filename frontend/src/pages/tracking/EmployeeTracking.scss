@@ -68,6 +68,8 @@
 .emp-list .emp.on { background: #f1f5ff; border-color: #c7d2fe; }
 .emp-list .emp input { pointer-events: auto; } /* emin olmak için */
 .emp-list .dot { width: 12px; height: 12px; border-radius: 999px; }
+.link-strong { color: #111827; font-weight: 600; text-decoration: none; }
+.link-soft   { color: #374151; text-decoration: none; }
 .emp-list .nm { font-weight: 600; }
 .emp-list .cnt { margin-left: auto; color: var(--text-muted); font-size: 12px; }
 
@@ -79,9 +81,7 @@
   padding: 0;
   margin: 0 6px 0 4px;
   font: inherit;
-  color: #0ea5e9;
-  cursor: pointer;
-  text-decoration: underline;
+  a { color: inherit; text-decoration: none; &:hover { text-decoration: none; border-bottom: 1px solid currentColor; } }
 }
 .emp-list .nm.as-link:hover { color: #0369a1; }
 

@@ -73,35 +73,53 @@
       margin-bottom: 8px;
     }
 
-    /* BUTON RENGİ DEĞİŞTİRİLDİ */
-    .success {
-      margin-top: 10px;
-      height: 42px;
-      padding: 0 16px;
-      border: none;
-      border-radius: $border-radius;
-      background: var(--secondary);
-      /* <-- yeni renk */
-      color: var(--primary-contrast);
-      /* kontrast */
-      font-weight: 800;
-      cursor: pointer;
-      transition: transform 0.08s ease, box-shadow $transition, background $transition;
+    .form-actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
 
-      &:hover {
-        opacity: 0.9;
-        box-shadow: var(--shadow);
-      }
+      button {
+        height: 42px;
+        padding: 0 20px;
+        border-radius: $border-radius;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: none;
 
-      &:active {
-        transform: translateY(1px) scale(.99);
-      }
+        &:active {
+          transform: scale(0.98);
+        }
 
-      &:disabled {
-        opacity: .6;
-        cursor: not-allowed;
+        &.success {
+          background: var(--secondary);
+          color: white;
+          
+          &:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          }
+        }
+
+        &.list-btn {
+          background: #f1f5f9;
+          color: #475569;
+          border: 1px solid #e2e8f0;
+
+          &:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+            border-color: #cbd5e1;
+          }
+        }
       }
     }
+
   }
 
 }
