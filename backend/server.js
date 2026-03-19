@@ -1,4 +1,4 @@
-﻿// server.js
+// server.js
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -43,6 +43,7 @@ import feedbackRouter from "./routes/feedback.js";
 import notificationsRouter from "./routes/notifications.js";
 
 import contactsRouter from "./routes/contacts.js";
+import filesRouter from "./routes/files.js";
 
 import { initCronJobs } from "./lib/cron.js";
 
@@ -139,6 +140,7 @@ app.use("/api/nonconformities", nonconformitiesRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/certificates", certificatesRouter);
 app.use("/api/biocidal-certificates", biocidalCertificatesRouter);
+app.use("/api/files", filesRouter);
 
 // Online/presence
 app.use("/api/heartbeat", heartbeatRoutes);

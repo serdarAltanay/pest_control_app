@@ -33,13 +33,7 @@ const fileFilter = (_req, file, cb) => {
     cb(null, true);
 };
 
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOAD_ROOT),
-    filename: (_req, file, cb) => {
-        const ext = path.extname(file.originalname) || "";
-        cb(null, `cert-${Date.now()}${ext}`);
-    },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage,
@@ -67,13 +61,20 @@ router.post("/", auth, roleCheck(["admin"]), upload.single("file"), async (req, 
         if (!title) return res.status(400).json({ error: "Başlık zorunlu" });
         if (!req.file) return res.status(400).json({ error: "Dosya zorunlu" });
 
-        const filePath = rel(req.file.path);
         const mime = req.file.mimetype || null;
+        
+        const fileRow = await prisma.fileStorage.create({
+            data: {
+                filename: req.file.originalname,
+                mime: mime || "application/octet-stream",
+                data: req.file.buffer
+            }
+        });
 
         const created = await prisma.companyCertificate.create({
             data: {
                 title,
-                file: filePath,
+                file: `api/files/${fileRow.id}`,
                 mime,
                 notes: notes ?? null,
                 uploadedAt: uploadedAt ? new Date(uploadedAt) : new Date(),
@@ -93,6 +94,16 @@ router.get("/:id/download", auth, async (req, res) => {
         const id = Number(req.params.id);
         const item = await prisma.companyCertificate.findUnique({ where: { id } });
         if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
+
+        if (item.file.startsWith("api/files/")) {
+            const fileId = item.file.split("api/files/")[1];
+            const fileRow = await prisma.fileStorage.findUnique({ where: { id: fileId } });
+            if (!fileRow) return res.status(404).json({ error: "Sunucuda dosya bulunamadı" });
+            
+            res.setHeader("Content-Type", fileRow.mime);
+            res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileRow.filename)}"`);
+            return res.send(fileRow.data);
+        }
 
         let abs = absFromRel(item.file);
         console.log(`[DEBUG] Company download: item.file=${item.file} -> abs=${abs}`);
@@ -122,6 +133,16 @@ router.get("/:id/view", auth, async (req, res) => {
         const id = Number(req.params.id);
         const item = await prisma.companyCertificate.findUnique({ where: { id } });
         if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
+
+        if (item.file.startsWith("api/files/")) {
+            const fileId = item.file.split("api/files/")[1];
+            const fileRow = await prisma.fileStorage.findUnique({ where: { id: fileId } });
+            if (!fileRow) return res.status(404).json({ error: "Sunucuda dosya bulunamadı" });
+            
+            res.setHeader("Content-Type", fileRow.mime);
+            res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(fileRow.filename)}"`);
+            return res.send(fileRow.data);
+        }
 
         let abs = absFromRel(item.file);
         console.log(`[DEBUG] Company view: item.file=${item.file} -> abs=${abs}`);
@@ -159,8 +180,13 @@ router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
         const item = await prisma.companyCertificate.findUnique({ where: { id } });
         if (!item) return res.status(404).json({ error: "Kayıt bulunamadı" });
 
-        const abs = absFromRel(item.file);
-        try { if (fs.existsSync(abs)) fs.unlinkSync(abs); } catch { }
+        if (item.file.startsWith("api/files/")) {
+            const fileId = item.file.split("api/files/")[1];
+            await prisma.fileStorage.delete({ where: { id: fileId } }).catch(() => {});
+        } else {
+            const abs = absFromRel(item.file);
+            try { if (fs.existsSync(abs)) fs.unlinkSync(abs); } catch { }
+        }
 
         await prisma.companyCertificate.delete({ where: { id } });
         res.json({ ok: true });

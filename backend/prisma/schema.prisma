@@ -638,3 +638,10 @@ model ConsentLog {
   @@index([consentType])
 }
 
+model FileStorage {
+  id        String   @id @default(uuid())
+  filename  String
+  mime      String
+  data      Bytes    @db.LongBlob
+  createdAt DateTime @default(now())
+}

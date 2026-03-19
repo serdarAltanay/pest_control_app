@@ -9,20 +9,7 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // Multer Config
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dest = path.join(process.cwd(), "uploads", "certificates");
-        if (!fs.existsSync(dest)) {
-            fs.mkdirSync(dest, { recursive: true });
-        }
-        cb(null, dest);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const ext = path.extname(file.originalname);
-        cb(null, `biocide-cert-${uniqueSuffix}${ext}`);
-    },
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
     const allowedMimes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
@@ -78,11 +65,9 @@ router.post(
 
             const { title, biocideId, notes } = req.body;
             if (!title) {
-                fs.unlinkSync(req.file.path);
                 return res.status(400).json({ message: "Sertifika başlığı (title) gerekli." });
             }
             if (!biocideId) {
-                fs.unlinkSync(req.file.path);
                 return res.status(400).json({ message: "Hangi Biyosidal'e ait olduğu (biocideId) gerekli." });
             }
 
@@ -92,18 +77,25 @@ router.post(
             });
 
             if (!biocideExists) {
-                fs.unlinkSync(req.file.path);
                 return res.status(404).json({ message: "Belirtilen Biyosidal bulunamadı." });
             }
 
-            const relativePath = path.join("uploads", "certificates", req.file.filename).replace(/\\/g, "/");
+            const mime = req.file.mimetype || null;
+            
+            const fileRow = await prisma.fileStorage.create({
+                data: {
+                    filename: req.file.originalname,
+                    mime: mime || "application/octet-stream",
+                    data: req.file.buffer
+                }
+            });
 
             const cert = await prisma.biocideCertificate.create({
                 data: {
                     title,
                     biocideId: parseInt(biocideId, 10),
-                    file: relativePath,
-                    mime: req.file.mimetype,
+                    file: `api/files/${fileRow.id}`,
+                    mime,
                     notes: notes || null,
                 },
                 include: {
@@ -114,9 +106,6 @@ router.post(
             res.status(201).json(cert);
         } catch (e) {
             console.error("POST /biocidal-certificates error:", e);
-            if (req.file && fs.existsSync(req.file.path)) {
-                fs.unlinkSync(req.file.path);
-            }
             res.status(500).json({ message: e.message || "Sunucu hatası" });
         }
     }
@@ -133,10 +122,15 @@ router.delete("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) =
         const cert = await prisma.biocideCertificate.findUnique({ where: { id } });
         if (!cert) return res.status(404).json({ message: "Sertifika bulunamadı." });
 
-        // Fiziksel dosyayı sil
-        const fullPath = path.join(process.cwd(), cert.file);
-        if (fs.existsSync(fullPath)) {
-            fs.unlinkSync(fullPath);
+        if (cert.file.startsWith("api/files/")) {
+            const fileId = cert.file.split("api/files/")[1];
+            await prisma.fileStorage.delete({ where: { id: fileId } }).catch(() => {});
+        } else {
+            // Fiziksel dosyayı sil
+            const fullPath = path.join(process.cwd(), cert.file);
+            if (fs.existsSync(fullPath)) {
+                fs.unlinkSync(fullPath);
+            }
         }
 
         await prisma.biocideCertificate.delete({ where: { id } });
@@ -158,6 +152,16 @@ router.get("/:id/download", auth, async (req, res) => {
 
         const cert = await prisma.biocideCertificate.findUnique({ where: { id } });
         if (!cert) return res.status(404).json({ message: "Sertifika bulunamadı." });
+
+        if (cert.file.startsWith("api/files/")) {
+            const fileId = cert.file.split("api/files/")[1];
+            const fileRow = await prisma.fileStorage.findUnique({ where: { id: fileId } });
+            if (!fileRow) return res.status(404).json({ message: "Sunucuda dosya bulunamadı" });
+            
+            res.setHeader("Content-Type", fileRow.mime);
+            res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileRow.filename)}"`);
+            return res.send(fileRow.data);
+        }
 
         let fullPath = path.resolve(process.cwd(), cert.file);
         console.log(`[DEBUG] Biocidal download: item.file=${cert.file} -> abs=${fullPath}`);
@@ -189,6 +193,16 @@ router.get("/:id/view", auth, async (req, res) => {
 
         const cert = await prisma.biocideCertificate.findUnique({ where: { id } });
         if (!cert) return res.status(404).json({ message: "Sertifika bulunamadı." });
+
+        if (cert.file.startsWith("api/files/")) {
+            const fileId = cert.file.split("api/files/")[1];
+            const fileRow = await prisma.fileStorage.findUnique({ where: { id: fileId } });
+            if (!fileRow) return res.status(404).json({ message: "Sunucuda dosya bulunamadı" });
+            
+            res.setHeader("Content-Type", fileRow.mime);
+            res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(fileRow.filename)}"`);
+            return res.send(fileRow.data);
+        }
 
         let fullPath = path.resolve(process.cwd(), cert.file);
         console.log(`[DEBUG] Biocidal view: item.file=${cert.file} -> abs=${fullPath}`);
