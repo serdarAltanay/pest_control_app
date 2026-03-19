@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
-import { FiDownload, FiTrash2, FiPlus } from "react-icons/fi";
+import { FiTrash2, FiPlus } from "react-icons/fi";
 import { ProfileContext } from "../../context/ProfileContext";
 import { toAbsoluteUrl } from "../../utils/getAssetUrl";
 import Layout from "../../components/Layout";

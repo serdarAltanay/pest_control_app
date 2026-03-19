@@ -16,8 +16,7 @@ import {
   FiCalendar, 
   FiFileText, 
   FiClock, 
-  FiCheckCircle, 
-  FiAlertTriangle 
+  FiCheckCircle
 } from "react-icons/fi";
 
 import DashCalToday, {

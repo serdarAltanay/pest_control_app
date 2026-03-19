@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import useAuth from "../../hooks/useAuth";
 import "./Biocides.scss";
 
 const UNIT_TR = {
