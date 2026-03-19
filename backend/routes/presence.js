@@ -180,12 +180,27 @@ router.get("/summary", auth, async (_req, res) => {
       return { total, online, idle, offline };
     };
 
-    const [admins, employees, accessOwners, customersTotal, storesTotal] = await Promise.all([
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const [admins, employees, accessOwners, customersTotal, storesTotal, monthlyDone, monthlyPlanned] = await Promise.all([
       countBuckets(prisma.admin),
       countBuckets(prisma.employee),
       countBuckets(prisma.accessOwner), // müşteriler için AccessOwner’ı kullanıyoruz
       prisma.customer.count(),
       prisma.store.count(),
+      prisma.scheduleEvent.count({
+        where: {
+          status: "COMPLETED",
+          start: { gte: startOfMonth, lte: endOfMonth }
+        }
+      }),
+      prisma.scheduleEvent.count({
+        where: {
+          status: { in: ["PLANNED", "PENDING"] },
+          start: { gte: startOfMonth, lte: endOfMonth }
+        }
+      })
     ]);
 
     return res.json({
@@ -198,6 +213,8 @@ router.get("/summary", auth, async (_req, res) => {
       totals: {
         customers: customersTotal,
         stores: storesTotal,
+        monthlyDone,
+        monthlyPlanned
       },
     });
   } catch (err) {

@@ -39,7 +39,9 @@ export default function WorkDashboard() {
     customers: 0,
     stores: 0,
     plannedVisits: 0,
-    openNcr: 0
+    openNcr: 0,
+    monthlyDone: 0,
+    monthlyPlanned: 0
   });
 
   const displayName = profile?.fullName || profile?.name || "";
@@ -54,7 +56,6 @@ export default function WorkDashboard() {
 
   const fetchStats = async () => {
     try {
-      // Backend handles partial stats in different endpoints, but let's try to get a quick overview
       const [presenceRes, visitRes] = await Promise.all([
         api.get("/presence/summary", { _silent: true }),
         api.get("/schedule/events", { 
@@ -70,7 +71,9 @@ export default function WorkDashboard() {
         customers: presenceRes.data?.totals?.customers || 0,
         stores: presenceRes.data?.totals?.stores || 0,
         plannedVisits: visitRes.data?.length || 0,
-        openNcr: 0 // Placeholder for now or fetch if endpoint exists
+        openNcr: 0, // Placeholder
+        monthlyDone: presenceRes.data?.totals?.monthlyDone || 0,
+        monthlyPlanned: presenceRes.data?.totals?.monthlyPlanned || 0
       });
     } catch (err) {
       console.error("Stats fetch error:", err);
@@ -120,6 +123,21 @@ export default function WorkDashboard() {
             <div className="stat-info">
               <span className="stat-label">Bekleyen Uygunsuzluk</span>
               <span className="stat-value">{stats.openNcr}</span>
+            </div>
+          </div>
+          {/* Yeni Kartlar */}
+          <div className="stat-card">
+            <div className="icon-box green"><FiCheckCircle /></div>
+            <div className="stat-info">
+              <span className="stat-label">Bu Ay Yapılan</span>
+              <span className="stat-value text-success">{stats.monthlyDone}</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="icon-box orange"><FiClock /></div>
+            <div className="stat-info">
+              <span className="stat-label">Bu Ay Yapılacak</span>
+              <span className="stat-value text-warn">{stats.monthlyPlanned}</span>
             </div>
           </div>
         </div>
