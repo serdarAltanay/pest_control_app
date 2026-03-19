@@ -32,36 +32,36 @@ const fileFilter = (_req, file, cb) => {
   cb(ok ? null : new Error("Geçersiz dosya türü (png/jpg/jpeg/webp)"), ok);
 };
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, AVATAR_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const role = req.user?.role || "user";
-    const id   = req.user?.id   || "x";
-    cb(null, `${role}-${id}-${Date.now()}${ext}`);
-  },
-});
+const storage = multer.memoryStorage();
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-function removeIfExists(relOrAbsPath) {
-  if (!relOrAbsPath) return;
-  const abs = path.isAbsolute(relOrAbsPath) ? relOrAbsPath : absFromRel(relOrAbsPath);
-  try { if (fs.existsSync(abs)) fs.unlinkSync(abs); }
-  catch (e) { console.warn("Avatar silinemedi:", e?.message); }
+// DB'deki FileStorage kaydını siler
+async function removeFileFromDB(profileImagePath) {
+    if (!profileImagePath || !profileImagePath.includes("api/files/")) return;
+    const parts = profileImagePath.split("/");
+    const id = parts[parts.length - 1]; // UUID
+    if (id) {
+        try {
+            await prisma.fileStorage.delete({ where: { id } });
+        } catch (e) {
+            console.warn("DB file deletion error (avatar):", e.message);
+        }
+    }
 }
 
 // Avatar kullanımına izin verilen roller
-const AVATAR_ROLES = new Set(["admin", "employee"]);
+const AVATAR_ROLES = new Set(["admin", "employee", "customer"]);
 
 async function getTargetUser(prismaClient, role, id) {
   if (role === "admin")    return prismaClient.admin.findUnique({ where: { id } });
   if (role === "employee") return prismaClient.employee.findUnique({ where: { id } });
-  // AccessOwner (customer) için avatar kapalı
+  if (role === "customer") return prismaClient.accessOwner.findUnique({ where: { id } });
   return null;
 }
 async function updateTargetUser(prismaClient, role, id, data) {
   if (role === "admin")    return prismaClient.admin.update({ where: { id }, data });
   if (role === "employee") return prismaClient.employee.update({ where: { id }, data });
+  if (role === "customer") return prismaClient.accessOwner.update({ where: { id }, data });
   throw new Error("Geçersiz ya da izin verilmeyen rol");
 }
 
@@ -70,8 +70,6 @@ router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
   try {
     const { id, role } = req.user || {};
     if (!AVATAR_ROLES.has(role)) {
-      // AccessOwner (customer) için avatar yükleme devre dışı
-      if (req.file?.path) removeIfExists(req.file.path); // yüklenmişse geri sil
       return res.status(403).json({ error: "Bu rol için avatar özelliği devre dışı" });
     }
 
@@ -79,16 +77,23 @@ router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
 
     const current = await getTargetUser(prisma, role, id);
     if (!current) {
-      // güvenlik: kaydı yoksa dosyayı sil
-      removeIfExists(req.file.path);
       return res.status(404).json({ error: "Kullanıcı bulunamadı" });
     }
 
-    // eski resmi sil
-    removeIfExists(current.profileImage);
+    // 1) Eski resmi DB'den sil (eğer DB yolu ise)
+    await removeFileFromDB(current.profileImage);
 
-    // DB'ye hep forward slash ile kaydet
-    const relativePath = rel(req.file.path); // "uploads/avatars/....jpg"
+    // 2) Yeni resmi FileStorage'a kaydet
+    const fileRecord = await prisma.fileStorage.create({
+      data: {
+        filename: req.file.originalname,
+        mime: req.file.mimetype,
+        data: req.file.buffer
+      }
+    });
+
+    // 3) Kullanıcının profileImage alanını güncelle
+    const relativePath = `api/files/${fileRecord.id}`;
     const updated = await updateTargetUser(prisma, role, id, { profileImage: relativePath });
 
     res.json({ message: "Avatar güncellendi", profileImage: updated.profileImage });
@@ -124,8 +129,8 @@ router.delete("/avatar", auth, async (req, res) => {
     const target = await getTargetUser(prisma, targetRole, targetId);
     if (!target) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
 
-    // dosyayı sil
-    removeIfExists(target.profileImage);
+    // DB'deki dosyayı sil
+    await removeFileFromDB(target.profileImage);
 
     // DB'de null yap
     await updateTargetUser(prisma, targetRole, targetId, { profileImage: null });

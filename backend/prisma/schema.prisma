@@ -118,7 +118,7 @@ model AccessOwner {
   firstName String?
   lastName  String?
   phone     String?
-  // profileImage String?
+  profileImage String?
   role      AccessRole @default(CALISAN)
   isActive  Boolean    @default(true)
   hasAcceptedTerms Boolean @default(false)
