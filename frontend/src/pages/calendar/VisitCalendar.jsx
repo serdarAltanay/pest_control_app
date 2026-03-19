@@ -548,11 +548,7 @@ export default function VisitCalendar() {
           </div>
         )}
 
-        {!isPlanner && (
-          <div className="vc-tip card">
-            Bu takvimi admin ve çalışanlar görebilir. <b>Yeni ziyaret planlama admin ve personel içindir.</b>
-          </div>
-        )}
+
 
         {/* BODY */}
         {loading ? (
