@@ -39,30 +39,19 @@ export function getApiOrigin() {
     return axiosOriginCache;
   }
 
-  // ENV yoksa axios baseURL dene
+  // ENV yoksa axios baseURL'den ya da varsayılandan dene
   if (!axiosOriginCache) {
-    try {
-      const api = require("../api/axios").default;
-      const base = api?.defaults?.baseURL; // "http://:5000/api" veya "/api"
-      dbg("axios baseURL:", base);
-
-      if (base) {
-        const url = new URL(base, window.location.origin);
-        if (/^https?:$/.test(url.protocol)) {
-          axiosOriginCache = url.origin;
-          dbg("use axios origin:", axiosOriginCache);
-          return axiosOriginCache;
-        }
-      }
-    } catch (e) {
-      dbg("axios require failed:", e?.message);
-    }
-    // Son çare: location.origin
-    axiosOriginCache = window.location.origin;
-    dbg("fallback to window.origin:", axiosOriginCache);
-  } else {
-    dbg("getApiOrigin (cached):", axiosOriginCache);
+    const isLocal = typeof window !== "undefined" && 
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    
+    // axios.js'deki mantıkla aynı varsayılanları kullan
+    axiosOriginCache = isLocal 
+      ? "http://localhost:5000" 
+      : "https://pest-control-app.onrender.com";
+      
+    dbg("using default origin (isLocal:", isLocal, "):", axiosOriginCache);
   }
+  
   return axiosOriginCache;
 }
 

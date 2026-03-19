@@ -77,10 +77,8 @@ export default function Profile() {
     profile.email ||
     "—";
 
-  // Avatar URL (admin/employee için server’dan gelecek; yoksa noavatar)
-  const avatarUrl = isAdminOrEmployee
-    ? (getAvatarUrl(profile?.profileImage, { bust: true }) || "/noavatar.jpg")
-    : "/noavatar.jpg";
+  // Avatar URL (görsel varsa normalize et, yoksa noavatar)
+  const avatarUrl = getAvatarUrl(profile?.profileImage, { bust: true }) || "/noavatar.jpg";
 
   const handleAvatarClick = () => setEditModalOpen(true);
   const handleFileChange = (e) => {
@@ -127,16 +125,15 @@ export default function Profile() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Backend'in döndüğü yol uploads/... ise absolute'e çevir
+      // Backend'in döndüğü yol api/files/... ise absolute'e çevirip saklayalım
       const abs = getAvatarUrl(res.data.profileImage, { bust: true });
-      const nextUrl = addCacheBust(abs);
 
       setProfile((prev) => ({
         ...prev,
-        profileImage: nextUrl,
+        profileImage: res.data.profileImage, // Orijinal relative yolu saklayalım, gösterim getAvatarUrl ile yapılacak
         updatedAt: new Date().toISOString(),
       }));
-      localStorage.setItem("profileImage", nextUrl);
+      localStorage.setItem("profileImage", abs); // Navbar UI'ın hızlı yüklenmesi için absolute saklıyoruz
 
       setEditModalOpen(false);
       setImageSrc(null);
