@@ -25,7 +25,7 @@ export default function BiocidalCertificates() {
 
     // Müşteriler (accessOwner/customer) ekleme/silme yapamaz, sadece görebilir
     const canManageCerts = ["admin", "employee"].includes(profile?.role?.toLowerCase());
-    const userToken = localStorage.getItem("token");
+    const userToken = localStorage.getItem("accessToken");
 
 
 

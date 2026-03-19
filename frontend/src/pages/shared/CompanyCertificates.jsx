@@ -33,7 +33,7 @@ export default function CompanyCertificates() {
 
     const isCustomer = role === "customer";
     const isAdmin = role === "admin";
-    const userToken = localStorage.getItem("token");
+    const userToken = localStorage.getItem("accessToken");
 
     const handleUpload = async (e) => {
         e.preventDefault();
