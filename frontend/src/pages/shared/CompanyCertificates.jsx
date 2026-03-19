@@ -81,13 +81,17 @@ export default function CompanyCertificates() {
             const link = document.createElement("a");
             link.href = url;
 
-            let ext = extMatch ? extMatch[0] : "";
-            if (!ext && item.mime) {
+            let ext = "";
+            if (item.mime) {
                 if (item.mime.includes("pdf")) ext = ".pdf";
                 else if (item.mime.includes("png")) ext = ".png";
                 else if (item.mime.includes("jpeg") || item.mime.includes("jpg")) ext = ".jpg";
+                else if (item.mime.includes("word") || item.mime.includes("officedocument")) ext = ".docx";
             }
-            const filename = `${item.title.replace(/[^a-z0-9\ı\ö\ü\ş\ğ\ç]/gi, '_').toLowerCase()}${ext}`;
+            // Fallback: check title for extension
+            if (!ext && item.title.toLowerCase().includes(".pdf")) ext = ".pdf";
+            
+            const filename = `${item.title.replace(/[^a-z0-9\ı\ö\ü\ş\ğ\ç]/gi, '_').toLowerCase()}${ext || '.pdf'}`;
 
             link.setAttribute("download", filename);
             document.body.appendChild(link);
@@ -114,7 +118,7 @@ export default function CompanyCertificates() {
                     {items.length === 0 && <div className="empty">Henüz yüklenmiş sertifika yok.</div>}
 
                     {items.map((it) => (
-                        <div key={it.id} className="cert-card">
+                        <div key={it.id} className="cert-card" onClick={() => setViewerDoc(it)} style={{ cursor: 'pointer' }}>
                             <div className="c-info">
                                 <h3>{it.title}</h3>
                                 {it.notes && <p className="notes">{it.notes}</p>}
@@ -124,7 +128,7 @@ export default function CompanyCertificates() {
                                     </div>
                                 )}
                             </div>
-                            <div className="c-preview" onClick={() => setViewerDoc(it)} style={{ cursor: "pointer" }}>
+                            <div className="c-preview">
                                 {it.file ? (
                                     it.mime?.startsWith("image/") ? (
                                         <img
@@ -138,6 +142,7 @@ export default function CompanyCertificates() {
                                             src={`${toAbsoluteUrl(`api/certificates/${it.id}/view`, { forceApi: true })}?token=${userToken}#toolbar=0&navpanes=0`}
                                             className="preview-frame"
                                             title={it.title}
+                                            style={{ pointerEvents: 'none' }}
                                         />
                                     )
                                 ) : (
@@ -145,14 +150,11 @@ export default function CompanyCertificates() {
                                 )}
                             </div>
                             <div className="c-actions">
-                                <button className="btn ghost" onClick={() => handleDownload(it)}>
+                                <button className="btn ghost" onClick={(e) => { e.stopPropagation(); handleDownload(it); }}>
                                     İndir
                                 </button>
-                                <button className="btn ghost" onClick={() => setViewerDoc(it)}>
-                                    Tam Ekran Aç
-                                </button>
                                 {isAdmin && (
-                                    <button className="btn danger" onClick={() => handleDelete(it.id, it.title)}>
+                                    <button className="btn danger" onClick={(e) => { e.stopPropagation(); handleDelete(it.id, it.title); }}>
                                         Sil
                                     </button>
                                 )}

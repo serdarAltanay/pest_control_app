@@ -121,13 +121,15 @@ export default function BiocidalCertificates() {
             const link = document.createElement("a");
             link.href = url;
 
-            let ext = extMatch ? extMatch[0] : "";
-            if (!ext && item.mime) {
+            let ext = "";
+            if (item.mime) {
                 if (item.mime.includes("pdf")) ext = ".pdf";
                 else if (item.mime.includes("png")) ext = ".png";
                 else if (item.mime.includes("jpeg") || item.mime.includes("jpg")) ext = ".jpg";
             }
-            const filename = `${item.title.replace(/[^a-z0-9\ı\ö\ü\ş\ğ\ç]/gi, '_').toLowerCase()}${ext}`;
+            if (!ext && item.title.toLowerCase().includes(".pdf")) ext = ".pdf";
+
+            const filename = `${item.title.replace(/[^a-z0-9\ı\ö\ü\ş\ğ\ç]/gi, '_').toLowerCase()}${ext || '.pdf'}`;
 
             link.setAttribute("download", filename);
             document.body.appendChild(link);
@@ -165,7 +167,7 @@ export default function BiocidalCertificates() {
                         <div className="empty">Henüz hiçbir SDS formu eklenmemiş.</div>
                     ) : (
                         certificates.map((cert) => (
-                            <div key={cert.id} className="cert-card">
+                            <div key={cert.id} className="cert-card" onClick={() => setViewerDoc(cert)} style={{ cursor: 'pointer' }}>
                                 <div className="c-info">
                                     <span style={{
                                         display: "inline-block",
@@ -185,7 +187,7 @@ export default function BiocidalCertificates() {
                                         Yüklenme: {formatDate(cert.uploadedAt)}
                                     </div>
                                 </div>
-                                <div className="c-preview" onClick={() => setViewerDoc(cert)} style={{ cursor: "pointer" }}>
+                                <div className="c-preview">
                                     {cert.file ? (
                                         cert.mime?.startsWith("image/") ? (
                                             <img
@@ -199,6 +201,7 @@ export default function BiocidalCertificates() {
                                                 src={`${toAbsoluteUrl(`api/biocidal-certificates/${cert.id}/view`, { forceApi: true })}?token=${userToken}#toolbar=0&navpanes=0`}
                                                 className="preview-frame"
                                                 title={cert.title}
+                                                style={{ pointerEvents: 'none' }}
                                             />
                                         )
                                     ) : (
@@ -206,16 +209,13 @@ export default function BiocidalCertificates() {
                                     )}
                                 </div>
                                 <div className="c-actions">
-                                    <button className="btn ghost" onClick={() => handleDownload(cert)}>
+                                    <button className="btn ghost" onClick={(e) => { e.stopPropagation(); handleDownload(cert); }}>
                                         İndir
-                                    </button>
-                                    <button className="btn ghost" onClick={() => setViewerDoc(cert)}>
-                                        Tam Ekran Aç
                                     </button>
                                     {canManageCerts && (
                                         <button
                                             className="btn danger"
-                                            onClick={() => handleDelete(cert.id)}
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(cert.id); }}
                                         >
                                             <FiTrash2 /> Sil
                                         </button>

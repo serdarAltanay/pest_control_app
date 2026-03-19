@@ -152,7 +152,11 @@ export default function WorkDashboard() {
                     )}
                     <div className="short-item highlighted" onClick={() => navigate("/ek1/serbest")}>
                       <div className="short-icon"><FiFileText /></div>
-                      <span>EK-1 Oluştur</span>
+                      <span>Serbest EK-1</span>
+                    </div>
+                    <div className="short-item highlighted" style={{ borderColor: 'var(--success)' }} onClick={() => navigate("/ek1/hizli")}>
+                      <div className="short-icon"><FiFileText /></div>
+                      <span>EK-1 Doldur</span>
                     </div>
                     <div className="short-item" onClick={() => navigate("/calendar")}>
                       <div className="short-icon"><FiCalendar /></div>

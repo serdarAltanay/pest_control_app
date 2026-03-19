@@ -21,6 +21,7 @@ import StoreEk1 from "./pages/ek1/StoreEk1.jsx";
 import VisitEk1 from "./pages/ek1/VisitEk1.jsx";
 import Ek1Preview from "./pages/ek1/Ek1Preview.jsx";
 import SerbestEk1 from "./pages/ek1/SerbestEk1";
+import FastEk1 from "./pages/ek1/FastEk1.jsx";
 import Ek1BatchPrint from "./pages/tools/Ek1BatchPrint.jsx";
 
 import RodentBaitActivation from "./pages/Stations/activations/RodentBaitActivation.jsx";
@@ -268,6 +269,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['admin', 'employee']}>
                   <SerbestEk1 />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/ek1/hizli"
+              element={
+                <PrivateRoute allowedRoles={['admin', 'employee']}>
+                  <FastEk1 />
                 </PrivateRoute>
               }
             />

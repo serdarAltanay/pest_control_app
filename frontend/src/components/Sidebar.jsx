@@ -81,6 +81,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               <li className="section-title">İşler</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/work") ? "active" : ""}`} onClick={() => navigate("/work")}>İş Paneli</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/ek1/serbest") ? "active" : ""}`} onClick={() => navigate("/ek1/serbest")}>Serbest Ek1 oluştur</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/ek1/hizli") ? "active" : ""}`} onClick={() => navigate("/ek1/hizli")}>Hızlı Ek1 doldur</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/calendar") ? "active" : ""}`} onClick={() => navigate("/calendar")}>Ziyaret Takvimi</li>
             </>
           )}
