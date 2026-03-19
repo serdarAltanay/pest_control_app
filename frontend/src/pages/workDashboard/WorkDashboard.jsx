@@ -174,10 +174,12 @@ export default function WorkDashboard() {
                       <div className="short-icon"><FiCalendar /></div>
                       <span>Takvim</span>
                     </div>
-                    <div className="short-item" onClick={() => navigate("/admin/biocides")}>
-                      <div className="short-icon"><FiCheckCircle /></div>
-                      <span>Biyosidaller</span>
-                    </div>
+                    {isAdmin && (
+                      <div className="short-item" onClick={() => navigate("/admin/biocides")}>
+                        <div className="short-icon"><FiCheckCircle /></div>
+                        <span>Biyosidallar</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

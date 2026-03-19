@@ -95,14 +95,14 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               )}
               <li className={`sidebar-item ${location.pathname === "/admin/customers" ? "active" : ""}`} onClick={() => navigate("/admin/customers")}>Müşteri Listesi</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/admin/stores") ? "active" : ""}`} onClick={() => navigate("/admin/stores")}>Mağaza Listesi</li>
-              <li className={`sidebar-item ${location.pathname.startsWith("/admin/biocides") ? "active" : ""}`} onClick={() => navigate("/admin/biocides")}>Biyosidallar</li>
             </>
           )}
 
           {/* YÖNETİM — İLERİ (sadece admin) */}
           {isAdmin && (
             <>
-              <li className="section-title">Personel İşleri</li>
+              <li className="section-title">Envanter & Personel İşleri</li>
+              <li className={`sidebar-item ${location.pathname.startsWith("/admin/biocides") ? "active" : ""}`} onClick={() => navigate("/admin/biocides")}>Biyosidallar</li>
               <li className={`sidebar-item ${location.pathname.startsWith("/tracking/employees") ? "active" : ""}`} onClick={() => navigate("/tracking/employees")}>Personel Takip</li>
               <li className={`sidebar-item ${location.pathname === "/admin/employees/new" ? "active" : ""}`} onClick={() => navigate("/admin/employees/new")}>Personel Ekle</li>
 

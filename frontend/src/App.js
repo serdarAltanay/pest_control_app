@@ -227,7 +227,7 @@ function App() {
             <Route
               path="/admin/biocides"
               element={
-                <PrivateRoute allowedRoles={['admin', 'employee']}>
+                <PrivateRoute allowedRoles={['admin']}>
                   <Biocides />
                 </PrivateRoute>
               }
