@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import { FiTrash2, FiPlus } from "react-icons/fi";
@@ -11,6 +12,17 @@ import "./BiocidalCertificates.scss";
 
 export default function BiocidalCertificates() {
     const { profile } = useContext(ProfileContext);
+    const navigate = useNavigate();
+    const isEmployee = profile?.role?.toLowerCase() === "employee";
+
+    useEffect(() => {
+        if (isEmployee) {
+            navigate("/work");
+        }
+    }, [isEmployee, navigate]);
+
+    if (isEmployee) return null;
+
     const [certificates, setCertificates] = useState([]);
     const [biocides, setBiocides] = useState([]);
     const [loading, setLoading] = useState(true);

@@ -43,6 +43,9 @@ const upload = multer({
 
 /* ===== LIST: GET /api/certificates ===== */
 router.get("/", auth, async (req, res) => {
+    if (req.user.role === "employee") {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     try {
         const items = await prisma.companyCertificate.findMany({
             orderBy: { uploadedAt: "desc" },
@@ -90,6 +93,9 @@ router.post("/", auth, roleCheck(["admin"]), upload.single("file"), async (req, 
 
 /* ===== DOWNLOAD: GET /api/certificates/:id/download ===== */
 router.get("/:id/download", auth, async (req, res) => {
+    if (req.user.role === "employee") {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     try {
         const id = Number(req.params.id);
         const item = await prisma.companyCertificate.findUnique({ where: { id } });
@@ -129,6 +135,9 @@ router.get("/:id/download", auth, async (req, res) => {
 
 /* ===== VIEW: GET /api/certificates/:id/view ===== */
 router.get("/:id/view", auth, async (req, res) => {
+    if (req.user.role === "employee") {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     try {
         const id = Number(req.params.id);
         const item = await prisma.companyCertificate.findUnique({ where: { id } });

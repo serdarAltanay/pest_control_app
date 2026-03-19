@@ -1,5 +1,6 @@
 // src/pages/shared/CompanyCertificates.jsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
@@ -8,15 +9,24 @@ import useAuth from "../../hooks/useAuth";
 import "./CompanyCertificates.scss";
 
 export default function CompanyCertificates() {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const role = user?.role || "";
+    const isEmployee = role === "employee";
+
+    useEffect(() => {
+        if (isEmployee) {
+            navigate("/work");
+        }
+    }, [isEmployee, navigate]);
+
     const [items, setItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [viewerDoc, setViewerDoc] = useState(null);
     const [loading, setLoading] = useState(false);
-    const { user } = useAuth();
-    const role = user?.role || "";
+
     const level = user?.level || 1;
 
-    const [form, setForm] = useState({ title: "", file: null, notes: "" });
 
     useEffect(() => {
         load();

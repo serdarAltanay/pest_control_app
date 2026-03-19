@@ -31,6 +31,9 @@ const upload = multer({
  * Admin, Çalışan ve Müşteri görebilir.
  */
 router.get("/", auth, async (req, res) => {
+    if (req.user.role === "employee") {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
     try {
         const certs = await prisma.biocideCertificate.findMany({
             include: {
@@ -152,6 +155,9 @@ router.delete("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) =
  * 4) Biyosidal Sertifikası İndir (Herkes)
  */
 router.get("/:id/download", auth, async (req, res) => {
+    if (req.user.role === "employee") {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
     try {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
@@ -193,6 +199,9 @@ router.get("/:id/download", auth, async (req, res) => {
  * 5) Biyosidal Sertifikası Görüntüle (Herkes)
  */
 router.get("/:id/view", auth, async (req, res) => {
+    if (req.user.role === "employee") {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
     try {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
