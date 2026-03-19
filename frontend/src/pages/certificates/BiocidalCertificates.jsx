@@ -25,6 +25,7 @@ export default function BiocidalCertificates() {
 
     // Müşteriler (accessOwner/customer) ekleme/silme yapamaz, sadece görebilir
     const canManageCerts = ["admin", "employee"].includes(profile?.role?.toLowerCase());
+    const userToken = localStorage.getItem("token");
 
 
 
@@ -183,14 +184,14 @@ export default function BiocidalCertificates() {
                                     {cert.file ? (
                                         cert.mime?.startsWith("image/") ? (
                                             <img
-                                                src={toAbsoluteUrl(`api/biocidal-certificates/${cert.id}/view`, { forceApi: true })}
+                                                src={`${toAbsoluteUrl(`api/biocidal-certificates/${cert.id}/view`, { forceApi: true })}?token=${userToken}`}
                                                 alt={cert.title}
                                                 className="preview-frame"
                                                 style={{ objectFit: "contain" }}
                                             />
                                         ) : (
                                             <iframe
-                                                src={`${toAbsoluteUrl(`api/biocidal-certificates/${cert.id}/view`, { forceApi: true })}#toolbar=0&navpanes=0`}
+                                                src={`${toAbsoluteUrl(`api/biocidal-certificates/${cert.id}/view`, { forceApi: true })}?token=${userToken}#toolbar=0&navpanes=0`}
                                                 className="preview-frame"
                                                 title={cert.title}
                                             />

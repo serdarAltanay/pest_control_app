@@ -5,7 +5,10 @@ dotenv.config();
 
 // JWT doğrulama
 export function auth(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
+  let token = req.headers.authorization?.split(" ")[1];
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
   if (!token) return res.status(401).json({ message: "Token yok" });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {

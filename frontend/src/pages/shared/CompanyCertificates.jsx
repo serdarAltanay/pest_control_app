@@ -33,6 +33,7 @@ export default function CompanyCertificates() {
 
     const isCustomer = role === "customer";
     const isAdmin = role === "admin";
+    const userToken = localStorage.getItem("token");
 
     const handleUpload = async (e) => {
         e.preventDefault();
@@ -122,14 +123,14 @@ export default function CompanyCertificates() {
                                 {it.file ? (
                                     it.mime?.startsWith("image/") ? (
                                         <img
-                                            src={toAbsoluteUrl(`api/certificates/${it.id}/view`, { forceApi: true })}
+                                            src={`${toAbsoluteUrl(`api/certificates/${it.id}/view`, { forceApi: true })}?token=${userToken}`}
                                             alt={it.title}
                                             className="preview-frame"
                                             style={{ objectFit: "contain" }}
                                         />
                                     ) : (
                                         <iframe
-                                            src={`${toAbsoluteUrl(`api/certificates/${it.id}/view`, { forceApi: true })}#toolbar=0&navpanes=0`}
+                                            src={`${toAbsoluteUrl(`api/certificates/${it.id}/view`, { forceApi: true })}?token=${userToken}#toolbar=0&navpanes=0`}
                                             className="preview-frame"
                                             title={it.title}
                                         />
