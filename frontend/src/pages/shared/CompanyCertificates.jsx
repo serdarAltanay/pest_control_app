@@ -9,6 +9,7 @@ import "./CompanyCertificates.scss";
 export default function CompanyCertificates() {
     const [items, setItems] = useState([]);
     const [showModal, setShowModal] = useState(false);
+    const [viewerDoc, setViewerDoc] = useState(null);
     const [loading, setLoading] = useState(false);
     const [role, setRole] = useState("");
 
@@ -80,9 +81,13 @@ export default function CompanyCertificates() {
             const link = document.createElement("a");
             link.href = url;
 
-            const extMatch = item.file.match(/\.[0-9a-z]+$/i);
-            const ext = extMatch ? extMatch[0] : "";
-            const filename = `${item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}${ext}`;
+            let ext = extMatch ? extMatch[0] : "";
+            if (!ext && item.mime) {
+                if (item.mime.includes("pdf")) ext = ".pdf";
+                else if (item.mime.includes("png")) ext = ".png";
+                else if (item.mime.includes("jpeg") || item.mime.includes("jpg")) ext = ".jpg";
+            }
+            const filename = `${item.title.replace(/[^a-z0-9\ı\ö\ü\ş\ğ\ç]/gi, '_').toLowerCase()}${ext}`;
 
             link.setAttribute("download", filename);
             document.body.appendChild(link);
@@ -119,7 +124,7 @@ export default function CompanyCertificates() {
                                     </div>
                                 )}
                             </div>
-                            <div className="c-preview">
+                            <div className="c-preview" onClick={() => setViewerDoc(it)} style={{ cursor: "pointer" }}>
                                 {it.file ? (
                                     it.mime?.startsWith("image/") ? (
                                         <img
@@ -141,7 +146,10 @@ export default function CompanyCertificates() {
                             </div>
                             <div className="c-actions">
                                 <button className="btn ghost" onClick={() => handleDownload(it)}>
-                                    İndir / Tam Ekran Aç
+                                    İndir
+                                </button>
+                                <button className="btn ghost" onClick={() => setViewerDoc(it)}>
+                                    Tam Ekran Aç
                                 </button>
                                 {isAdmin && (
                                     <button className="btn danger" onClick={() => handleDelete(it.id, it.title)}>
@@ -194,6 +202,30 @@ export default function CompanyCertificates() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+                {/* Görüntüleme Modalı */}
+                {viewerDoc && (
+                    <div className="modal-backdrop viewer-backdrop" onClick={() => setViewerDoc(null)}>
+                        <div className="viewer-modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="viewer-header">
+                                <h3>{viewerDoc.title}</h3>
+                                <button className="close-btn" onClick={() => setViewerDoc(null)}>&times;</button>
+                            </div>
+                            <div className="viewer-body">
+                                {viewerDoc.mime?.startsWith("image/") ? (
+                                    <img
+                                        src={`${toAbsoluteUrl(`api/certificates/${viewerDoc.id}/view`, { forceApi: true })}?token=${userToken}`}
+                                        alt={viewerDoc.title}
+                                    />
+                                ) : (
+                                    <iframe
+                                        src={`${toAbsoluteUrl(`api/certificates/${viewerDoc.id}/view`, { forceApi: true })}?token=${userToken}#toolbar=0&navpanes=0`}
+                                        title={viewerDoc.title}
+                                    />
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

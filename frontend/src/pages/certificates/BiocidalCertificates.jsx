@@ -15,6 +15,7 @@ export default function BiocidalCertificates() {
     const [biocides, setBiocides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [viewerDoc, setViewerDoc] = useState(null);
 
     // Upload state
     const [uploading, setUploading] = useState(false);
@@ -120,9 +121,13 @@ export default function BiocidalCertificates() {
             const link = document.createElement("a");
             link.href = url;
 
-            const extMatch = item.file.match(/\.[0-9a-z]+$/i);
-            const ext = extMatch ? extMatch[0] : "";
-            const filename = `${item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}${ext}`;
+            let ext = extMatch ? extMatch[0] : "";
+            if (!ext && item.mime) {
+                if (item.mime.includes("pdf")) ext = ".pdf";
+                else if (item.mime.includes("png")) ext = ".png";
+                else if (item.mime.includes("jpeg") || item.mime.includes("jpg")) ext = ".jpg";
+            }
+            const filename = `${item.title.replace(/[^a-z0-9\ı\ö\ü\ş\ğ\ç]/gi, '_').toLowerCase()}${ext}`;
 
             link.setAttribute("download", filename);
             document.body.appendChild(link);
@@ -180,7 +185,7 @@ export default function BiocidalCertificates() {
                                         Yüklenme: {formatDate(cert.uploadedAt)}
                                     </div>
                                 </div>
-                                <div className="c-preview">
+                                <div className="c-preview" onClick={() => setViewerDoc(cert)} style={{ cursor: "pointer" }}>
                                     {cert.file ? (
                                         cert.mime?.startsWith("image/") ? (
                                             <img
@@ -202,7 +207,10 @@ export default function BiocidalCertificates() {
                                 </div>
                                 <div className="c-actions">
                                     <button className="btn ghost" onClick={() => handleDownload(cert)}>
-                                        İndir / Tam Ekran Aç
+                                        İndir
+                                    </button>
+                                    <button className="btn ghost" onClick={() => setViewerDoc(cert)}>
+                                        Tam Ekran Aç
                                     </button>
                                     {canManageCerts && (
                                         <button
@@ -286,6 +294,31 @@ export default function BiocidalCertificates() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Görüntüleme Modalı */}
+                {viewerDoc && (
+                    <div className="modal-backdrop viewer-backdrop" onClick={() => setViewerDoc(null)}>
+                        <div className="viewer-modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="viewer-header">
+                                <h3>{viewerDoc.title}</h3>
+                                <button className="close-btn" onClick={() => setViewerDoc(null)}>&times;</button>
+                            </div>
+                            <div className="viewer-body">
+                                {viewerDoc.mime?.startsWith("image/") ? (
+                                    <img
+                                        src={`${toAbsoluteUrl(`api/biocidal-certificates/${viewerDoc.id}/view`, { forceApi: true })}?token=${userToken}`}
+                                        alt={viewerDoc.title}
+                                    />
+                                ) : (
+                                    <iframe
+                                        src={`${toAbsoluteUrl(`api/biocidal-certificates/${viewerDoc.id}/view`, { forceApi: true })}?token=${userToken}#toolbar=0&navpanes=0`}
+                                        title={viewerDoc.title}
+                                    />
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
