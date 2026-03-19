@@ -445,7 +445,7 @@ function App() {
             <Route
               path="/certificates"
               element={
-                <PrivateRoute allowedRoles={['customer', 'admin', 'employee']}>
+                <PrivateRoute allowedRoles={['customer', 'admin']}>
                   <CompanyCertificates />
                 </PrivateRoute>
               }
@@ -453,7 +453,7 @@ function App() {
             <Route
               path="/biocidal-certificates"
               element={
-                <PrivateRoute allowedRoles={['customer', 'admin', 'employee']}>
+                <PrivateRoute allowedRoles={['customer', 'admin']}>
                   <BiocidalCertificates />
                 </PrivateRoute>
               }
