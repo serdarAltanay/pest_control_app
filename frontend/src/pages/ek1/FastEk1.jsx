@@ -58,6 +58,10 @@ export default function FastEk1() {
   const [existingEvent, setExistingEvent] = useState(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
+  /* Weekly Plans */
+  const [weeklyEvents, setWeeklyEvents] = useState([]);
+  const [updatingEventId, setUpdatingEventId] = useState(null);
+
   /* Visit Form */
   const [formVisit, setFormVisit] = useState({
     date: new Date().toISOString().slice(0, 10),
@@ -112,6 +116,7 @@ export default function FastEk1() {
   useEffect(() => {
     if (!selectedStoreId) {
         setStore(null);
+        setWeeklyEvents([]);
         return;
     }
     (async () => {
@@ -128,12 +133,46 @@ export default function FastEk1() {
                 .then(res => setAllEmployees(Array.isArray(res.data) ? res.data : []))
                 .catch(err => console.error("Employees fetch error:", err));
 
+            // Fetch Weekly Plans
+            fetchWeeklyPlans(selectedStoreId);
+
         } catch (err) {
             console.error("Store fetch error:", err);
             toast.error("Mağaza verisi yüklenemedi.");
         }
     })();
   }, [selectedStoreId]);
+
+  const fetchWeeklyPlans = async (storeId) => {
+    try {
+        const now = new Date();
+        const firstDay = new Date(now.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1))); // Pazartesi
+        firstDay.setHours(0, 0, 0, 0);
+        const lastDay = new Date(firstDay);
+        lastDay.setDate(firstDay.getDate() + 6); // Pazar
+        lastDay.setHours(23, 59, 59, 999);
+
+        const { data } = await api.get("/schedule/events", {
+            params: { storeId: Number(storeId), from: firstDay.toISOString(), to: lastDay.toISOString() }
+        });
+        setWeeklyEvents(Array.isArray(data) ? data : []);
+    } catch (err) {
+        console.error("Weekly plans fetch error:", err);
+    }
+  };
+
+  const updateEventStatus = async (eventId, newStatus) => {
+    try {
+        setUpdatingEventId(eventId);
+        await api.put(`/schedule/events/${eventId}`, { status: newStatus });
+        toast.success("Ziyaret durumu güncellendi.");
+        fetchWeeklyPlans(selectedStoreId);
+    } catch (err) {
+        toast.error("Durum güncellenemedi.");
+    } finally {
+        setUpdatingEventId(null);
+    }
+  };
 
   // Existing Event check (from StoreEk1)
   useEffect(() => {
@@ -312,6 +351,51 @@ export default function FastEk1() {
                 </div>
             </div>
         </section>
+
+        {selectedStoreId && weeklyEvents.length > 0 && (
+            <section className="card weekly-plans">
+                <div className="card-title">
+                    <span className="card-num" style={{background: "#3b82f6"}}>?</span> Bu Haftaki Planlı Ziyaretler
+                </div>
+                <div className="plans-list">
+                    {weeklyEvents.map(ev => {
+                        const dateStr = new Date(ev.start).toLocaleDateString("tr-TR", { weekday: 'long', day: 'numeric', month: 'long' });
+                        return (
+                            <div key={ev.id} className={`plan-item status-${ev.status?.toLowerCase()}`}>
+                                <div className="plan-info">
+                                    <div className="plan-date">{dateStr}</div>
+                                    <div className="plan-title">{ev.title || "Planlı Ziyaret"}</div>
+                                    <div className={`plan-status-badge ${ev.status?.toLowerCase()}`}>{ev.status}</div>
+                                </div>
+                                <div className="plan-actions">
+                                    <button 
+                                        className="btn ghost sm" 
+                                        onClick={() => updateEventStatus(ev.id, "COMPLETED")}
+                                        disabled={updatingEventId === ev.id}
+                                    >
+                                        Tamamlandı
+                                    </button>
+                                    <button 
+                                        className="btn ghost sm danger-text" 
+                                        onClick={() => updateEventStatus(ev.id, "CANCELLED")}
+                                        disabled={updatingEventId === ev.id}
+                                    >
+                                        İptal
+                                    </button>
+                                    <button 
+                                        className="btn ghost sm" 
+                                        onClick={() => updateEventStatus(ev.id, "PENDING")}
+                                        disabled={updatingEventId === ev.id}
+                                    >
+                                        Beklemede
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </section>
+        )}
 
         {selectedStoreId && store && (
             <>

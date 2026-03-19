@@ -388,6 +388,97 @@ $brand: #ef4444;
       font-size: 15px;
       letter-spacing: 0.02em;
     }
+
+    &.sm {
+      height: 30px;
+      padding: 0 10px;
+      font-size: 11.5px;
+      border-radius: 6px;
+    }
+  }
+
+  .danger-text { color: #ef4444 !important; }
+
+  /* ─── Weekly Plans Section ─── */
+  .weekly-plans {
+    border: 2px solid #3b82f6 !important;
+    background: #f8faff !important;
+
+    .plans-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .plan-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      transition: transform 0.15s ease;
+
+      &:hover { transform: translateY(-1px); }
+
+      .plan-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .plan-date {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+      }
+
+      .plan-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .plan-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .plan-status-badge {
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        width: fit-content;
+        
+        &.completed { background: #dcfce7; color: #166534; }
+        &.cancelled { background: #fee2e2; color: #b91c1c; }
+        &.pending, &.planned { background: #fef3c7; color: #92400e; }
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    .weekly-plans .plan-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+
+      .plan-actions {
+        width: 100%;
+        justify-content: space-between;
+        .btn { flex: 1; }
+      }
+    }
   }
 
   .btn-icon {
