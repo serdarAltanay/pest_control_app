@@ -42,6 +42,7 @@ export default function VisitEk1() {
   const { storeId, visitId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isLevel1 = user?.role === "employee" && user?.level === 1;
   const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [biocides, setBiocides] = useState([]);

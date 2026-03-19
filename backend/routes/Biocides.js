@@ -26,6 +26,9 @@ router.get("/", auth, roleCheck(["admin", "employee", "customer"]), async (_req,
 /* Ekleme:
    - Admin + Employee */
 router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  if (req.user.role === "employee" && req.user.level === 2) {
+    return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+  }
   try {
     let { name, activeIngredient, antidote, unit, licenseDate } = req.body || {};
     name = String(name || "").trim();
@@ -55,6 +58,9 @@ router.post("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 /* Güncelleme:
    - Admin + Employee */
 router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  if (req.user.role === "employee" && req.user.level === 2) {
+    return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+  }
   try {
     const id = toId(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
@@ -85,6 +91,9 @@ router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
 /* Silme:
    - Admin + Employee */
 router.delete("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+  if (req.user.role === "employee" && req.user.level === 2) {
+    return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+  }
   try {
     const id = toId(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });

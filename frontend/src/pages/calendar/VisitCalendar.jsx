@@ -182,8 +182,8 @@ export default function VisitCalendar() {
 
   const isAdmin = role === "admin";
   const isEmployee = role === "employee";
-  const isLevel2 = isEmployee && me?.level === 2;
-  const isPlanner = isAdmin || (isEmployee && !isLevel2);
+  const isLevel1 = isEmployee && me?.level === 1; // Changed from isLevel2
+  const isPlanner = isAdmin || isLevel1; // Changed to use isLevel1
 
   const dayCols = useResponsiveDayCols();
 

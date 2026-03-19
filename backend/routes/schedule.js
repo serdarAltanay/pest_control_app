@@ -244,9 +244,12 @@ router.post(
       const reqRole = (req.user?.role || "").toLowerCase();
       const selfId = Number(req.user?.id ?? req.user?.userId) || null;
 
-      // Employee → sadece kendi adına planlayabilir
+      // Employee → Sadece Level 2 planlama yapabilir. Level 1 yapamaz.
       if (reqRole === "employee") {
         if (!selfId) return res.status(403).json({ error: "Yetki yok (kimlik bulunamadı)" });
+        if (req.user.level === 2) {
+          return res.status(403).json({ error: "Düşük seviyeli personel (Seviye 2) planlama yapamaz." });
+        }
         if (employeeId && employeeId !== selfId) {
           return res.status(403).json({ error: "Çalışan yalnızca kendi adına ziyaret planlayabilir." });
         }
@@ -376,6 +379,9 @@ router.post(
 
       if (reqRole === "employee") {
         if (!selfId) return res.status(403).json({ error: "Yetki yok." });
+        if (req.user.level === 2) {
+          return res.status(403).json({ error: "Seviye 2 personel toplu planlama yapamaz." });
+        }
         employeeId = selfId;
       }
 

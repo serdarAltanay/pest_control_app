@@ -13,7 +13,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
   const isAdmin = user?.role === "admin";
   const isEmployee = user?.role === "employee";
   const isCustomer = user?.role === "customer";
-  const isLevel2 = isEmployee && user?.level === 2;
+  const isLevel1 = isEmployee && user?.level === 1;
   const canManageBasic = isAdmin || isEmployee; // müşteri/mağaza/biocide menüleri
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
           {canManageBasic && (
             <>
               <li className="section-title">Yönetim İşleri</li>
-              {!isLevel2 && (
+              {(isAdmin || isLevel1) && (
                 <li className={`sidebar-item ${location.pathname === "/admin/customers/new" ? "active" : ""}`} onClick={() => navigate("/admin/customers/new")}>Müşteri Ekle</li>
               )}
               <li className={`sidebar-item ${location.pathname === "/admin/customers" ? "active" : ""}`} onClick={() => navigate("/admin/customers")}>Müşteri Listesi</li>

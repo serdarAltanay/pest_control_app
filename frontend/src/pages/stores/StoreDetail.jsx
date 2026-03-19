@@ -104,6 +104,7 @@ export default function StoreDetail() {
   const { storeId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isLevel1 = user?.role === "employee" && user?.level === 1;
   const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [store, setStore] = useState(null);
@@ -531,16 +532,18 @@ export default function StoreDetail() {
             </ul>
           </section>
 
-          <section className="card">
-            <div className="card-title with-actions">
-              <span className="title-text">Erişebilenler</span>
-              <div className="title-actions">
-                {!isLevel2 && <Link className="btn primary" to={`/admin/stores/${storeId}/access`}>Erişimi Yönet</Link>}
+          {!isLevel2 && (
+            <section className="card">
+              <div className="card-title with-actions">
+                <span className="title-text">Erişebilenler</span>
+                <div className="title-actions">
+                  {!isLevel2 && <Link className="btn primary" to={`/admin/stores/${storeId}/access`}>Erişimi Yönet</Link>}
+                </div>
               </div>
-            </div>
 
-            <StoreAccessList storeId={storeId} />
-          </section>
+              <StoreAccessList storeId={storeId} />
+            </section>
+          )}
         </div>
       </div>
     </Layout>

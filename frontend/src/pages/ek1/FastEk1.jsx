@@ -42,6 +42,7 @@ const timeOptions = (() => {
 export default function FastEk1() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isLevel1 = user?.role === "employee" && user?.level === 1;
   const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   // Selection state
@@ -419,7 +420,7 @@ export default function FastEk1() {
                     <div>
                     <label>Çıkış Saati {isLevel2 && <small style={{color:"#888"}}>(Kayıt anında dolacak)</small>}</label>
                     <select name="endTime" value={formVisit.endTime} onChange={onVisitChange} disabled={isLevel2}>
-                        <option value="">{isLevel2 ? "Otomatik" : "Seçiniz"}</option>
+                        <option value="">{isLevel2 ? "Kayıt anında belirlenir" : "Seçiniz"}</option>
                         {!isLevel2 && timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                     </div>

@@ -44,6 +44,7 @@ export default function Ek1Flow() {
   const navigate = useNavigate();
 
   const { user } = useAuth();
+  const isLevel1 = user?.role === "employee" && user?.level === 1;
   const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [store, setStore] = useState(null);

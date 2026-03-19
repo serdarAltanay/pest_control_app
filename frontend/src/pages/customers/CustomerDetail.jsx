@@ -77,6 +77,7 @@ export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isLevel1 = user?.role === "employee" && user?.level === 1;
   const isLevel2 = user?.role === "employee" && user?.level === 2;
 
   const [customer, setCustomer] = useState(null);
@@ -357,13 +358,15 @@ export default function CustomerDetail() {
                 )}
               </section>
 
-              <section className="card access">
-                <div className="card-title">
-                  Erişim Sahipleri
-                  {!isLevel2 && <Link className="btn" style={{ marginLeft: 8 }} to={`/admin/customers/${id}/access`}>Yönet</Link>}
-                </div>
-                <CustomerAccessList customerId={id} />
-              </section>
+              {!isLevel2 && (
+                <section className="card access">
+                  <div className="card-title">
+                    Erişim Sahipleri
+                    {!isLevel2 && <Link className="btn" style={{ marginLeft: 8 }} to={`/admin/customers/${id}/access`}>Yönet</Link>}
+                  </div>
+                  <CustomerAccessList customerId={id} />
+                </section>
+              )}
             </div>
           </>
         )}

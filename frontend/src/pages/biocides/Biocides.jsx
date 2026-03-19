@@ -14,6 +14,11 @@ const UNIT_TR = {
 const UNITS = Object.keys(UNIT_TR);
 
 export default function Biocides() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const isEmployee = user?.role === "employee";
+  const isLevel2 = isEmployee && user?.level === 2;
+
   const [loading, setLoading] = useState(true);
   const [list, setList] = useState([]);
   const [savingRow, setSavingRow] = useState(null); // id | "new" | null
@@ -116,7 +121,8 @@ export default function Biocides() {
         <h1 className="page-title">Biyosidal Ürünler</h1>
 
         {/* EKLEME FORMU */}
-        <form className="card add-card" onSubmit={addNew}>
+        {!isLevel2 && (
+          <form className="card add-card" onSubmit={addNew}>
           <div className="card-title">Biyosidal Ekle</div>
           <p className="muted">Biyosidal eklemek için aşağıdaki formu eksiksiz doldurun.</p>
 
@@ -176,6 +182,7 @@ export default function Biocides() {
             </button>
           </div>
         </form>
+        )}
 
         {/* LİSTE */}
         <div className="card list-card">
@@ -195,7 +202,7 @@ export default function Biocides() {
                     <th>Biyosidal Antidotu</th>
                     <th>Ölçü Birimi</th>
                     <th>Ruhsat Tarihi</th>
-                    <th style={{ width: 180 }}>İşlem</th>
+                    {!isLevel2 && <th style={{ width: 180 }}>İşlem</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -205,24 +212,28 @@ export default function Biocides() {
                         <input
                           value={r.name || ""}
                           onChange={(e) => onRowChange(r.id, "name", e.target.value)}
+                          disabled={isLevel2}
                         />
                       </td>
                       <td>
                         <input
                           value={r.activeIngredient || ""}
                           onChange={(e) => onRowChange(r.id, "activeIngredient", e.target.value)}
+                          disabled={isLevel2}
                         />
                       </td>
                       <td>
                         <input
                           value={r.antidote || ""}
                           onChange={(e) => onRowChange(r.id, "antidote", e.target.value)}
+                          disabled={isLevel2}
                         />
                       </td>
                       <td>
                         <select
                           value={r.unit || "ML"}
                           onChange={(e) => onRowChange(r.id, "unit", e.target.value)}
+                          disabled={isLevel2}
                         >
                           {UNITS.map((u) => (
                             <option key={u} value={u}>{UNIT_TR[u]}</option>
@@ -234,20 +245,23 @@ export default function Biocides() {
                           value={r.licenseDate || ""}
                           onChange={(e) => onRowChange(r.id, "licenseDate", e.target.value)}
                           placeholder="—"
+                          disabled={isLevel2}
                         />
                       </td>
-                      <td className="row-actions">
-                        <button
-                          className="btn warn"
-                          onClick={() => updateRow(r)}
-                          disabled={savingRow === r.id}
-                        >
-                          {savingRow === r.id ? "Güncelleniyor..." : "GÜNCELLE"}
-                        </button>
-                        <button className="btn danger" onClick={() => deleteRow(r.id)}>
-                          SİL
-                        </button>
-                      </td>
+                      {!isLevel2 && (
+                        <td className="row-actions">
+                          <button
+                            className="btn warn"
+                            onClick={() => updateRow(r)}
+                            disabled={savingRow === r.id}
+                          >
+                            {savingRow === r.id ? "Güncelleniyor..." : "GÜNCELLE"}
+                          </button>
+                          <button className="btn danger" onClick={() => deleteRow(r.id)}>
+                            SİL
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

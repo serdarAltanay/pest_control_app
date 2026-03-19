@@ -162,6 +162,9 @@ router.get(
   roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      if (req.user.role === "employee" && req.user.level === 2) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)" });
+      }
       const id = toId(req.params.id);
       if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
@@ -256,6 +259,9 @@ router.get(
   roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      if (req.user.role === "employee" && req.user.level === 2) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)" });
+      }
       const where = {};
       if (req.query.ownerId) where.ownerId = toId(req.query.ownerId) || undefined;
       if (req.query.scopeType) where.scopeType = String(req.query.scopeType).toUpperCase();
@@ -282,6 +288,9 @@ router.get(
   roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      if (req.user.role === "employee" && req.user.level === 2) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)" });
+      }
       const storeId = toId(req.params.storeId);
       if (!storeId) return res.status(400).json({ message: "Geçersiz storeId" });
 
@@ -316,6 +325,9 @@ router.get(
   roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      if (req.user.role === "employee" && req.user.level === 2) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)" });
+      }
       const customerId = toId(req.params.customerId);
       if (!customerId) return res.status(400).json({ message: "Geçersiz customerId" });
 
@@ -355,6 +367,9 @@ router.post(
   roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      if (req.user.role === "employee" && req.user.level === 2) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)" });
+      }
       const scopeType = String(req.body.scopeType || "").toUpperCase();
 
       const rawCustomerIds = req.body.customerIds || (req.body.customerId ? [req.body.customerId] : []);
@@ -484,6 +499,9 @@ router.delete(
   roleCheck(["admin", "employee"]),
   async (req, res) => {
     try {
+      if (req.user.role === "employee" && req.user.level === 1) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 1)" });
+      }
       const id = toId(req.params.id);
       if (!id) return res.status(400).json({ message: "Geçersiz id" });
       await prisma.accessGrant.delete({ where: { id } });

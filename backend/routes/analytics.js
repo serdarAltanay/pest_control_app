@@ -68,7 +68,7 @@ router.get("/stores/:storeId/trend", auth, roleCheck(["admin","employee","custom
     if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
     if (req.user.role === "employee" && req.user.level === 2) {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)." });
     }
 
     if (req.user.role === "customer") {
@@ -121,7 +121,7 @@ router.get("/stores/:storeId/chemicals", auth, roleCheck(["admin","employee","cu
     if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
     if (req.user.role === "employee" && req.user.level === 2) {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)." });
     }
 
     if (req.user.role === "customer") {
@@ -175,7 +175,7 @@ router.get("/stores/:storeId/summary", auth, roleCheck(["admin","employee","cust
     if(!storeId) return res.status(400).json({message:"Geçersiz storeId"});
 
     if (req.user.role === "employee" && req.user.level === 2) {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)." });
     }
 
     if (req.user.role === "customer") {
@@ -229,7 +229,7 @@ router.get("/stations/:stationId/trend", auth, roleCheck(["admin","employee","cu
     if(!st) return res.status(404).json({message:"İstasyon yok"});
 
     if (req.user.role === "employee" && req.user.level === 2) {
-      return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok (Seviye 2)." });
     }
 
     if (req.user.role === "customer") {

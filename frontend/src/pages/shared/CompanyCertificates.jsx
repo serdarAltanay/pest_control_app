@@ -4,6 +4,7 @@ import Layout from "../../components/Layout";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import { toAbsoluteUrl } from "../../utils/getAssetUrl";
+import useAuth from "../../hooks/useAuth";
 import "./CompanyCertificates.scss";
 
 export default function CompanyCertificates() {
@@ -11,15 +12,13 @@ export default function CompanyCertificates() {
     const [showModal, setShowModal] = useState(false);
     const [viewerDoc, setViewerDoc] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [role, setRole] = useState("");
+    const { user } = useAuth();
+    const role = user?.role || "";
+    const level = user?.level || 1;
 
     const [form, setForm] = useState({ title: "", file: null, notes: "" });
 
     useEffect(() => {
-        const roleStr = localStorage.getItem("role");
-        if (roleStr) {
-            setRole(roleStr.toLowerCase());
-        }
         load();
     }, []);
 
@@ -34,6 +33,8 @@ export default function CompanyCertificates() {
 
     const isCustomer = role === "customer";
     const isAdmin = role === "admin";
+    const isLevel1 = role === "employee" && level === 1;
+    const canManage = isAdmin || isLevel1;
     const userToken = localStorage.getItem("accessToken");
 
     const handleUpload = async (e) => {
@@ -107,7 +108,7 @@ export default function CompanyCertificates() {
             <div className="company-certs">
                 <div className="head">
                     <h2>Şirket Sertifikaları</h2>
-                    {isAdmin && (
+                    {canManage && (
                         <button className="btn primary" onClick={() => setShowModal(true)}>
                             + Yeni Sertifika
                         </button>
@@ -153,7 +154,7 @@ export default function CompanyCertificates() {
                                 <button className="btn ghost" onClick={(e) => { e.stopPropagation(); handleDownload(it); }}>
                                     İndir
                                 </button>
-                                {isAdmin && (
+                                {canManage && (
                                     <button className="btn danger" onClick={(e) => { e.stopPropagation(); handleDelete(it.id, it.title); }}>
                                         Sil
                                     </button>
@@ -164,7 +165,7 @@ export default function CompanyCertificates() {
                 </div>
 
                 {/* Ekleme Modalı */}
-                {showModal && isAdmin && (
+                {showModal && canManage && (
                     <div className="modal-backdrop" onClick={() => setShowModal(false)}>
                         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">

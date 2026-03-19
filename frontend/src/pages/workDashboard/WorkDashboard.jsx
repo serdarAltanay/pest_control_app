@@ -33,13 +33,14 @@ export default function WorkDashboard() {
   const { profile } = useContext(ProfileContext);
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const isAdmin = role === "admin";
+  const isEmployee = role === "employee";
+  const isLevel2 = isEmployee && profile?.level === 2;
 
   const [showCustomerSection, setShowCustomerSection] = useState(true);
   const [stats, setStats] = useState({
     customers: 0,
     stores: 0,
     plannedVisits: 0,
-    openNcr: 0,
     monthlyDone: 0,
     monthlyPlanned: 0
   });
@@ -71,7 +72,6 @@ export default function WorkDashboard() {
         customers: presenceRes.data?.totals?.customers || 0,
         stores: presenceRes.data?.totals?.stores || 0,
         plannedVisits: visitRes.data?.length || 0,
-        openNcr: 0, // Placeholder
         monthlyDone: presenceRes.data?.totals?.monthlyDone || 0,
         monthlyPlanned: presenceRes.data?.totals?.monthlyPlanned || 0
       });
@@ -96,51 +96,46 @@ export default function WorkDashboard() {
         </header>
 
         {/* --- Summary Cards --- */}
-        <div className="summary-grid">
-          <div className="stat-card clickable" onClick={() => navigate("/admin/customers")}>
-            <div className="icon-box blue"><FiUsers /></div>
-            <div className="stat-info">
-              <span className="stat-label">Aktif Müşteri</span>
-              <span className="stat-value">{stats.customers}</span>
+        {!isLevel2 && (
+          <div className="summary-grid">
+            <div className="stat-card clickable" onClick={() => navigate("/admin/customers")}>
+              <div className="icon-box blue"><FiUsers /></div>
+              <div className="stat-info">
+                <span className="stat-label">Aktif Müşteri</span>
+                <span className="stat-value">{stats.customers}</span>
+              </div>
+            </div>
+            <div className="stat-card clickable" onClick={() => navigate("/admin/stores")}>
+              <div className="icon-box green"><FiHome /></div>
+              <div className="stat-info">
+                <span className="stat-label">Toplam Mağaza</span>
+                <span className="stat-value">{stats.stores}</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="icon-box purple"><FiClock /></div>
+              <div className="stat-info">
+                <span className="stat-label">Haftalık Ziyaret</span>
+                <span className="stat-value">{stats.plannedVisits}</span>
+              </div>
+            </div>
+            {/* Yeni Kartlar */}
+            <div className="stat-card">
+              <div className="icon-box green"><FiCheckCircle /></div>
+              <div className="stat-info">
+                <span className="stat-label">Bu Ay Yapılan</span>
+                <span className="stat-value text-success">{stats.monthlyDone}</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="icon-box orange"><FiClock /></div>
+              <div className="stat-info">
+                <span className="stat-label">Bu Ay Yapılacak</span>
+                <span className="stat-value text-warn">{stats.monthlyPlanned}</span>
+              </div>
             </div>
           </div>
-          <div className="stat-card clickable" onClick={() => navigate("/admin/stores")}>
-            <div className="icon-box green"><FiHome /></div>
-            <div className="stat-info">
-              <span className="stat-label">Toplam Mağaza</span>
-              <span className="stat-value">{stats.stores}</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="icon-box purple"><FiClock /></div>
-            <div className="stat-info">
-              <span className="stat-label">Haftalık Ziyaret</span>
-              <span className="stat-value">{stats.plannedVisits}</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="icon-box orange"><FiAlertTriangle /></div>
-            <div className="stat-info">
-              <span className="stat-label">Bekleyen Uygunsuzluk</span>
-              <span className="stat-value">{stats.openNcr}</span>
-            </div>
-          </div>
-          {/* Yeni Kartlar */}
-          <div className="stat-card">
-            <div className="icon-box green"><FiCheckCircle /></div>
-            <div className="stat-info">
-              <span className="stat-label">Bu Ay Yapılan</span>
-              <span className="stat-value text-success">{stats.monthlyDone}</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="icon-box orange"><FiClock /></div>
-            <div className="stat-info">
-              <span className="stat-label">Bu Ay Yapılacak</span>
-              <span className="stat-value text-warn">{stats.monthlyPlanned}</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {showCustomerSection && (
           <section className="customer-section">
@@ -188,15 +183,17 @@ export default function WorkDashboard() {
                 </div>
               </div>
 
-              {isAdmin && (
+              {(isAdmin || (isEmployee && !isLevel2)) && (
                 <div className="ps-mid">
                   <AdminStatsChart />
                 </div>
               )}
 
-              <div className="ps-right">
-                <PresenceOverview />
-              </div>
+              {isAdmin && (
+                <div className="ps-right">
+                  <PresenceOverview />
+                </div>
+              )}
             </div>
           </section>
         )}

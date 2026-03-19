@@ -58,6 +58,9 @@ router.post(
     roleCheck(["admin", "employee"]),
     upload.single("file"),
     async (req, res) => {
+        if (req.user.role === "employee" && req.user.level === 2) {
+            return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+        }
         try {
             if (!req.file) {
                 return res.status(400).json({ message: "Dosya gerekli." });
@@ -115,6 +118,9 @@ router.post(
  * 3) Biyosidal Sertifikası Sil (Admin & Çalışan)
  */
 router.delete("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
+    if (req.user.role === "employee" && req.user.level === 2) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok." });
+    }
     try {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });

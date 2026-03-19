@@ -126,7 +126,8 @@ export default function VisitDetail() {
   }, []);
 
   const isLevel2 = role === "employee" && me?.level === 2;
-  const isPlanner = (role === "admin" || role === "employee") && !isLevel2;
+  const isLevel1 = role === "employee" && me?.level === 1;
+  const isPlanner = role === "admin" || (role === "employee" && isLevel1);
 
   const [event, setEvent] = useState(null);
   const [store, setStore] = useState(null);
