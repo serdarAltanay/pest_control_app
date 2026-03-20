@@ -24,6 +24,7 @@ export default function CompanyCertificates() {
     const [showModal, setShowModal] = useState(false);
     const [viewerDoc, setViewerDoc] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [form, setForm] = useState({ title: "", file: null, notes: "" });
 
     const level = user?.level || 1;
 

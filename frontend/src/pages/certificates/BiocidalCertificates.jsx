@@ -15,14 +15,6 @@ export default function BiocidalCertificates() {
     const navigate = useNavigate();
     const isEmployee = profile?.role?.toLowerCase() === "employee";
 
-    useEffect(() => {
-        if (isEmployee) {
-            navigate("/work");
-        }
-    }, [isEmployee, navigate]);
-
-    if (isEmployee) return null;
-
     const [certificates, setCertificates] = useState([]);
     const [biocides, setBiocides] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -40,11 +32,17 @@ export default function BiocidalCertificates() {
     const canManageCerts = ["admin", "employee"].includes(profile?.role?.toLowerCase()) && profile?.level !== 2;
     const userToken = localStorage.getItem("accessToken");
 
-
+    useEffect(() => {
+        if (isEmployee) {
+            navigate("/work");
+        }
+    }, [isEmployee, navigate]);
 
     useEffect(() => {
         fetchData();
     }, [profile]);
+
+    if (isEmployee) return null;
 
     const fetchData = async () => {
         setLoading(true);
