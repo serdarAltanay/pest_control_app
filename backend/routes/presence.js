@@ -187,8 +187,8 @@ router.get("/summary", auth, async (_req, res) => {
       countBuckets(prisma.admin),
       countBuckets(prisma.employee),
       countBuckets(prisma.accessOwner), // müşteriler için AccessOwner’ı kullanıyoruz
-      prisma.customer.count(),
-      prisma.store.count(),
+      prisma.customer.count({ where: { code: { not: "FREE" } } }),
+      prisma.store.count({ where: { code: { not: "FREE" } } }),
       prisma.scheduleEvent.count({
         where: {
           status: "COMPLETED",
