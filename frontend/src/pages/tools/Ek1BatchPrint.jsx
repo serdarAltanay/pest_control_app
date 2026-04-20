@@ -45,7 +45,7 @@ function normalizeTargetPests(v) {
     return "—";
 }
 
-function SignatureBox({ signedAt, signerName, signatureBase64, signLog, description }) {
+function SignatureBox({ signedAt, signerName, signatureBase64, signLog, description, isProvider }) {
     let auditSentence = null;
     if (signedAt) {
         const d = new Date(signedAt);
@@ -62,6 +62,17 @@ function SignatureBox({ signedAt, signerName, signatureBase64, signLog, descript
     return (
         <div className="sig-box">
             <div className="sig-box__area">
+                {isProvider && (
+                    <div className="company-stamp">
+                        <img src="/logo.png" alt="Tura Logo" className="company-stamp__img" />
+                        <div className="company-stamp__text">
+                            <strong>TURA ÇEVRE SAĞLIĞI<br />VE İLAÇLAMA HİZ.LTD.ŞTİ.</strong>
+                            <p>Zübeyde Hanım Mah. Turgut Özal 1 Blv.</p>
+                            <p>Özgür İşhanı No: 72/33 Altındağ/ANKARA</p>
+                            <p>KIZILBEY V.D. 8670943938</p>
+                        </div>
+                    </div>
+                )}
                 {signedAt && signatureBase64 ? (
                     <img src={signatureBase64} alt="imza" className="sig-box__img" />
                 ) : null}
@@ -260,6 +271,7 @@ export default function Ek1BatchPrint() {
                                                 signatureBase64={report?.providerSignature}
                                                 signLog={report?.providerSignLog}
                                                 description="Uygulayıcı İmzası"
+                                                isProvider={true}
                                             />
                                         </div>
                                         <div className="sig-col">

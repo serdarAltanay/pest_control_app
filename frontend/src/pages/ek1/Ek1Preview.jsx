@@ -81,7 +81,7 @@ function getCurrentUserDisplayName() {
 /* ────────────────────────────────────────
    İmza Kutusu — sade, resmi, renksiz
    ──────────────────────────────────────── */
-function SignatureBox({ signedAt, signerName, signatureBase64, signLog, description }) {
+function SignatureBox({ signedAt, signerName, signatureBase64, signLog, description, isProvider }) {
   // Audit cümlesini oluştur
   let auditSentence = null;
   if (signedAt) {
@@ -106,6 +106,17 @@ function SignatureBox({ signedAt, signerName, signatureBase64, signLog, descript
     <div className="sig-box">
       {/* İmza alanı — kenarlıksız */}
       <div className="sig-box__area">
+        {isProvider && (
+          <div className="company-stamp">
+            <img src="/logo.png" alt="Tura Logo" className="company-stamp__img" />
+            <div className="company-stamp__text">
+              <strong>TURA ÇEVRE SAĞLIĞI<br />VE İLAÇLAMA HİZ.LTD.ŞTİ.</strong>
+              <p>Zübeyde Hanım Mah. Turgut Özal 1 Blv.</p>
+              <p>Özgür İşhanı No: 72/33 Altındağ/ANKARA</p>
+              <p>KIZILBEY V.D. 8670943938</p>
+            </div>
+          </div>
+        )}
         {signedAt && signatureBase64 ? (
           <img src={signatureBase64} alt="imza" className="sig-box__img" />
         ) : null}
@@ -513,6 +524,7 @@ export default function Ek1Preview() {
                   signatureBase64={report?.providerSignature}
                   signLog={report?.providerSignLog}
                   description="Uygulayıcı firma yetkilisinin adı, soyadı ve imzası"
+                  isProvider={true}
                 />
               </div>
 

@@ -277,18 +277,64 @@
 
     /* İmza çizim alanı — kenarlıksız */
     .sig-box__area {
-      min-height: 70px;
+      min-height: 100px;
+      position: relative;
       background: var(--surface);
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 2px;
+      z-index: 1;
     }
 
     .sig-box__img {
-      max-height: 65px;
+      max-height: 95px;
       max-width: 100%;
       display: block;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Kaşe (Firma Kaşesi) */
+    .company-stamp {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-3deg);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(18, 59, 142, 0.78);
+      z-index: 0;
+      opacity: 0.9;
+      pointer-events: none;
+      width: 90%;
+      justify-content: center;
+      
+      &__img {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        opacity: 0.8;
+      }
+      
+      &__text {
+        text-align: left;
+        font-family: Arial, sans-serif;
+        
+        strong {
+          display: block;
+          font-size: 11px;
+          line-height: 1.1;
+          margin-bottom: 3px;
+        }
+        
+        p {
+          margin: 0;
+          font-size: 8px;
+          line-height: 1.2;
+        }
+      }
     }
 
     /* İmzalayan adı — ortada */
@@ -439,11 +485,11 @@
       }
 
       .sig-box__area {
-        min-height: 50px;
+        min-height: 80px;
       }
 
       .sig-box__img {
-        max-height: 50px;
+        max-height: 75px;
       }
 
       .note {
