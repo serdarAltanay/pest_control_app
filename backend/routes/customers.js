@@ -213,6 +213,8 @@ router.put("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       employeeId,
     } = req.body;
 
+    const data = {};
+
     if (code) {
       const normalizedCode = String(code).trim();
       const other = await prisma.customer.findUnique({ where: { code: normalizedCode } });
