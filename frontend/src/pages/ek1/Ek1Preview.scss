@@ -297,25 +297,21 @@
 
     /* Kaşe (Firma Kaşesi) */
     .company-stamp {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-3deg);
       display: flex;
       align-items: center;
-      gap: 6px;
-      color: rgba(18, 59, 142, 0.78);
-      z-index: 0;
-      opacity: 0.9;
-      pointer-events: none;
-      width: 90%;
-      justify-content: center;
+      gap: 7px;
+      border: 2px solid rgba(18, 59, 142, 0.7);
+      border-radius: 6px;
+      padding: 5px 8px;
+      margin-top: 6px;
+      color: rgba(18, 59, 142, 0.85);
       
       &__img {
-        width: 48px;
-        height: 48px;
+        width: 38px;
+        height: 38px;
         object-fit: contain;
-        opacity: 0.8;
+        opacity: 0.85;
+        flex-shrink: 0;
       }
       
       &__text {
@@ -324,15 +320,16 @@
         
         strong {
           display: block;
-          font-size: 11px;
-          line-height: 1.1;
-          margin-bottom: 3px;
+          font-size: 9.5px;
+          line-height: 1.2;
+          margin-bottom: 2px;
+          font-weight: 800;
         }
         
         p {
           margin: 0;
-          font-size: 8px;
-          line-height: 1.2;
+          font-size: 7.5px;
+          line-height: 1.3;
         }
       }
     }
