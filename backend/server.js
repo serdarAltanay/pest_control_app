@@ -86,6 +86,11 @@ app.use(
 // Statik dosyalar
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// Canlı tutma (Keep-alive) için Public Ping rotası
+app.get("/api/ping", (req, res) => {
+  res.status(200).send("pong");
+});
+
 /* ------------ Aliases / Legacy Endpoints ------------ */
 // FE legacy: /api/customer/stores → /api/stores/mine
 app.get("/api/customer/stores", auth, (req, res, next) => {
