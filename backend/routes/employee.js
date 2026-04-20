@@ -38,11 +38,20 @@ router.get("/", auth, roleCheck(["admin", "employee"]), async (req, res) => {
       return res.json(employees);
     }
 
-    // employee → sadece kendi kaydı
+    // employee → level 2 ise herkesi görebilir, level 1 ise sadece kendi kaydını
     const me = await prisma.employee.findUnique({
       where: { id: req.user.id },
       select: EMP_SELECT,
     });
+
+    if (me && me.level === 2) {
+      const allEmployees = await prisma.employee.findMany({
+        orderBy: { createdAt: "desc" },
+        select: EMP_SELECT,
+      });
+      return res.json(allEmployees);
+    }
+
     return res.json(me ? [me] : []);
   } catch (e) {
     console.error("GET /employees", e);
@@ -60,7 +69,17 @@ router.get("/:id", auth, roleCheck(["admin", "employee"]), async (req, res) => {
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
     const role = String(req.user?.role || "").toLowerCase();
-    if (role === "employee" && req.user.id !== id) {
+    let canViewOthers = role === "admin";
+
+    if (role === "employee") {
+      const me = await prisma.employee.findUnique({
+        where: { id: req.user.id },
+        select: { level: true },
+      });
+      if (me?.level === 2) canViewOthers = true;
+    }
+
+    if (!canViewOthers && req.user.id !== id) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
