@@ -104,12 +104,14 @@ function SignatureBox({ signedAt, signerName, signatureBase64, signLog, descript
 
   return (
     <div className="sig-box">
-      {/* İmza alanı */}
-      <div className="sig-box__area">
+
+      {/* İmza + Kaşe Wrapper */}
+      <div className="sig-box__wrapper">
+        {/* Kaşe — kesinlikle arkada, silik */}
         {isProvider && (
-          <div className="company-stamp">
-            <img src="/logo.png" alt="Tura Logo" className="company-stamp__img" />
-            <div className="company-stamp__text">
+          <div className="sig-box__stamp">
+            <img src="/logo.png" alt="" className="sig-box__stamp-img" />
+            <div className="sig-box__stamp-text">
               <strong>TURA ÇEVRE SAĞLIĞI VE İLAÇLAMA HİZ.LTD.ŞTİ.</strong>
               <p>Zübeyde Hanım Mah. Turgut Özal 1 Blv.</p>
               <p>Özgür İşhanı No: 72/33 Altındağ/ANKARA</p>
@@ -117,18 +119,19 @@ function SignatureBox({ signedAt, signerName, signatureBase64, signLog, descript
             </div>
           </div>
         )}
-        {signedAt && signatureBase64 ? (
+        {/* İmza — üşte */}
+        {signedAt && signatureBase64 && (
           <img src={signatureBase64} alt="imza" className="sig-box__img" />
-        ) : null}
+        )}
       </div>
 
-      {/* İmzalayan adı — ortada */}
+      {/* İmzalayan adı */}
       <div className="sig-box__name">{signedAt ? (signerName || "—") : ""}</div>
 
       {/* Açıklama */}
       <div className="sig-box__description">{description}</div>
 
-      {/* Audit cümlesi — silik yazı */}
+      {/* Audit cümlesi */}
       {auditSentence && (
         <div className="sig-box__audit-sentence">{auditSentence}</div>
       )}

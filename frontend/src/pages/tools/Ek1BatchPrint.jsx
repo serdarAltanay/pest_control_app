@@ -61,11 +61,11 @@ function SignatureBox({ signedAt, signerName, signatureBase64, signLog, descript
 
     return (
         <div className="sig-box">
-            <div className="sig-box__area">
+            <div className="sig-box__wrapper">
                 {isProvider && (
-                    <div className="company-stamp">
-                        <img src="/logo.png" alt="Tura Logo" className="company-stamp__img" />
-                        <div className="company-stamp__text">
+                    <div className="sig-box__stamp">
+                        <img src="/logo.png" alt="" className="sig-box__stamp-img" />
+                        <div className="sig-box__stamp-text">
                             <strong>TURA ÇEVRE SAĞLIĞI VE İLAÇLAMA HİZ.LTD.ŞTİ.</strong>
                             <p>Zübeyde Hanım Mah. Turgut Özal 1 Blv.</p>
                             <p>Özgür İşhanı No: 72/33 Altındağ/ANKARA</p>
@@ -73,9 +73,9 @@ function SignatureBox({ signedAt, signerName, signatureBase64, signLog, descript
                         </div>
                     </div>
                 )}
-                {signedAt && signatureBase64 ? (
+                {signedAt && signatureBase64 && (
                     <img src={signatureBase64} alt="imza" className="sig-box__img" />
-                ) : null}
+                )}
             </div>
             <div className="sig-box__name">{signedAt ? (signerName || "—") : ""}</div>
             <div className="sig-box__description">{description}</div>
