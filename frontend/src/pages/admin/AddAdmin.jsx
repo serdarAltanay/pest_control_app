@@ -9,9 +9,9 @@ import "../shared/ModalWithAvatar.scss";
 
 function EditAdminModal({ admin, onClose, onChanged }) {
   const [fullName, setFullName] = useState(admin.fullName || "");
-  const [email, setEmail] = useState(admin.email || "");
   const [password, setPassword] = useState("");
   const [avatarPath, setAvatarPath] = useState(admin?.profileImage ?? null);
+  const [email, setEmail] = useState(admin?.email || "");
 
   useEffect(() => {
     let alive = true;
@@ -46,7 +46,6 @@ function EditAdminModal({ admin, onClose, onChanged }) {
     try {
       await api.put(`/admin/${admin.id}`, {
         fullName,
-        email,
         password: password || undefined,
       });
       toast.success("Yönetici güncellendi");
@@ -58,7 +57,7 @@ function EditAdminModal({ admin, onClose, onChanged }) {
   };
 
   return (
-    <div className="mwav-backdrop" onClick={(e)=> e.target.classList.contains("mwav-backdrop") && onClose()}>
+    <div className="mwav-backdrop" onClick={(e)=>e.target.classList.contains("mwav-backdrop") && onClose()}>
       <div className="mwav-modal">
         <div className="mwav-header">
           <h3>Yönetici Güncelle</h3>
@@ -70,8 +69,20 @@ function EditAdminModal({ admin, onClose, onChanged }) {
             <label>Ad Soyad *</label>
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
 
-            <label>E-posta *</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              E-posta
+              <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400, background: "#f1f5f9", padding: "2px 8px", borderRadius: 12 }}>
+                değiştirilemez
+              </span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              readOnly
+              disabled
+              style={{ background: "#f8fafc", color: "#94a3b8", cursor: "not-allowed" }}
+              title="E-posta adresi sistem tarafından belirlenir ve değiştirilemez"
+            />
 
             <label>Parola (opsiyonel)</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Boş bırakırsan değişmez" />

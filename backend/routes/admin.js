@@ -231,17 +231,26 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
   }
 });
 
-/** Admin güncelle */
+/** Admin güncelle — sadece isim ve şifre (e-posta değiştirilemez) */
 router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Geçersiz id" });
 
-    const { fullName, email, password } = req.body || {};
+    const { fullName, password, email } = req.body || {};
+
+    // E-posta değiştirme yasak
+    if (email !== undefined) {
+      return res.status(400).json({ message: "E-posta adresi değiştirilemez." });
+    }
+
     const data = {};
     if (fullName !== undefined) data.fullName = String(fullName);
-    if (email !== undefined) data.email = String(email);
     if (password) data.password = await bcrypt.hash(String(password), 10);
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ message: "Güncellenecek alan bulunamadı." });
+    }
 
     const updated = await prisma.admin.update({
       where: { id },
@@ -251,7 +260,7 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
         fullName: true,
         email: true,
         updatedAt: true,
-        lastSeenAt: true, // <<< ÖNEMLİ
+        lastSeenAt: true,
       },
     });
     res.json({ ok: true, admin: updated });
