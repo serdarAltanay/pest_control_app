@@ -351,9 +351,16 @@
 }
 
 /* ——— RESPONSIVE ——— */
+@media (min-width: 600px) {
+  .customer-detail-page {
+    .kv { grid-template-columns: repeat(2, 1fr); }
+  }
+}
+
 @media (min-width: 768px) {
   .customer-detail-page {
     .top-grid   { grid-template-columns: repeat(2, 1fr); }
+    .kv         { grid-template-columns: repeat(2, 1fr); }
   }
 }
 
@@ -364,14 +371,74 @@
   }
 }
 
+/* ——— MOBİL (≤ 640px) ——— */
 @media (max-width: 640px) {
   .customer-detail-page {
-    .header .identity {
-      align-items: flex-start;
-      gap: 10px;
-      flex-wrap: wrap;
+    padding: 10px;
 
-      .title-wrap { width: 100%; max-width: 100%; }
+    .header {
+      grid-template-columns: 1fr;
+      gap: 10px;
+
+      .identity {
+        align-items: flex-start;
+        gap: 10px;
+        flex-wrap: wrap;
+
+        .title-wrap {
+          width: 100%;
+          max-width: 100%;
+
+          .title { font-size: 18px; max-width: 100%; }
+        }
+
+        /* Avatar daha küçük */
+        .avatar-stack .avatar-wrap {
+          width: 72px;
+          height: 72px;
+          min-width: 72px;
+        }
+      }
+
+      .actions {
+        justify-self: start;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+    }
+
+    /* KV bilgi blokları 2 sütun */
+    .kv {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+
+      > div {
+        padding: 8px 10px;
+
+        b { font-size: 11px; }
+        span { font-size: 12px; }
+      }
+
+      > div.full { grid-column: 1 / -1; }
+    }
+
+    /* Mağaza tablosu kayma önleme */
+    .card.stores {
+      .store-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .store-table {
+        min-width: 520px;
+        font-size: 12px;
+
+        thead th, tbody td { padding: 7px 8px; white-space: nowrap; }
+      }
+    }
+
+    .card {
+      padding: 10px;
     }
   }
 }

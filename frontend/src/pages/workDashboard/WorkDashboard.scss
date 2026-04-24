@@ -241,9 +241,71 @@
   }
 
   @media (max-width: 768px) {
-    .summary-grid { grid-template-columns: 1fr; }
-    .customer-section .ps-grid { grid-template-columns: 1fr; }
-    .dashboard-header { flex-direction: column; align-items: flex-start; }
+    padding: 0.5rem 0;
+
+    .dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 16px;
+
+      h1 { font-size: 22px; }
+    }
+
+    /* Stat kartları 2'li ızgara */
+    .summary-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+
+      .stat-card {
+        padding: 12px;
+        gap: 10px;
+
+        .icon-box { width: 36px; height: 36px; font-size: 16px; }
+        .stat-info .stat-label { font-size: 11px; }
+        .stat-info .stat-value { font-size: 18px; }
+      }
+    }
+
+    /* Tablo kaymayı önle */
+    .content-card {
+      padding: 12px !important;
+      overflow-x: auto !important;
+
+      table {
+        min-width: 480px;
+        font-size: 12px;
+
+        th, td { padding: 7px 8px; white-space: nowrap; }
+      }
+    }
+
+    .customer-section .ps-grid {
+      grid-template-columns: 1fr;
+    }
+
     .shortcut-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .dashboard-content-rows {
+      gap: 14px;
+      margin-top: 14px;
+    }
   }
-}
+
+  @media (max-width: 480px) {
+    .summary-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+
+      .stat-card {
+        padding: 10px 8px;
+        gap: 8px;
+        flex-direction: column;
+        align-items: flex-start;
+
+        .icon-box { width: 30px; height: 30px; font-size: 14px; border-radius: 8px; }
+        .stat-info .stat-value { font-size: 16px; }
+      }
+    }
+  }
+}

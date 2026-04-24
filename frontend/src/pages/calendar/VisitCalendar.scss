@@ -732,3 +732,161 @@
     cursor: not-allowed;
   }
 }
+
+/* ═══════════════════════════════════════════
+   MOBİL TAKVİM — ≤ 768px
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── Toolbar: 2 satıra indir ── */
+  .vc-toolbar {
+    flex-wrap: wrap;
+    gap: 10px;
+
+    .left {
+      flex-wrap: wrap;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .seg button {
+      padding: 5px 11px;
+      font-size: 12px;
+    }
+
+    .right {
+      width: 100%;
+      input { width: 100%; box-sizing: border-box; }
+    }
+  }
+
+  /* ── Legend: yatay scroll ── */
+  .vc-legend {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 8px;
+
+    .lg-item {
+      flex-shrink: 0;
+      font-size: 11px;
+      padding: 4px 8px;
+    }
+  }
+
+  /* ─────────────────────────────────────
+     GÜN GÖRÜNÜMÜ: saat kolonu gizle,
+     günleri dikey liste yap
+  ───────────────────────────────────── */
+  .vc-day {
+    display: block; /* grid'den çık */
+
+    /* Saat kolonu tamamen gizle */
+    .hours { display: none; }
+
+    /* Günler dikey listede */
+    .days {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      .col {
+        border-radius: 14px;
+
+        .col-head {
+          font-size: 13px;
+          padding: 0 12px;
+        }
+
+        /* Göreli konumlandırmayı kaldır, etkinlikleri flow'a al */
+        .col-grid {
+          position: static;
+          height: auto !important;
+          background: none;
+          padding: 8px 10px;
+          cursor: default;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+
+          /* Etkinlik kartları normal akışta */
+          .event {
+            position: static !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: unset !important;
+            top: unset !important;
+            left: unset !important;
+            padding: 8px 10px;
+            border-radius: 10px;
+
+            .ev-title { font-size: 12px; -webkit-line-clamp: 2; }
+            .ev-details .ev-detail-item { font-size: 10px; }
+            .ev-delete-btn { opacity: 1; } /* mobilde her zaman görünür */
+          }
+        }
+      }
+    }
+  }
+
+  /* ─────────────────────────────────────
+     AY GÖRÜNÜMÜ: küçük hücreler
+  ───────────────────────────────────── */
+  .vc-month {
+    .month-nav {
+      gap: 12px;
+      margin-bottom: 12px;
+
+      .month-title { font-size: 16px; }
+      .nav-btn { width: 32px; height: 32px; font-size: 16px; }
+    }
+
+    .dow div {
+      font-size: 10px;
+      letter-spacing: 0;
+    }
+
+    .grid .row .cell {
+      min-height: 64px;
+      padding: 4px;
+      border-radius: 8px;
+
+      .date {
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+
+      .list .pill {
+        padding: 2px 4px;
+        font-size: 9px;
+        gap: 3px;
+        border-radius: 5px;
+
+        .t { font-size: 9px; }
+        .m { display: none; }
+        .badge { display: none; }
+      }
+
+      .list .more {
+        font-size: 9px;
+        margin-top: 2px;
+      }
+    }
+  }
+
+  /* Modal tam ekran */
+  .vc-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 16px 16px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+
+    .vc-modal-body .field-row {
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+}
