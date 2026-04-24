@@ -109,4 +109,69 @@ router.post("/mark-all-read", auth, async (req, res) => {
   }
 });
 
+/* Okunmadı olarak işaretle */
+router.patch("/:id/unread", auth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: "Geçersiz id" });
+
+    const n = await prisma.notification.findUnique({ where: { id } });
+    if (!n) return res.status(404).json({ message: "Kayıt bulunamadı" });
+
+    // Yetki kontrolü
+    if (req.user.role === "customer") {
+      if (!(n.recipientRole === "CUSTOMER" && n.recipientId === req.user.id))
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+    } else if (req.user.role === "admin") {
+      if (n.recipientRole !== "ADMIN")
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+    } else if (req.user.role === "employee") {
+      if (!(n.recipientRole === "EMPLOYEE" && n.recipientId === req.user.id))
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+    } else {
+      return res.status(403).json({ message: "Yetkisiz işlem" });
+    }
+
+    await prisma.notification.update({
+      where: { id },
+      data: { isRead: false, readAt: null },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("PATCH /notifications/:id/unread", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
+/* Bildirim sil */
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: "Geçersiz id" });
+
+    const n = await prisma.notification.findUnique({ where: { id } });
+    if (!n) return res.status(404).json({ message: "Kayıt bulunamadı" });
+
+    // Yetki kontrolü
+    if (req.user.role === "customer") {
+      if (!(n.recipientRole === "CUSTOMER" && n.recipientId === req.user.id))
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+    } else if (req.user.role === "admin") {
+      if (n.recipientRole !== "ADMIN")
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+    } else if (req.user.role === "employee") {
+      if (!(n.recipientRole === "EMPLOYEE" && n.recipientId === req.user.id))
+        return res.status(403).json({ message: "Yetkisiz işlem" });
+    } else {
+      return res.status(403).json({ message: "Yetkisiz işlem" });
+    }
+
+    await prisma.notification.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("DELETE /notifications/:id", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
 export default router;

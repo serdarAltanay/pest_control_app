@@ -602,6 +602,15 @@ $brand: #ef4444;
   }
 
   .multi-dd .dropdown-toggle {
+    /* global input/select stilini sıfırla */
+    appearance: none;
+    -webkit-appearance: none;
+    box-shadow: none !important;
+    outline: none;
+    font-family: inherit;
+    font-size: 13.5px;
+    color: var(--text, #111827);
+
     width: 100%;
     text-align: left;
     border: 1px solid $line;
@@ -617,6 +626,12 @@ $brand: #ef4444;
 
     &:hover {
       border-color: #94a3b8;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: #94a3b8;
+      box-shadow: none !important;
     }
   }
 
@@ -701,9 +716,22 @@ $brand: #ef4444;
     cursor: pointer;
     font-size: 13.5px;
     transition: background 0.1s;
+    list-style: none;
 
-    input {
+    input[type="checkbox"] {
+      /* global width:100% stilini ezme */
+      width: 16px !important;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 4px !important;
+      accent-color: $brand;
       pointer-events: none;
+      flex-shrink: 0;
+      box-shadow: none !important;
+      cursor: default;
+      margin: 0;
     }
 
     &:hover {
