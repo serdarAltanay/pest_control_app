@@ -75,7 +75,7 @@ export default function Navbar({ onHamburgerClick }) {
                 onError={(e) => {
                   if (e.currentTarget.dataset.errorFired) return;
                   e.currentTarget.dataset.errorFired = "true";
-                  if (!e.currentTarget.src.endsWith("/noavatar.jpg")) {
+                  if (!e.currentTarget.src.includes("/noavatar.jpg")) {
                     e.currentTarget.src = "/noavatar.jpg";
                   }
                 }}
