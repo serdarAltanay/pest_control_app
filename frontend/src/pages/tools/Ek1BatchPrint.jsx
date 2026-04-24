@@ -195,7 +195,7 @@ export default function Ek1BatchPrint() {
                                     </table>
                                 </section>
 
-                                <section className="block">
+                                <section className="block block--grow">
                                     <div className="block-title">2. KULLANILAN BİYOSİDAL ÜRÜNE AİT BİLGİLER</div>
                                     <table className="list">
                                         <thead>
