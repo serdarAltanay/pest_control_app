@@ -115,6 +115,14 @@ function App() {
 
             {/* Admin oluşturma/ekleme sayfaları */}
             <Route
+              path="/admin/admins"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <AddAdmin />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/admin/admins/new"
               element={
                 <PrivateRoute allowedRoles={['admin']}>

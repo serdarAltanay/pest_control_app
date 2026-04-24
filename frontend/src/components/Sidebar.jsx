@@ -134,6 +134,19 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
             </>
           )}
 
+          {/* SİSTEM YÖNETİMİ — YALNIZCA ADMİN, MUTLAK EN ALTA */}
+          {isAdmin && (
+            <>
+              <li className="section-title" style={{ marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12 }}>Sistem Yönetimi</li>
+              <li
+                className={`sidebar-item ${location.pathname === "/admin/admins" ? "active" : ""}`}
+                onClick={() => navigate("/admin/admins")}
+              >
+                👤 Yönetici Yönetimi
+              </li>
+            </>
+          )}
+
         </ul>
       )}
     </aside>

@@ -3,6 +3,7 @@ import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
 import { useMemo, useState, useEffect } from "react";
 import { getAvatarUrl } from "../../utils/getAssetUrl";
+import useAuth from "../../hooks/useAuth";
 import "./AddAdmin.scss";
 import "../shared/ModalWithAvatar.scss";
 
@@ -92,6 +93,7 @@ function EditAdminModal({ admin, onClose, onChanged }) {
 }
 
 export default function AddAdmin() {
+  const { user } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
@@ -166,7 +168,7 @@ export default function AddAdmin() {
     e.preventDefault();
     try {
       await api.post("/admin/create", { fullName, email, password });
-      toast.success("Yönetici eklendi");
+      toast.success("Yönetici eklendi — giriş bilgileri e-posta ile gönderildi 📧");
       setFullName(""); setEmail(""); setPassword("");
       fetchAdmins();
     } catch (err) {
@@ -175,7 +177,11 @@ export default function AddAdmin() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Bu yöneticiyi silmek istiyor musunuz?")) return;
+    if (id === user?.id) {
+      toast.error("Kendinizi silemezsiniz.");
+      return;
+    }
+    if (!window.confirm("Bu yöneticiyi silmek istiyor musunuz? Bu işlem geri alınamaz.")) return;
     try {
       await api.delete(`/admin/${id}`);
       toast.success("Yönetici silindi");
@@ -188,7 +194,12 @@ export default function AddAdmin() {
   return (
     <Layout>
       <div className="add-user-page">
-        <h2>Yönetici Ekle</h2>
+        <h2>Yönetici Yönetimi</h2>
+        <p className="page-desc" style={{ color: "#64748b", marginBottom: 20, fontSize: 14 }}>
+          Yeni yönetici ekleyebilir ya da mevcut yöneticileri düzenleyip silebilirsiniz.
+          Eklenen yöneticiye giriş bilgileri <strong>otomatik olarak e-posta ile gönderilir</strong>.
+          Şifreler sisteme kaydedilmez.
+        </p>
 
         <form className="panel" onSubmit={submit}>
           <div className="row">
@@ -252,7 +263,15 @@ export default function AddAdmin() {
                         <td>{fmt(a.createdAt)}</td>
                         <td className="actions">
                           <button className="btn btn-edit" onClick={() => setEditing(a)}>Düzenle</button>
-                          <button className="btn btn-delete" onClick={() => handleDelete(a.id)}>Sil</button>
+                          <button
+                            className="btn btn-delete"
+                            onClick={() => handleDelete(a.id)}
+                            disabled={a.id === user?.id}
+                            title={a.id === user?.id ? "Kendinizi silemezsiniz" : "Bu yöneticiyi sil"}
+                            style={a.id === user?.id ? { opacity: 0.4, cursor: "not-allowed" } : {}}
+                          >
+                            Sil
+                          </button>
                         </td>
                       </tr>
                     );

@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { auth, roleCheck } from "../middleware/auth.js";
 import { createBackup } from "../lib/backup.js";
 import { isEmailTaken } from "../lib/user-utils.js";
+import { sendAdminCreated } from "../lib/mailer.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -216,6 +217,13 @@ router.post("/create", auth, roleCheck(["admin"]), async (req, res) => {
       data: { fullName, email, password: hashed },
       select: { id: true },
     });
+
+    // Yeni admin'e şifresini mail ile gönder (fire-and-forget)
+    sendAdminCreated({ to: email, name: fullName, password: String(password) })
+      .catch(err => console.error("[MAILER] Admin created mail failed:", err));
+
+    console.log(`[ADMIN-CREATE] Admin #${created.id} (${email}) oluşturuldu — İşlemi yapan: Admin #${req.user?.id} — ${new Date().toISOString()}`);
+
     res.json({ ok: true, id: created.id });
   } catch (e) {
     console.error("POST /admin/create", e);
@@ -251,6 +259,39 @@ router.put("/:id", auth, roleCheck(["admin"]), async (req, res) => {
     if (e.code === "P2025")
       return res.status(404).json({ message: "Kayıt bulunamadı" });
     console.error("PUT /admin/:id", e);
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
+/** Admin sil */
+router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ message: "Geçersiz id" });
+
+    // Self-delete koruması
+    if (req.user?.id === id) {
+      return res.status(403).json({ message: "Kendinizi silemezsiniz." });
+    }
+
+    // Son admin koruması
+    const count = await prisma.admin.count();
+    if (count <= 1) {
+      return res.status(403).json({ message: "Sistemde en az bir yönetici bulunmalıdır. Son yönetici silinemez." });
+    }
+
+    // Silinecek adminin refresh token'larını temizle
+    await prisma.refreshToken.deleteMany({ where: { userId: id, role: "admin" } });
+
+    await prisma.admin.delete({ where: { id } });
+
+    console.log(`[ADMIN-DELETE] Admin #${id} silindi — İşlemi yapan: Admin #${req.user?.id} — ${new Date().toISOString()}`);
+
+    res.json({ ok: true });
+  } catch (e) {
+    if (e.code === "P2025")
+      return res.status(404).json({ message: "Kayıt bulunamadı" });
+    console.error("DELETE /admin/:id", e);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });

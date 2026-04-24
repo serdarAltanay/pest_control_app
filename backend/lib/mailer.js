@@ -537,3 +537,43 @@ export async function sendVisitPlannedToEmployee({ to, data }) {
   });
 }
 
+/* ============== YENİ YÖNETİCİ: Şifre bildirimi ============== */
+function htmlAdminCreated({ name, password }) {
+  const display = name?.trim() || "Yönetici";
+  return baseBox(`
+    <h2 style="margin: 0 0 20px; font-size: 22px; color: #0f172a;">Yönetici Hesabınız Oluşturuldu, ${esc(display)}!</h2>
+    <p style="margin: 0 0 16px; color: #475569;">Sisteme yönetici olarak eklendiniz. Aşağıdaki şifreyi kullanarak giriş yapabilirsiniz.</p>
+    ${passwordBox(esc(password))}
+    ${buttonHtml(APP_URL, "Sisteme Giriş Yap")}
+    <div style="background:#fff7ed;border-left:4px solid #f59e0b;padding:14px 18px;border-radius:0 8px 8px 0;margin-top:24px;">
+      <p style="margin:0;font-size:14px;color:#92400e;">
+        <strong>⚠️ Önemli Güvenlik Notu:</strong><br/>
+        Bu şifre sisteme kaydedilmemektedir. Lütfen güvenli bir yerde saklayın.
+        Giriş yaptıktan sonra profil ayarlarınızdan şifrenizi değiştirmenizi öneririz.
+      </p>
+    </div>
+  `);
+}
+
+function textAdminCreated({ name, password }) {
+  const display = name?.trim() || "Yönetici";
+  return [
+    `${display}, ${APP_NAME} sistemine yönetici olarak eklendiniz.`,
+    ``,
+    `Giriş şifreniz: ${password}`,
+    ``,
+    `Sisteme giriş: ${APP_URL}`,
+    ``,
+    `NOT: Bu şifre sisteme kaydedilmemektedir. Lütfen güvenli bir yerde saklayın.`,
+    `Giriş yaptıktan sonra profil ayarlarınızdan şifrenizi değiştirmenizi öneririz.`,
+  ].join("\n");
+}
+
+export async function sendAdminCreated({ to, name, password }) {
+  return sendMail({
+    to,
+    subject: `${APP_NAME}: Yönetici hesabınız oluşturuldu`,
+    html: htmlAdminCreated({ name, password }),
+    text: textAdminCreated({ name, password }),
+  });
+}
