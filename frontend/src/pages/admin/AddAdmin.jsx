@@ -103,6 +103,107 @@ function EditAdminModal({ admin, onClose, onChanged }) {
   );
 }
 
+/* ── Şifreli Silme Onay Modal'ı ─────────────────────────────── */
+function DeleteConfirmModal({ targetAdmin, onClose, onConfirmed }) {
+  const [pwd, setPwd]       = useState("");
+  const [loading, setLoading] = useState(false);
+  const [pwdVisible, setPwdVisible] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!pwd.trim()) return;
+    setLoading(true);
+    try {
+      await onConfirmed(pwd);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="del-confirm-backdrop"
+      onClick={(e) => e.target.classList.contains("del-confirm-backdrop") && !loading && onClose()}
+    >
+      <div className="del-confirm-modal">
+        {/* Başlık */}
+        <div className="del-confirm-header">
+          <span className="del-confirm-icon">⚠️</span>
+          <div>
+            <h3>Yönetici Silme Onayı</h3>
+            <p>Bu işlem <strong>geri alınamaz</strong>.</p>
+          </div>
+          <button className="del-confirm-close" onClick={onClose} disabled={loading}>×</button>
+        </div>
+
+        {/* Hedef admin */}
+        <div className="del-confirm-target">
+          <span className="del-confirm-avatar">
+            {(targetAdmin.fullName || "?").split(" ").filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase()}
+          </span>
+          <div>
+            <div className="del-confirm-name">{targetAdmin.fullName}</div>
+            <div className="del-confirm-email">{targetAdmin.email}</div>
+          </div>
+        </div>
+
+        {/* Onay formu */}
+        <form className="del-confirm-form" onSubmit={handleSubmit}>
+          {/* Statik onay metni */}
+          <div className="del-confirm-phrase-wrap">
+            <p className="del-confirm-phrase-label">Bu işlemi onaylamak için aşağıdaki metni okuyun:</p>
+            <div className="del-confirm-phrase">
+              "<strong>{targetAdmin.fullName}</strong> isimli admini sistemden silmek istiyorum"
+            </div>
+          </div>
+
+          {/* Şifre alanı */}
+          <label className="del-confirm-label">Kendi şifrenizi girerek onaylayın</label>
+          <div className="del-confirm-pwd-wrap">
+            <input
+              type={pwdVisible ? "text" : "password"}
+              className="del-confirm-pwd-input"
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              placeholder="Şifreniz..."
+              autoFocus
+              disabled={loading}
+              required
+            />
+            <button
+              type="button"
+              className="del-confirm-eye"
+              onClick={() => setPwdVisible(v => !v)}
+              tabIndex={-1}
+            >
+              {pwdVisible ? "🙈" : "👁"}
+            </button>
+          </div>
+
+          {/* Aksiyonlar */}
+          <div className="del-confirm-actions">
+            <button
+              type="button"
+              className="del-confirm-btn del-confirm-cancel"
+              onClick={onClose}
+              disabled={loading}
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              className="del-confirm-btn del-confirm-delete"
+              disabled={loading || !pwd.trim()}
+            >
+              {loading ? "Siliniyor…" : "Evet, Sil"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function AddAdmin() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState("");
@@ -112,6 +213,7 @@ export default function AddAdmin() {
   const [admins, setAdmins]     = useState([]);
   const [loading, setLoading]   = useState(false);
   const [editing, setEditing]   = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, fullName, email }
 
   // presence (adminId -> lastSeenAt) + reltime ticker
   const [presenceMap, setPresenceMap] = useState(new Map());
@@ -187,15 +289,20 @@ export default function AddAdmin() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     if (id === user?.id) {
       toast.error("Kendinizi silemezsiniz.");
       return;
     }
-    if (!window.confirm("Bu yöneticiyi silmek istiyor musunuz? Bu işlem geri alınamaz.")) return;
+    const target = admins.find(a => a.id === id);
+    if (target) setDeleteTarget(target);
+  };
+
+  const handleDeleteConfirmed = async (pwd) => {
     try {
-      await api.delete(`/admin/${id}`);
-      toast.success("Yönetici silindi");
+      await api.delete(`/admin/${deleteTarget.id}`, { data: { password: pwd } });
+      toast.success(`"${deleteTarget.fullName}" sistemden silindi.`);
+      setDeleteTarget(null);
       fetchAdmins();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Silinemedi");
@@ -295,6 +402,13 @@ export default function AddAdmin() {
 
         {editing && (
           <EditAdminModal admin={editing} onClose={() => setEditing(null)} onChanged={fetchAdmins} />
+        )}
+        {deleteTarget && (
+          <DeleteConfirmModal
+            targetAdmin={deleteTarget}
+            onClose={() => setDeleteTarget(null)}
+            onConfirmed={handleDeleteConfirmed}
+          />
         )}
       </div>
     </Layout>

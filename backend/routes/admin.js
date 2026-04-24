@@ -283,6 +283,25 @@ router.delete("/:id", auth, roleCheck(["admin"]), async (req, res) => {
       return res.status(403).json({ message: "Kendinizi silemezsiniz." });
     }
 
+    // Şifre doğrulaması — işlemi yapan admin kendi şifresini girmeli
+    const { password } = req.body || {};
+    if (!password) {
+      return res.status(400).json({ message: "İşlemi onaylamak için şifrenizi girin." });
+    }
+
+    const requestingAdmin = await prisma.admin.findUnique({
+      where: { id: req.user.id },
+      select: { password: true },
+    });
+    if (!requestingAdmin) {
+      return res.status(404).json({ message: "Oturum bilgisi geçersiz." });
+    }
+
+    const passwordValid = await bcrypt.compare(String(password), requestingAdmin.password);
+    if (!passwordValid) {
+      return res.status(401).json({ message: "Şifre hatalı. Silme işlemi iptal edildi." });
+    }
+
     // Son admin koruması
     const count = await prisma.admin.count();
     if (count <= 1) {
